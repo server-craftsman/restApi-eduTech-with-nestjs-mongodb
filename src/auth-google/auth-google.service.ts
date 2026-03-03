@@ -18,7 +18,6 @@ export class AuthGoogleService {
       displayName: profile.displayName,
       avatarUrl: profile.photos?.[0]?.value,
     });
-    const accessToken = this.authService.createAccessToken(user);
-    return { user, accessToken };
+    return { user };
   }
 }

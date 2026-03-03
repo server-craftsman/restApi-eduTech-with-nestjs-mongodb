@@ -35,20 +35,31 @@ export class AuthGoogleController {
   @ApiOperation({ summary: 'Google OAuth callback' })
   @ApiResponse({
     status: 200,
-    description: 'Returns JWT access token and user info',
+    description: 'Returns JWT access token, refresh token and session info',
     schema: {
       type: 'object',
       properties: {
         user: { type: 'object' },
         accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+        sessionId: { type: 'string' },
       },
     },
   })
-  googleCallback(@Req() req: Request, @Res() res: Response) {
+  async googleCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as User;
-    const accessToken = this.authService.createAccessToken(user);
+    const deviceInfo = String(req.headers['user-agent'] ?? 'Unknown Device');
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')[0]
+        ?.trim() ??
+      req.socket.remoteAddress ??
+      '0.0.0.0';
 
-    // Return JSON response
-    return res.json({ user, accessToken });
+    const result = await this.authService.signInWithOAuth(user, {
+      deviceInfo,
+      ipAddress,
+    });
+    return res.json(result);
   }
 }

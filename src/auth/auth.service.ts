@@ -164,7 +164,6 @@ export class AuthService {
       );
     }
 
-    const accessToken = this.createAccessToken(user);
     const { token: refreshToken, expiresAt } = this.buildRefreshToken(user.id);
 
     // Hash the raw refresh token before storing – never persist tokens in plaintext
@@ -178,6 +177,7 @@ export class AuthService {
       expiresAt,
     });
 
+    const accessToken = this.createAccessToken(user, session.id);
     this.logger.log(`User signed in: ${user.email} | session: ${session.id}`);
     return { user, accessToken, refreshToken, sessionId: session.id };
   }
@@ -234,7 +234,7 @@ export class AuthService {
     }
 
     // Issue new token pair
-    const newAccessToken = this.createAccessToken(user);
+    const newAccessToken = this.createAccessToken(user, matchedSession.id);
     const { token: newRefreshToken, expiresAt } = this.buildRefreshToken(
       user.id,
     );
@@ -254,6 +254,36 @@ export class AuthService {
       refreshToken: newRefreshToken,
       sessionId: matchedSession.id,
     };
+  }
+
+  // ─── OAuth sign-in ─────────────────────────────────────────────────────────
+
+  /**
+   * Creates a session for a social OAuth user (Google / Facebook) and returns
+   * a full token pair — identical shape to email signIn().
+   * Called by OAuth callback controllers after Passport hydrates req.user.
+   */
+  async signInWithOAuth(
+    user: User,
+    meta: { deviceInfo: string; ipAddress: string },
+  ): Promise<{
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+    sessionId: string;
+  }> {
+    const { token: refreshToken, expiresAt } = this.buildRefreshToken(user.id);
+    const hashedRt = await bcrypt.hash(refreshToken, 10);
+    const session = await this.sessionService.createSession({
+      userId: user.id,
+      hashedRt,
+      deviceInfo: meta.deviceInfo,
+      ipAddress: meta.ipAddress,
+      expiresAt,
+    });
+    const accessToken = this.createAccessToken(user, session.id);
+    this.logger.log(`OAuth sign-in: ${user.email} | session: ${session.id}`);
+    return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
   // ─── Logout ───────────────────────────────────────────────────────────────
@@ -364,8 +394,13 @@ export class AuthService {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  createAccessToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+  createAccessToken(user: User, sessionId: string): string {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      sid: sessionId, // embedded so JwtStrategy can validate session on every request
+    };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return this.jwtService.sign(payload, {
       expiresIn: this.configService.getOrThrow<string>('jwt.expiresIn'),
