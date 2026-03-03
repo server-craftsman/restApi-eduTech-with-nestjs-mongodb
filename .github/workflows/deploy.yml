@@ -1,0 +1,29 @@
+name: Deploy to Production
+
+# Trigger: Just a manual trigger for deployment, or can be triggered by the Build workflow when it completes successfully.
+on:
+  workflow_run:
+    workflows: ['Build & Verify']
+    branches: [main]
+    types: [completed]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Notify deployment started
+        run: |
+          echo "Deploying commit ${{ github.event.workflow_run.head_sha }} to Render..."
+          echo "   Build workflow: ${{ github.event.workflow_run.name }}"
+          echo "   Branch: ${{ github.event.workflow_run.head_branch }}"
+
+      - name: Trigger Render Deploy
+        run: |
+          echo "✅ Build passed — Render Auto-Deploy sẽ tự động deploy từ GitHub"
