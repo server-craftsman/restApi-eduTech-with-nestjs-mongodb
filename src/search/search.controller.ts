@@ -24,7 +24,7 @@ import {
   SearchResultDto,
 } from './dto/search-result.dto';
 
-@ApiTags('🔍 Smart Search')
+@ApiTags('Smart Search')
 @Controller('search')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -35,43 +35,43 @@ export class SearchController extends BaseController {
   }
 
   /**
-   * GET /search?keyword=Hàm số&type=all&page=1&limit=10
-   * Smart Search Flow - Bước 2: Tìm kiếm bài học & tài liệu theo từ khóa
+   * GET /search?keyword=quadratic&type=all&page=1&limit=10
+   * Smart Search Flow — Step 2: Search lessons & materials by keyword
    */
   @Get()
   @ApiOperation({
-    summary: '🔍 Tìm kiếm bài học và tài liệu theo từ khóa',
+    summary: 'Search lessons and materials by keyword',
     description: `
 ## Smart Search Flow
 
-Học sinh gặp khó khăn → Nhập từ khóa → Hệ thống lọc trong Database → Trả về danh sách bài học/tài liệu liên quan.
+Student encounters difficulty → Types a keyword → System filters the database → Returns a list of relevant lessons and materials.
 
-### Cách sử dụng:
-1. Nhập từ khóa vào \`keyword\` (ví dụ: "Hàm số", "Định luật Newton")
-2. Chọn \`type\` để lọc: \`lessons\` (bài học), \`materials\` (tài liệu), \`all\` (tất cả)
-3. Sử dụng \`page\` và \`limit\` để phân trang
+### Usage:
+1. Enter a keyword in \`keyword\` (e.g. \`"quadratic function"\`, \`"Newton's law"\`)
+2. Filter by \`type\`: \`lessons\`, \`materials\`, or \`all\`
+3. Use \`page\` and \`limit\` for pagination
 
-### Tìm kiếm trên:
-- **Bài học** (lessons): Tiêu đề, mô tả, nội dung lý thuyết (Markdown)
-- **Tài liệu** (materials): Tiêu đề tài liệu đính kèm (PDF, DOCX, PPTX...)
+### Search scope:
+- **Lessons**: title, description, and theory content (Markdown)
+- **Materials**: title of attached files (PDF, DOCX, PPTX…)
 
-### Ví dụ:
-- \`GET /search?keyword=Hàm số&type=lessons\`
+### Examples:
+- \`GET /search?keyword=quadratic&type=lessons\`
 - \`GET /search?keyword=Newton&type=all&page=1&limit=10\`
     `,
   })
   @ApiResponse({
     status: HttpStatus.OK,
     type: SearchResultDto,
-    description: 'Danh sách bài học và tài liệu phù hợp với từ khóa',
+    description: 'List of lessons and materials matching the keyword',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Từ khóa không hợp lệ',
+    description: 'Invalid keyword',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Chưa đăng nhập',
+    description: 'Unauthorized — JWT token missing or invalid',
   })
   async search(
     @Query() query: SearchQueryDto,
@@ -80,8 +80,8 @@ Học sinh gặp khó khăn → Nhập từ khóa → Hệ thống lọc trong D
     const result = await this.searchService.search(query);
     const message =
       result.total > 0
-        ? `Tìm thấy ${result.total} kết quả cho "${query.keyword}"`
-        : `Không tìm thấy kết quả nào cho "${query.keyword}"`;
+        ? `Found ${result.total} result(s) for "${query.keyword}"`
+        : `No results found for "${query.keyword}"`;
     return this.sendSuccess(res, result, message);
   }
 }

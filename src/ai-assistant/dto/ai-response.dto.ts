@@ -2,38 +2,38 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AiResponseDto {
   @ApiProperty({
-    description: 'Câu hỏi ban đầu của học sinh',
-    example: 'Cho hàm số f(x) = x² - 3x + 2. Tìm các khoảng đơn điệu...',
+    description: 'The original question submitted by the student',
+    example: 'Given f(x) = x² - 3x + 2, find the intervals of monotonicity...',
   })
   question!: string;
 
   @ApiProperty({
-    description: 'Lời giải từ AI (định dạng Markdown)',
+    description: 'AI-generated solution (Markdown format)',
     example:
-      "## Giải\n\n**Bước 1:** Tính đạo hàm\n\nf'(x) = 2x - 3\n\n**Bước 2:** ...",
+      "## Solution\n\n**Step 1:** Compute the derivative\n\nf'(x) = 2x - 3\n\n**Step 2:** ...",
   })
   solution!: string;
 
   @ApiPropertyOptional({
-    description: 'Môn học đã cung cấp',
-    example: 'Toán học lớp 10',
+    description: 'Subject provided by the student',
+    example: 'Grade 10 Mathematics',
   })
   subject?: string;
 
   @ApiProperty({
-    description: 'Tổng số token đã sử dụng (prompt + completion)',
+    description: 'Total tokens used (prompt + completion)',
     example: 420,
   })
   tokensUsed!: number;
 
   @ApiProperty({
-    description: 'Model AI đã xử lý yêu cầu',
-    example: 'gpt-4o-mini',
+    description: 'AI model that processed the request',
+    example: 'gemini-2.0-flash',
   })
   model!: string;
 
   @ApiProperty({
-    description: 'Thời gian xử lý yêu cầu (milliseconds)',
+    description: 'Request processing time in milliseconds',
     example: 1350,
   })
   processingTimeMs!: number;

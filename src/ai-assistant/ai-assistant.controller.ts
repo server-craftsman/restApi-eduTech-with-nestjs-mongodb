@@ -20,7 +20,7 @@ import { AiAssistantService } from './ai-assistant.service';
 import { AskQuestionDto } from './dto/ask-question.dto';
 import { AiResponseDto } from './dto/ai-response.dto';
 
-@ApiTags('🤖 AI Assistant')
+@ApiTags('AI Assistant')
 @Controller('ai-assistant')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -31,45 +31,47 @@ export class AiAssistantController extends BaseController {
 
   /**
    * POST /ai-assistant/ask
-   * Học sinh copy đề bài → paste vào body → nhận lời giải từ AI
+   * Student copies a problem → pastes into body → receives step-by-step solution from AI
    */
   @Post('ask')
   @ApiOperation({
-    summary: '🤖 Hỏi AI gia sư về bài tập',
+    summary: 'Ask the AI tutor to solve a homework problem',
     description: `
-## Luồng sử dụng AI Gia Sư
+## AI Tutor Flow
 
-Học sinh gặp khó khăn với bài tập → Copy đề bài → Paste vào field \`question\` → AI trả về lời giải từng bước.
+Student struggles with a problem → Copies the problem text → Pastes into \`question\` → AI returns a step-by-step solution.
 
-### Các bước:
-1. **Copy** nội dung đề bài hoặc câu hỏi
-2. **Paste** vào trường \`question\`
-3. *(Tuỳ chọn)* Thêm tên môn học vào \`subject\` để AI hiểu ngữ cảnh tốt hơn
-4. *(Tuỳ chọn)* Chọn \`explanationLevel\`:
-   - \`detailed\` (mặc định): Giải từng bước, đầy đủ, có ví dụ
-   - \`brief\`: Câu trả lời ngắn gọn, chỉ nêu đáp án chính
-5. **Nhận lời giải** định dạng Markdown từ AI
+### Supported providers (configure via \`AI_PROVIDER\` in .env):
+| Provider | Cost | Rate limit | Config key |
+|----------|------|------------|------------|
+| **gemini** *(default)* | **Free** | 15 req/min, 1M tokens/day | \`GEMINI_API_KEY\` |
+| openai | Paid | Depends on plan | \`OPENAI_API_KEY\` |
 
-### Lưu ý:
-- Mỗi yêu cầu sẽ tiêu thụ **token** từ tài khoản OpenAI
-- Câu hỏi từ **10 đến 5000 ký tự**
-- AI trả lời bằng **tiếng Việt**
+> Get a free Gemini API key at: https://aistudio.google.com/apikey
+
+### Steps:
+1. **Copy** the problem statement or question text
+2. **Paste** it into the \`question\` field
+3. *(Optional)* Set \`subject\` so the AI understands the context better
+4. *(Optional)* Choose \`explanationLevel\`:
+   - \`detailed\` *(default)*: full step-by-step explanation with examples
+   - \`brief\`: short answer focusing on the key result
+5. **Receive** the AI-generated solution in Markdown format
     `,
   })
   @ApiBody({ type: AskQuestionDto })
   @ApiResponse({
     status: HttpStatus.OK,
     type: AiResponseDto,
-    description: 'Lời giải từ AI gia sư (Markdown)',
+    description: 'AI-generated solution in Markdown format',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description:
-      'Câu hỏi không hợp lệ, quá ngắn/dài, hoặc API key chưa cấu hình',
+    description: 'Invalid question, too short/long, or API key not configured',
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Chưa đăng nhập',
+    description: 'Unauthorized — JWT token missing or invalid',
   })
   async askQuestion(
     @Body() dto: AskQuestionDto,
@@ -79,7 +81,7 @@ Học sinh gặp khó khăn với bài tập → Copy đề bài → Paste vào 
     return this.sendSuccess(
       res,
       result,
-      `AI đã trả lời câu hỏi trong ${result.processingTimeMs}ms`,
+      `AI answered in ${result.processingTimeMs}ms`,
     );
   }
 }

@@ -17,6 +17,15 @@ export const envValidationSchema = Joi.object({
   OPENAI_MODEL: Joi.string().optional().default('gpt-4o-mini'),
   OPENAI_MAX_TOKENS: Joi.number().optional().default(2000),
 
+  // AI Provider selection
+  AI_PROVIDER: Joi.string().valid('gemini', 'openai').optional().default('gemini'),
+  AI_MAX_OUTPUT_TOKENS: Joi.number().optional().default(2000),
+
+  // Google Gemini — FREE tier (gemini-2.0-flash: 15 RPM, 1M tokens/day)
+  // Get key: https://aistudio.google.com/apikey
+  GEMINI_API_KEY: Joi.string().allow('').optional().default(''),
+  GEMINI_MODEL: Joi.string().optional().default('gemini-2.0-flash'),
+
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: Joi.string().allow('').optional(),
   CLOUDINARY_API_KEY: Joi.string().allow('').optional(),

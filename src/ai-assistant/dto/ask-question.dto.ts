@@ -10,21 +10,21 @@ import {
 export class AskQuestionDto {
   @ApiProperty({
     description:
-      'Nội dung câu hỏi hoặc đề bài — copy đề và paste vào đây. ' +
-      'AI sẽ phân tích và trả lời từng bước.',
+      'The question or problem statement — copy the problem text and paste it here. ' +
+      'The AI will analyze it and answer step by step.',
     example:
-      'Cho hàm số f(x) = x² - 3x + 2. Tìm các khoảng đơn điệu của hàm số và xác định cực trị nếu có.',
+      'Given f(x) = x² - 3x + 2, find the intervals of monotonicity and identify any local extrema.',
     minLength: 10,
     maxLength: 5000,
   })
   @IsString()
-  @MinLength(10, { message: 'Câu hỏi phải có ít nhất 10 ký tự' })
-  @MaxLength(5000, { message: 'Câu hỏi không được vượt quá 5000 ký tự' })
+  @MinLength(10, { message: 'Question must be at least 10 characters' })
+  @MaxLength(5000, { message: 'Question must not exceed 5000 characters' })
   question!: string;
 
   @ApiPropertyOptional({
-    description: 'Môn học để AI hiểu ngữ cảnh tốt hơn (tuỳ chọn)',
-    example: 'Toán học lớp 10',
+    description: 'Subject name to give the AI better context (optional)',
+    example: 'Grade 10 Mathematics',
   })
   @IsOptional()
   @IsString()
@@ -33,16 +33,16 @@ export class AskQuestionDto {
 
   @ApiPropertyOptional({
     description:
-      'Mức độ giải thích:\n' +
-      '- `brief`: Câu trả lời ngắn gọn, chỉ nêu đáp án chính\n' +
-      '- `detailed`: Giải thích từng bước đầy đủ (mặc định)',
+      'Explanation detail level:\n' +
+      '- `brief`: Short answer focusing on the key result only\n' +
+      '- `detailed`: Full step-by-step explanation (default)',
     enum: ['brief', 'detailed'],
     default: 'detailed',
     example: 'detailed',
   })
   @IsOptional()
   @IsEnum(['brief', 'detailed'], {
-    message: 'explanationLevel phải là "brief" hoặc "detailed"',
+    message: 'explanationLevel must be "brief" or "detailed"',
   })
   explanationLevel?: 'brief' | 'detailed';
 }

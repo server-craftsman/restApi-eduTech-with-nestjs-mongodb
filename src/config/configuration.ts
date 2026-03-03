@@ -72,8 +72,15 @@ export default () => ({
     ],
   },
   ai: {
+    provider: getEnv('AI_PROVIDER', 'gemini') as 'gemini' | 'openai',
+    // Gemini (free tier)
+    geminiApiKey: getEnv('GEMINI_API_KEY', ''),
+    geminiModel: getEnv('GEMINI_MODEL', 'gemini-2.0-flash'),
+    // OpenAI (paid)
     openaiApiKey: getEnv('OPENAI_API_KEY', ''),
     openaiModel: getEnv('OPENAI_MODEL', 'gpt-4o-mini'),
     openaiMaxTokens: parseInt(getEnv('OPENAI_MAX_TOKENS', '2000'), 10),
+    // Shared
+    maxOutputTokens: parseInt(getEnv('AI_MAX_OUTPUT_TOKENS', '2000'), 10),
   },
 });
