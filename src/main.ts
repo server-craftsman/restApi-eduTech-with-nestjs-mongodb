@@ -53,7 +53,7 @@ async function bootstrap() {
     .setVersion('1.0.0')
     .addServer(`http://localhost:${port}`, 'Local Development')
     .addServer(
-      'https://edutech-backend-y2zc.onrender.com/',
+      `${configService.get<string>('APP_URL')}`,
       'Production Server',
     )
     .addBearerAuth()
