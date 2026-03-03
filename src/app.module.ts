@@ -32,6 +32,9 @@ import { NotificationModule } from './notifications';
 import { LearningPathModule } from './learning-path';
 import { SequentialLearningModule } from './sequential-learning';
 import { DashboardModule } from './dashboard';
+import { UploadsModule } from './uploads';
+import { SearchModule } from './search/search.module';
+import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 
 @Module({
   imports: [
@@ -71,6 +74,9 @@ import { DashboardModule } from './dashboard';
     LearningPathModule,
     SequentialLearningModule,
     DashboardModule,
+    UploadsModule,
+    SearchModule,
+    AiAssistantModule,
   ],
 })
 export class AppModule {}

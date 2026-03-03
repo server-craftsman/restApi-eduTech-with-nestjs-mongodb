@@ -7,7 +7,7 @@ import {
   SubjectDocument,
   SubjectDocumentType,
 } from './infrastructure/persistence/document/schemas/subject.schema';
-import { QuerySubjectDto } from './dto';
+import { CreateSubjectDto, UpdateSubjectDto, QuerySubjectDto } from './dto';
 
 @Injectable()
 export class SubjectService extends BaseCrudService<
@@ -19,51 +19,139 @@ export class SubjectService extends BaseCrudService<
     super(subjectRepository);
   }
 
-  // Custom methods specific to Subject domain
+  // ── Slug helpers ───────────────────────────────────────────────────────────
+
+  /**
+   * Generate a URL-friendly slug from a name.
+   * Supports Vietnamese diacritics and converts to kebab-case.
+   *
+   * Examples:
+   *   "Toán Học"          → "toan-hoc"
+   *   "Ngữ Văn Việt Nam" → "ngu-van-viet-nam"
+   *   "Advanced Math"      → "advanced-math"
+   */
+  private generateSlug(name: string): string {
+    const map: Record<string, string> = {
+      à: 'a',
+      á: 'a',
+      ả: 'a',
+      ã: 'a',
+      ạ: 'a',
+      ă: 'a',
+      ằ: 'a',
+      ắ: 'a',
+      ẳ: 'a',
+      ẵ: 'a',
+      ặ: 'a',
+      â: 'a',
+      ầ: 'a',
+      ấ: 'a',
+      ẩ: 'a',
+      ẫ: 'a',
+      ậ: 'a',
+      đ: 'd',
+      è: 'e',
+      é: 'e',
+      ẻ: 'e',
+      ẽ: 'e',
+      ẹ: 'e',
+      ê: 'e',
+      ề: 'e',
+      ế: 'e',
+      ể: 'e',
+      ễ: 'e',
+      ệ: 'e',
+      ì: 'i',
+      í: 'i',
+      ỉ: 'i',
+      ĩ: 'i',
+      ị: 'i',
+      ò: 'o',
+      ó: 'o',
+      ỏ: 'o',
+      õ: 'o',
+      ọ: 'o',
+      ô: 'o',
+      ồ: 'o',
+      ố: 'o',
+      ổ: 'o',
+      ỗ: 'o',
+      ộ: 'o',
+      ơ: 'o',
+      ờ: 'o',
+      ớ: 'o',
+      ở: 'o',
+      ỡ: 'o',
+      ợ: 'o',
+      ù: 'u',
+      ú: 'u',
+      ủ: 'u',
+      ũ: 'u',
+      ụ: 'u',
+      ư: 'u',
+      ừ: 'u',
+      ứ: 'u',
+      ử: 'u',
+      ữ: 'u',
+      ự: 'u',
+      ỳ: 'y',
+      ý: 'y',
+      ỷ: 'y',
+      ỹ: 'y',
+      ỵ: 'y',
+    };
+    return name
+      .toLowerCase()
+      .split('')
+      .map((c) => map[c] ?? c)
+      .join('')
+      .replace(/[^a-z0-9\s-]/g, '') // strip special chars
+      .trim()
+      .replace(/\s+/g, '-') // spaces → hyphens
+      .replace(/-+/g, '-'); // collapse multiple hyphens
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
 
   async getAllSubjects(): Promise<Subject[]> {
     return this.subjectRepository.findAllSubjects();
   }
 
-  async getAllSubjectsWithFilter(query: QuerySubjectDto): Promise<{
-    subjects: Subject[];
-    total: number;
-  }> {
-    const { search, sortBy, sortOrder, page, limit } = query;
+  async getAllSubjectsWithFilter(
+    query: QuerySubjectDto,
+  ): Promise<{ subjects: Subject[]; total: number }> {
+    const { filters, sort, page = 1, limit = 10 } = query;
 
-    // Build filter
+    // ── Build filter with mandatory soft-delete gate ───────────────────────
     const filter: Record<string, unknown> = {};
-    if (search) {
-      filter['$or'] = [
-        { name: { $regex: search, $options: 'i' } },
-        { slug: { $regex: search, $options: 'i' } },
-      ];
-    }
+    // Show deleted only when caller explicitly sets isDeleted=true (Admin audit)
+    filter['isDeleted'] = filters?.isDeleted === true ? true : { $ne: true };
 
-    // Build sort
-    const sort: Record<string, SortOrder | { $meta: 'textScore' }> = {};
-    if (sortBy) {
-      sort[sortBy] = (sortOrder === 'desc' ? -1 : 1) as SortOrder;
+    if (filters?.name) filter['name'] = { $regex: filters.name, $options: 'i' };
+    if (filters?.slug) filter['slug'] = filters.slug;
+    if (filters?.slugContains)
+      filter['slug'] = { $regex: filters.slugContains, $options: 'i' };
+
+    // ── Build sort (default: newest first) ─────────────────────────────
+    const sortQuery: Record<string, SortOrder | { $meta: 'textScore' }> = {};
+    if (sort?.length) {
+      for (const item of sort) {
+        sortQuery[item.orderBy as string] = (
+          item.order === 'desc' ? -1 : 1
+        ) as SortOrder;
+      }
     } else {
-      sort['createdAt'] = -1 as SortOrder;
+      sortQuery['createdAt'] = -1 as SortOrder;
     }
 
-    // Get total count
     const total = await this.count(filter);
-
-    // Get subjects with pagination
-    let subjects: Subject[];
-    if (page && limit) {
-      const skip = this.calculateSkip(page, limit);
-      subjects = await this.findByFilterWithPagination(
-        filter,
-        sort,
-        skip,
-        limit,
-      );
-    } else {
-      subjects = await this.findByFilter(filter, sort);
-    }
+    const skip = this.calculateSkip(page, limit);
+    const subjects = await this.findByFilterWithPagination(
+      filter,
+      sortQuery,
+      skip,
+      limit,
+    );
 
     return { subjects, total };
   }
@@ -76,38 +164,45 @@ export class SubjectService extends BaseCrudService<
     return subject;
   }
 
-  async findBySlug(slug: string): Promise<Subject | null> {
-    return this.subjectRepository.findBySlug(slug);
-  }
-
   async getSubjectBySlug(slug: string): Promise<Subject> {
-    const subject = await this.findBySlug(slug);
+    const subject = await this.subjectRepository.findBySlug(slug);
     if (!subject) {
-      throw new NotFoundException(`Subject with slug ${slug} not found`);
+      throw new NotFoundException(`Subject with slug "${slug}" not found`);
     }
     return subject;
   }
 
-  async createSubject(
-    data: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<Subject> {
-    return this.create(data);
+  /**
+   * Create a new subject.
+   * Slug is auto-generated from name — not accepted from the client.
+   */
+  async createSubject(dto: CreateSubjectDto): Promise<Subject> {
+    const slug = this.generateSlug(dto.name);
+    return this.subjectRepository.create({
+      name: dto.name,
+      slug,
+      iconUrl: dto.iconUrl,
+    });
   }
 
-  async updateSubject(id: string, data: Partial<Subject>): Promise<Subject> {
-    const updated = await this.update(id, data);
+  /**
+   * Update a subject by ID.
+   * If name is changed, slug is automatically regenerated.
+   */
+  async updateSubject(id: string, dto: UpdateSubjectDto): Promise<Subject> {
+    const updateData: Partial<Subject> = {};
+    if (dto.name !== undefined) {
+      updateData.name = dto.name;
+      updateData.slug = this.generateSlug(dto.name);
+    }
+    if (dto.iconUrl !== undefined) {
+      updateData.iconUrl = dto.iconUrl;
+    }
+    const updated = await this.update(id, updateData);
     if (!updated) {
       throw new NotFoundException(`Subject with id ${id} not found`);
     }
     return updated;
-  }
-
-  async deleteSubject(id: string): Promise<void> {
-    const subject = await this.findById(id);
-    if (!subject) {
-      throw new NotFoundException(`Subject with id ${id} not found`);
-    }
-    await this.delete(id);
   }
 
   async softDeleteSubject(id: string): Promise<void> {
@@ -121,7 +216,9 @@ export class SubjectService extends BaseCrudService<
   async restoreSubject(id: string): Promise<Subject> {
     const restored = await this.restore(id);
     if (!restored) {
-      throw new NotFoundException(`Subject with id ${id} not found`);
+      throw new NotFoundException(
+        `Subject with id ${id} not found or is not deleted`,
+      );
     }
     return restored;
   }

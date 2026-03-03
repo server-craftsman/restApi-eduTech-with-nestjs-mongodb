@@ -12,4 +12,10 @@ export abstract class MaterialRepositoryAbstract {
   ): Promise<Material | null>;
   abstract delete(id: string): Promise<void>;
   abstract findByLessonId(lessonId: string): Promise<Material[]>;
+  /** Search materials by title (case-insensitive regex) */
+  abstract searchByKeyword(
+    keyword: string,
+    page: number,
+    limit: number,
+  ): Promise<[Material[], number]>;
 }

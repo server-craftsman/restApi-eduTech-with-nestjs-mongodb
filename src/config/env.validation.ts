@@ -12,6 +12,11 @@ export const envValidationSchema = Joi.object({
   // Database (defaults for development)
   MONGODB_URI: Joi.string().default('mongodb://127.0.0.1:27017/edutech'),
 
+  // OpenAI (optional in dev, recommended in production)
+  OPENAI_API_KEY: Joi.string().allow('').optional().default(''),
+  OPENAI_MODEL: Joi.string().optional().default('gpt-4o-mini'),
+  OPENAI_MAX_TOKENS: Joi.number().optional().default(2000),
+
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: Joi.string().allow('').optional(),
   CLOUDINARY_API_KEY: Joi.string().allow('').optional(),

@@ -10,6 +10,9 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
+import { ParentProfileService } from '../parent-profiles/parent-profile.service';
+import { TeacherProfileService } from '../teacher-profiles/teacher-profile.service';
+import { SessionService } from '../sessions/session.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -28,10 +31,15 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly emailVerificationService: EmailVerificationService,
     private readonly studentProfileService: StudentProfileService,
+    private readonly parentProfileService: ParentProfileService,
+    private readonly teacherProfileService: TeacherProfileService,
+    private readonly sessionService: SessionService,
   ) {
     this.refreshTokenExpirationDays =
       this.configService.get<number>('jwt.refreshExpiresInDays') ?? 7;
   }
+
+  // ─── Register ─────────────────────────────────────────────────────────────
 
   async signUp(dto: SignUpDto): Promise<{ user: User; message: string }> {
     const existingUser = await this.usersService.findByEmail(dto.email);
@@ -41,10 +49,10 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    // Generate verification token
+    // Generate email verification token (24-hour window)
     const verificationToken = this.generateVerificationToken();
     const verificationExpires = new Date();
-    verificationExpires.setHours(verificationExpires.getHours() + 24); // 24 hours
+    verificationExpires.setHours(verificationExpires.getHours() + 24);
 
     const user = await this.usersService.create({
       email: dto.email,
@@ -56,13 +64,15 @@ export class AuthService {
       emailVerificationExpires: verificationExpires,
     });
 
-    // Create student profile if role is student
+    // Auto-create the role-specific profile on registration
+    const fullName = `${dto.firstName} ${dto.lastName}`;
+
     if (dto.role === UserRole.Student) {
       try {
         await this.studentProfileService.createProfile({
           userId: user.id,
-          fullName: `${dto.firstName} ${dto.lastName}`,
-          gradeLevel: dto.gradeLevel || null,
+          fullName,
+          gradeLevel: dto.gradeLevel ?? null,
           diamondBalance: 0,
           xpTotal: 0,
           currentStreak: 0,
@@ -70,6 +80,32 @@ export class AuthService {
       } catch (error) {
         this.logger.warn(
           `Failed to create student profile for ${user.email}`,
+          error,
+        );
+      }
+    } else if (dto.role === UserRole.Parent) {
+      try {
+        await this.parentProfileService.createProfile({
+          userId: user.id,
+          fullName,
+          phoneNumber: dto.phoneNumber ?? '',
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to create parent profile for ${user.email}`,
+          error,
+        );
+      }
+    } else if (dto.role === UserRole.Teacher) {
+      try {
+        await this.teacherProfileService.createProfile({
+          userId: user.id,
+          fullName,
+          bio: null,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to create teacher profile for ${user.email}`,
           error,
         );
       }
@@ -82,7 +118,7 @@ export class AuthService {
       dto.firstName,
     );
 
-    this.logger.log(`User registered: ${user.email} - Verification email sent`);
+    this.logger.log(`User registered: ${user.email} – verification email sent`);
     return {
       user,
       message:
@@ -90,13 +126,24 @@ export class AuthService {
     };
   }
 
+  // ─── Login ────────────────────────────────────────────────────────────────
+
+  /**
+   * Authenticates the user and persists a new session record containing the
+   * hashed refresh token, device info (User-Agent) and IP address extracted
+   * from the HTTP request in the controller.
+   */
   async signIn(
     dto: SignInDto,
-  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+    meta: { deviceInfo: string; ipAddress: string },
+  ): Promise<{
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+    sessionId: string;
+  }> {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
     if (!user.passwordHash) {
       throw new UnauthorizedException('User must sign up with password');
@@ -106,84 +153,128 @@ export class AuthService {
       dto.password,
       user.passwordHash,
     );
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       throw new UnauthorizedException('Invalid credentials');
-    }
 
-    if (!user.isActive) {
-      throw new BadRequestException('Account is disabled');
-    }
+    if (!user.isActive) throw new BadRequestException('Account is disabled');
 
-    // Check if email is verified
     if (user.emailVerificationStatus !== EmailVerificationStatus.Verified) {
       throw new BadRequestException(
-        'Please verify your email before signing in. Check your email for verification link.',
+        'Please verify your email before signing in. Check your email for the verification link.',
       );
     }
 
     const accessToken = this.createAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user.id);
+    const { token: refreshToken, expiresAt } = this.buildRefreshToken(user.id);
 
-    // TODO: Save refresh token to sessions table
-    // await this.sessionService.create({ userId: user.id, hashedRt, deviceInfo, ipAddress, expiresAt });
+    // Hash the raw refresh token before storing – never persist tokens in plaintext
+    const hashedRt = await bcrypt.hash(refreshToken, 10);
 
-    this.logger.log(`User signed in: ${user.email}`);
-    return { user, accessToken, refreshToken };
+    const session = await this.sessionService.createSession({
+      userId: user.id,
+      hashedRt,
+      deviceInfo: meta.deviceInfo,
+      ipAddress: meta.ipAddress,
+      expiresAt,
+    });
+
+    this.logger.log(`User signed in: ${user.email} | session: ${session.id}`);
+    return { user, accessToken, refreshToken, sessionId: session.id };
   }
 
-  async refreshAccessToken(
-    dto: RefreshTokenDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    // TODO: Validate refresh token from sessions table
-    // const session = await this.sessionService.validateRefreshToken(userId, hashedRt);
+  // ─── Refresh ──────────────────────────────────────────────────────────────
+
+  /**
+   * Validates the incoming refresh token against the sessions collection,
+   * then rotates it: the old hashed RT is replaced with a fresh one.
+   */
+  async refreshAccessToken(dto: RefreshTokenDto): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    sessionId: string;
+  }> {
+    let userId: string;
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const payload = this.jwtService.verify(dto.refreshToken, {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
-
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const user = await this.usersService.findById(payload.sub as string);
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      const newAccessToken = this.createAccessToken(user);
-      const newRefreshToken = this.generateRefreshToken(user.id);
-
-      this.logger.log(`Access token refreshed for user: ${user.email}`);
-      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+      userId = payload.sub as string;
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
-  }
 
-  createAccessToken(user: User): string {
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return this.jwtService.sign(payload, {
-      expiresIn: this.configService.getOrThrow<string>('jwt.expiresIn'),
-      secret: this.configService.getOrThrow<string>('jwt.secret'),
-    } as any);
-  }
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
 
-  private generateRefreshToken(userId: string): string {
-    const expirationTime = new Date();
-    expirationTime.setDate(
-      expirationTime.getDate() + this.refreshTokenExpirationDays,
+    // Scan all sessions for this user and find the one matching the hashed RT
+    const sessions = await this.sessionService.findSessionsByUserId(userId);
+    let matchedSession: (typeof sessions)[0] | null = null;
+
+    for (const session of sessions) {
+      const isMatch = await bcrypt.compare(dto.refreshToken, session.hashedRt);
+      if (isMatch) {
+        matchedSession = session;
+        break;
+      }
+    }
+
+    if (!matchedSession) {
+      throw new UnauthorizedException(
+        'Refresh token not found or already revoked',
+      );
+    }
+
+    if (new Date() > matchedSession.expiresAt) {
+      // Clean up the stale session
+      await this.sessionService.deleteSession(matchedSession.id);
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    // Issue new token pair
+    const newAccessToken = this.createAccessToken(user);
+    const { token: newRefreshToken, expiresAt } = this.buildRefreshToken(
+      user.id,
     );
 
-    const payload = {
-      sub: userId,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(expirationTime.getTime() / 1000),
-    };
-
-    return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('jwt.refreshSecret'),
+    // Token rotation: overwrite old hashed RT with new one in the same session row
+    const newHashedRt = await bcrypt.hash(newRefreshToken, 10);
+    await this.sessionService.updateSession(matchedSession.id, {
+      hashedRt: newHashedRt,
+      expiresAt,
     });
+
+    this.logger.log(
+      `Token rotated for user: ${user.email} | session: ${matchedSession.id}`,
+    );
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      sessionId: matchedSession.id,
+    };
   }
+
+  // ─── Logout ───────────────────────────────────────────────────────────────
+
+  /** Revoke a single session (logout one device) */
+  async logout(sessionId: string, userId: string): Promise<void> {
+    const session = await this.sessionService.findSessionById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new UnauthorizedException('Session not found');
+    }
+    await this.sessionService.deleteSession(sessionId);
+    this.logger.log(`Session ${sessionId} revoked for user ${userId}`);
+  }
+
+  /** Revoke every active session for the user (logout from all devices) */
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionService.deleteSessionsByUserId(userId);
+    this.logger.log(`All sessions revoked for user ${userId}`);
+  }
+
+  // ─── Email verification ───────────────────────────────────────────────────
 
   async verifyEmail(token: string): Promise<{ message: string; user: User }> {
     const user = await this.usersService.findByVerificationToken(token);
@@ -193,10 +284,7 @@ export class AuthService {
     }
 
     if (user.emailVerificationStatus === EmailVerificationStatus.Verified) {
-      return {
-        message: 'Email already verified. You can sign in now.',
-        user,
-      };
+      return { message: 'Email already verified. You can sign in now.', user };
     }
 
     if (
@@ -208,7 +296,6 @@ export class AuthService {
       );
     }
 
-    // Update user verification status
     const updatedUser = await this.usersService.update(user.id, {
       emailVerificationStatus: EmailVerificationStatus.Verified,
       emailVerificationToken: null,
@@ -224,16 +311,12 @@ export class AuthService {
 
   async resendVerificationEmail(email: string): Promise<{ message: string }> {
     const user = await this.usersService.findByEmail(email);
-
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
+    if (!user) throw new BadRequestException('User not found');
 
     if (user.emailVerificationStatus === EmailVerificationStatus.Verified) {
       throw new BadRequestException('Email already verified');
     }
 
-    // Generate new verification token
     const verificationToken = this.generateVerificationToken();
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 24);
@@ -243,22 +326,22 @@ export class AuthService {
       emailVerificationExpires: verificationExpires,
     });
 
-    // Send verification email
     await this.emailVerificationService.sendVerificationEmail(
       user.email,
       verificationToken,
-      user.email.split('@')[0], // Use email prefix as firstName
+      user.email.split('@')[0],
     );
 
     this.logger.log(`Verification email resent to: ${user.email}`);
     return { message: 'Verification email sent. Please check your inbox.' };
   }
 
+  // ─── Admin ────────────────────────────────────────────────────────────────
+
   async createAdminAccount(): Promise<User> {
     const adminEmail = 'admin@edutech.local';
     const adminPassword = 'Admin@123456';
 
-    // Check if admin already exists
     const existingAdmin = await this.usersService.findByEmail(adminEmail);
     if (existingAdmin) {
       throw new BadRequestException('Admin account already exists');
@@ -277,6 +360,41 @@ export class AuthService {
 
     this.logger.log(`Admin account created: ${adminEmail}`);
     return admin;
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  createAccessToken(user: User): string {
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return this.jwtService.sign(payload, {
+      expiresIn: this.configService.getOrThrow<string>('jwt.expiresIn'),
+      secret: this.configService.getOrThrow<string>('jwt.secret'),
+    } as any);
+  }
+
+  /**
+   * Generates a signed JWT refresh token and returns both the raw token string
+   * and its expiry Date so the caller can persist them in the sessions collection.
+   */
+  private buildRefreshToken(userId: string): {
+    token: string;
+    expiresAt: Date;
+  } {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.refreshTokenExpirationDays);
+
+    const payload = {
+      sub: userId,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(expiresAt.getTime() / 1000),
+    };
+
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.refreshSecret'),
+    });
+
+    return { token, expiresAt };
   }
 
   private generateVerificationToken(): string {

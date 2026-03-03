@@ -1,0 +1,52 @@
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+
+# ─── Commit message format ───────────────────────────────────────────────────
+# [YYYYMMDD][AuthorName] type(scope): description
+#
+# Examples:
+#   [20260227][HuyND] refactor(auth): enhance RolesGuard request handling
+#   [20260303][KietVO] feat(subjects): add auto slug generation
+#   [20260303][AnhTT] fix(users): resolve soft-delete filter issue
+#
+# Rules:
+#   [YYYYMMDD]   - Date exactly 8 digits
+#   [AuthorName] - PascalCase or camelCase, letters/digits, 2–20 chars
+#   type         - feat | fix | refactor | docs | chore | style | test | perf | ci | build | revert
+#   (scope)      - Optional, lowercase letters/digits/hyphens
+#   description  - At least 10 characters, must not be empty
+# ─────────────────────────────────────────────────────────────────────────────
+
+PATTERN='^\[[0-9]{8}\]\[[A-Za-z][A-Za-z0-9]{1,19}\] (feat|fix|refactor|docs|chore|style|test|perf|ci|build|revert)(\([a-z0-9][a-z0-9/_-]*\))?: .{10,}$'
+
+if ! echo "$commit_msg" | grep -qE "$PATTERN"; then
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════════╗"
+  echo "║           ❌  COMMIT MESSAGE REJECTED                        ║"
+  echo "╠══════════════════════════════════════════════════════════════╣"
+  echo "║  Your message:                                               ║"
+  echo "║    $commit_msg"
+  echo "╠══════════════════════════════════════════════════════════════╣"
+  echo "║  Required format:                                            ║"
+  echo "║    [YYYYMMDD][AuthorName] type(scope): description           ║"
+  echo "╠══════════════════════════════════════════════════════════════╣"
+  echo "║  Examples:                                                   ║"
+  echo "║    [20260303][KietVO] feat(subjects): add slug generation     ║"
+  echo "║    [20260303][HuyND] fix(auth): resolve token refresh issue   ║"
+  echo "║    [20260303][AnhTT] refactor(users): simplify mapper logic   ║"
+  echo "╠══════════════════════════════════════════════════════════════╣"
+  echo "║  Allowed types:                                              ║"
+  echo "║    feat | fix | refactor | docs | chore | style | test       ║"
+  echo "║    perf | ci | build | revert                                ║"
+  echo "╠══════════════════════════════════════════════════════════════╣"
+  echo "║  Rules:                                                      ║"
+  echo "║    • [YYYYMMDD] — exactly 8 digits                           ║"
+  echo "║    • [AuthorName] — 2-20 alphanumeric chars, starts letter   ║"
+  echo "║    • (scope) — optional, lowercase letters/digits/hyphens    ║"
+  echo "║    • description — minimum 10 characters                     ║"
+  echo "╚══════════════════════════════════════════════════════════════╝"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Commit message format is valid."

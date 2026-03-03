@@ -6,41 +6,53 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, GradeLevel } from '../../enums';
 
 export class SignUpDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'alice@example.com' })
   @IsEmail()
   email!: string;
 
-  @ApiProperty()
+  @ApiProperty({ minLength: 8, example: 'Str0ngP@ss' })
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
   password!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Alice' })
   @IsString()
   @IsNotEmpty()
   firstName!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Johnson' })
   @IsString()
   @IsNotEmpty()
   lastName!: string;
 
-  @ApiProperty({ enum: UserRole, required: false })
+  @ApiPropertyOptional({
+    enum: UserRole,
+    default: UserRole.Student,
+    description: 'STUDENT (default) | PARENT | TEACHER',
+  })
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: GradeLevel,
-    description: 'Grade level from 10 to 12 - Required for students',
-    required: true,
+    description: 'Required when role = STUDENT',
+    example: GradeLevel.Grade10,
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(GradeLevel)
-  gradeLevel!: GradeLevel;
+  gradeLevel?: GradeLevel;
+
+  @ApiPropertyOptional({
+    description: 'Phone number – required when role = PARENT',
+    example: '+84912345678',
+  })
+  @IsString()
+  @IsOptional()
+  phoneNumber?: string;
 }

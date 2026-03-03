@@ -8,6 +8,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from '../roles/roles.guard';
 import { UsersModule } from '../users/users.module';
 import { StudentProfileModule } from '../student-profiles/student-profile.module';
+import { ParentProfileModule } from '../parent-profiles/parent-profile.module';
+import { TeacherProfileModule } from '../teacher-profiles/teacher-profile.module';
+import { SessionModule } from '../sessions/session.module';
 import { EmailVerificationService } from './services/email-verification.service';
 import { MailerModule } from '../mailer';
 
@@ -15,6 +18,9 @@ import { MailerModule } from '../mailer';
   imports: [
     UsersModule,
     StudentProfileModule,
+    ParentProfileModule,
+    TeacherProfileModule,
+    SessionModule,
     PassportModule,
     ConfigModule,
     MailerModule,

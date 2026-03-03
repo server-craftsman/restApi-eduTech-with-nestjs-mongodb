@@ -95,6 +95,28 @@ export class LessonRepository implements LessonRepositoryAbstract {
     return this.mapper.toDomainArray(docs);
   }
 
+  async searchByKeyword(
+    keyword: string,
+    page: number,
+    limit: number,
+  ): Promise<[Lesson[], number]> {
+    const regex = { $regex: keyword, $options: 'i' };
+    const query = {
+      $or: [{ title: regex }, { description: regex }, { contentMd: regex }],
+    };
+    const offset = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.lessonModel
+        .find(query)
+        .skip(offset)
+        .limit(limit)
+        .sort({ orderIndex: 1 })
+        .exec(),
+      this.lessonModel.countDocuments(query).exec(),
+    ]);
+    return [this.mapper.toDomainArray(docs), total];
+  }
+
   async findPreviousLesson(lessonId: string): Promise<Lesson | null> {
     const currentLesson = await this.findById(lessonId);
     if (!currentLesson || !currentLesson.chapterId) {

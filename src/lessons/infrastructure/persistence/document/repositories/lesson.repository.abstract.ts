@@ -12,4 +12,10 @@ export abstract class LessonRepositoryAbstract {
   abstract findByChapterIdOrdered(chapterId: string): Promise<Lesson[]>;
   abstract findByCourseId(courseId: string): Promise<Lesson[]>;
   abstract findPreviousLesson(lessonId: string): Promise<Lesson | null>;
+  /** Full-text search on title, description, contentMd (case-insensitive regex) */
+  abstract searchByKeyword(
+    keyword: string,
+    page: number,
+    limit: number,
+  ): Promise<[Lesson[], number]>;
 }

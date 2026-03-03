@@ -66,4 +66,19 @@ export class MaterialRepository implements MaterialRepositoryAbstract {
     });
     return this.mapper.toDomainArray(docs);
   }
+
+  async searchByKeyword(
+    keyword: string,
+    page: number,
+    limit: number,
+  ): Promise<[Material[], number]> {
+    const regex = { $regex: keyword, $options: 'i' };
+    const query = { title: regex };
+    const offset = (page - 1) * limit;
+    const [docs, total] = await Promise.all([
+      this.materialModel.find(query).skip(offset).limit(limit).exec(),
+      this.materialModel.countDocuments(query).exec(),
+    ]);
+    return [this.mapper.toDomainArray(docs), total];
+  }
 }

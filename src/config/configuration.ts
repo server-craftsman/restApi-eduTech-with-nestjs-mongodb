@@ -71,4 +71,9 @@ export default () => ({
       'http://localhost:3000',
     ],
   },
+  ai: {
+    openaiApiKey: getEnv('OPENAI_API_KEY', ''),
+    openaiModel: getEnv('OPENAI_MODEL', 'gpt-4o-mini'),
+    openaiMaxTokens: parseInt(getEnv('OPENAI_MAX_TOKENS', '2000'), 10),
+  },
 });

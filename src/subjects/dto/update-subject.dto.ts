@@ -1,28 +1,32 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { IconUrlDto } from './icon-url.dto';
 
 export class UpdateSubjectDto {
   @ApiPropertyOptional({
-    description: 'Subject name',
-    example: 'Advanced Mathematics',
+    description:
+      'Subject name — slug will be automatically regenerated when this changes',
+    example: 'Toán Học Nâng Cao',
+    maxLength: 120,
   })
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'URL-friendly slug for the subject',
-    example: 'advanced-mathematics',
+    description:
+      'Updated subject icon. Upload new file via POST /uploads, then paste returned publicId and url.',
+    type: IconUrlDto,
   })
-  @IsString()
   @IsOptional()
-  slug?: string;
-
-  @ApiPropertyOptional({
-    description: 'Icon URL for the subject',
-    example: 'https://example.com/new-icon.svg',
-  })
-  @IsString()
-  @IsOptional()
-  iconUrl?: string;
+  @ValidateNested()
+  @Type(() => IconUrlDto)
+  iconUrl?: IconUrlDto;
 }
