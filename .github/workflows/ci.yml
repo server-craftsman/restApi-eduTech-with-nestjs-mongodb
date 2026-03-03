@@ -140,6 +140,8 @@ jobs:
 
       - name: Run tests with coverage
         run: bun run test:cov
+        # --passWithNoTests is embedded in the test:cov script so Jest exits 0
+        # when no .spec.ts files exist yet. Remove the flag once tests are added.
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
