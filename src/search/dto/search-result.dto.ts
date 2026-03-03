@@ -110,7 +110,10 @@ export class SearchResultDto {
   @ApiProperty({ description: 'Total number of matching lessons', example: 5 })
   totalLessons!: number;
 
-  @ApiProperty({ description: 'Total number of matching materials', example: 3 })
+  @ApiProperty({
+    description: 'Total number of matching materials',
+    example: 3,
+  })
   totalMaterials!: number;
 
   @ApiProperty({

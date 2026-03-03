@@ -2,8 +2,14 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AskQuestionDto } from './dto/ask-question.dto';
 import { AiResponseDto } from './dto/ai-response.dto';
-import { OpenAiChatResponse, OpenAiErrorResponse } from './interfaces/openai.interface';
-import { GeminiResponse, GeminiErrorResponse } from './interfaces/gemini.interface';
+import {
+  OpenAiChatResponse,
+  OpenAiErrorResponse,
+} from './interfaces/openai.interface';
+import {
+  GeminiResponse,
+  GeminiErrorResponse,
+} from './interfaces/gemini.interface';
 
 type AiProvider = 'gemini' | 'openai';
 

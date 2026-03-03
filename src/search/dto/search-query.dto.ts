@@ -33,8 +33,7 @@ export class SearchQueryDto {
     enum: SearchType,
     enumName: 'SearchType',
     default: SearchType.All,
-    description:
-      'Content type to search: lessons, attached materials, or all',
+    description: 'Content type to search: lessons, attached materials, or all',
     example: SearchType.All,
   })
   @IsOptional()
