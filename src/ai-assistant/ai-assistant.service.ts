@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AskQuestionDto } from './dto/ask-question.dto';
 import { AiResponseDto } from './dto/ai-response.dto';
@@ -13,6 +19,12 @@ import {
 
 type AiProvider = 'gemini' | 'openai';
 
+/** Maximum number of retry attempts on 429 rate-limit responses. */
+const MAX_RETRIES = 3;
+
+/** Base delay in ms for exponential backoff (1 s → 2 s → 4 s). */
+const BASE_RETRY_DELAY_MS = 1000;
+
 @Injectable()
 export class AiAssistantService {
   private readonly logger = new Logger(AiAssistantService.name);
@@ -24,12 +36,13 @@ export class AiAssistantService {
   constructor(private readonly configService: ConfigService) {}
 
   /**
-   * Gửi câu hỏi của học sinh tới AI provider và trả về lời giải.
+   * Routes the student's question to the configured AI provider and returns
+   * a step-by-step solution.
    *
-   * Provider mặc định: **Gemini** — miễn phí, 15 req/phút, 1M token/ngày.
-   * Provider dự phòng: OpenAI (cần billing).
+   * Default provider: **Gemini** — free tier, 15 req/min, 1 M tokens/day.
+   * Fallback provider: OpenAI (requires billing).
    *
-   * Cấu hình qua env: AI_PROVIDER=gemini | openai
+   * Configure via env: AI_PROVIDER=gemini | openai
    */
   async askQuestion(dto: AskQuestionDto): Promise<AiResponseDto> {
     const provider =
@@ -48,9 +61,9 @@ export class AiAssistantService {
 
     if (!apiKey) {
       throw new BadRequestException(
-        'Gemini API key chưa được cấu hình. ' +
-          'Lấy key miễn phí tại https://aistudio.google.com/apikey ' +
-          'rồi thêm GEMINI_API_KEY=<key> vào file .env',
+        'Gemini API key is not configured. ' +
+          'Get a free key at https://aistudio.google.com/apikey ' +
+          'then add GEMINI_API_KEY=<key> to your .env file.',
       );
     }
 
@@ -63,42 +76,82 @@ export class AiAssistantService {
 
     const systemPrompt = this.buildSystemPrompt(dto, isDetailed);
     const url = `${this.GEMINI_BASE_URL}/${model}:generateContent?key=${apiKey}`;
+    const requestBody = JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: dto.question }] }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: isDetailed ? maxTokens : Math.min(maxTokens, 600),
+      },
+    });
 
     const startTime = Date.now();
     let response: globalThis.Response;
 
-    try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: dto.question }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: isDetailed ? maxTokens : Math.min(maxTokens, 600),
+    // ── Retry loop with exponential backoff for 429 ──────────────────────────
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: requestBody,
+        });
+      } catch (networkError) {
+        this.logger.error('Cannot reach Gemini API', networkError);
+        throw new BadRequestException(
+          'Unable to connect to the AI service. Please try again later.',
+        );
+      }
+
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('Retry-After');
+        const waitMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+
+        if (attempt < MAX_RETRIES) {
+          this.logger.warn(
+            `[Gemini] Rate-limited (429). Attempt ${attempt}/${MAX_RETRIES}. ` +
+              `Retrying in ${waitMs}ms…`,
+          );
+          await this.sleep(waitMs);
+          continue;
+        }
+
+        // All retries exhausted — surface a proper 429 to the client
+        const errBody = (await response.json()) as GeminiErrorResponse;
+        this.logger.error(
+          `[Gemini] Rate-limit persists after ${MAX_RETRIES} attempts:`,
+          errBody,
+        );
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message:
+              'The AI service is currently rate-limited. ' +
+              'Please wait a moment and try again. ' +
+              '(Gemini free tier: 15 requests/min)',
+            error: 'Too Many Requests',
           },
-        }),
-      });
-    } catch (networkError) {
-      this.logger.error('Không thể kết nối tới Gemini API', networkError);
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      break; // Non-429 response — exit the retry loop
+    }
+
+    if (!response!.ok) {
+      const errBody = (await response!.json()) as GeminiErrorResponse;
+      this.logger.error(`Gemini API error ${response!.status}:`, errBody);
       throw new BadRequestException(
-        'Không thể kết nối tới dịch vụ AI. Vui lòng thử lại sau.',
+        `Gemini AI error: ${errBody?.error?.message ?? 'Unknown error'}`,
       );
     }
 
-    if (!response.ok) {
-      const errBody = (await response.json()) as GeminiErrorResponse;
-      this.logger.error(`Gemini API error ${response.status}:`, errBody);
-      throw new BadRequestException(
-        `Lỗi từ Gemini AI: ${errBody?.error?.message ?? 'Không xác định'}`,
-      );
-    }
-
-    const data = (await response.json()) as GeminiResponse;
+    const data = (await response!.json()) as GeminiResponse;
     const solution =
       data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ??
-      'AI không thể tạo lời giải. Vui lòng thử lại.';
+      'AI could not generate a solution. Please try again.';
 
     const tokensUsed = data.usageMetadata?.totalTokenCount ?? 0;
     const processingTimeMs = Date.now() - startTime;
@@ -124,8 +177,8 @@ export class AiAssistantService {
 
     if (!apiKey) {
       throw new BadRequestException(
-        'OpenAI API key chưa được cấu hình. ' +
-          'Vui lòng thêm OPENAI_API_KEY vào file .env và khởi động lại server.',
+        'OpenAI API key is not configured. ' +
+          'Add OPENAI_API_KEY to your .env file and restart the server.',
       );
     }
 
@@ -138,44 +191,82 @@ export class AiAssistantService {
 
     const systemPrompt = this.buildSystemPrompt(dto, isDetailed);
     const startTime = Date.now();
+    const requestBody = JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: dto.question },
+      ],
+      temperature: 0.3,
+      max_tokens: isDetailed ? maxTokens : Math.min(maxTokens, 600),
+    });
+
     let response: globalThis.Response;
 
-    try {
-      response = await fetch(this.OPENAI_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: dto.question },
-          ],
-          temperature: 0.3,
-          max_tokens: isDetailed ? maxTokens : Math.min(maxTokens, 600),
-        }),
-      });
-    } catch (networkError) {
-      this.logger.error('Không thể kết nối tới OpenAI API', networkError);
+    // ── Retry loop with exponential backoff for 429 ──────────────────────────
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        response = await fetch(this.OPENAI_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: requestBody,
+        });
+      } catch (networkError) {
+        this.logger.error('Cannot reach OpenAI API', networkError);
+        throw new BadRequestException(
+          'Unable to connect to the AI service. Please try again later.',
+        );
+      }
+
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('Retry-After');
+        const waitMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+
+        if (attempt < MAX_RETRIES) {
+          this.logger.warn(
+            `[OpenAI] Rate-limited (429). Attempt ${attempt}/${MAX_RETRIES}. ` +
+              `Retrying in ${waitMs}ms…`,
+          );
+          await this.sleep(waitMs);
+          continue;
+        }
+
+        const errBody = (await response.json()) as OpenAiErrorResponse;
+        this.logger.error(
+          `[OpenAI] Rate-limit persists after ${MAX_RETRIES} attempts:`,
+          errBody,
+        );
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message:
+              'The AI service is currently rate-limited. Please wait and try again.',
+            error: 'Too Many Requests',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      break;
+    }
+
+    if (!response!.ok) {
+      const errBody = (await response!.json()) as OpenAiErrorResponse;
+      this.logger.error(`OpenAI API error ${response!.status}:`, errBody);
       throw new BadRequestException(
-        'Không thể kết nối tới dịch vụ AI. Vui lòng thử lại sau.',
+        `OpenAI error: ${errBody?.error?.message ?? 'Unknown error'}`,
       );
     }
 
-    if (!response.ok) {
-      const errBody = (await response.json()) as OpenAiErrorResponse;
-      this.logger.error(`OpenAI API error ${response.status}:`, errBody);
-      throw new BadRequestException(
-        `Lỗi từ OpenAI: ${errBody?.error?.message ?? 'Không xác định'}`,
-      );
-    }
-
-    const data = (await response.json()) as OpenAiChatResponse;
+    const data = (await response!.json()) as OpenAiChatResponse;
     const solution =
       data.choices?.[0]?.message?.content?.trim() ??
-      'AI không thể tạo lời giải. Vui lòng thử lại.';
+      'AI could not generate a solution. Please try again.';
 
     const tokensUsed = data.usage?.total_tokens ?? 0;
     const processingTimeMs = Date.now() - startTime;
@@ -198,15 +289,20 @@ export class AiAssistantService {
 
   private buildSystemPrompt(dto: AskQuestionDto, isDetailed: boolean): string {
     return [
-      'Bạn là gia sư AI thông minh hỗ trợ học sinh Việt Nam học các môn học phổ thông.',
-      dto.subject ? `Môn học hiện tại: ${dto.subject}.` : '',
+      'You are an intelligent AI tutor helping students with their school subjects.',
+      dto.subject ? `Current subject: ${dto.subject}.` : '',
       isDetailed
-        ? 'Hãy giải thích từng bước một cách rõ ràng, đầy đủ. Sử dụng công thức, ví dụ cụ thể và minh họa.'
-        : 'Hãy trả lời ngắn gọn, súc tích, tập trung vào đáp án và công thức chính.',
-      'Trình bày bằng tiếng Việt, sử dụng định dạng Markdown (in đậm tiêu đề bước, xuống dòng rõ ràng, ký hiệu toán học nếu cần).',
-      'Nếu nội dung không liên quan đến học tập, hãy từ chối lịch sự.',
+        ? 'Explain step by step clearly and thoroughly. Use formulas, concrete examples, and illustrations.'
+        : 'Give a concise answer focused on the key result and main formula.',
+      'Format your response in Markdown (bold step headings, clear line breaks, math notation where needed).',
+      'If the question is unrelated to academic study, politely decline.',
     ]
       .filter(Boolean)
       .join(' ');
+  }
+
+  /** Returns a Promise that resolves after `ms` milliseconds. */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

@@ -17,6 +17,9 @@ export class UserMapper {
         doc.emailVerificationStatus ?? EmailVerificationStatus.Pending,
       emailVerificationToken: doc.emailVerificationToken ?? null,
       emailVerificationExpires: doc.emailVerificationExpires ?? null,
+      passwordResetOtp: doc.passwordResetOtp ?? null,
+      passwordResetToken: doc.passwordResetToken ?? null,
+      passwordResetExpires: doc.passwordResetExpires ?? null,
       isDeleted: doc.isDeleted ?? false,
       deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
@@ -42,6 +45,12 @@ export class UserMapper {
       doc.emailVerificationToken = user.emailVerificationToken;
     if (user.emailVerificationExpires !== undefined)
       doc.emailVerificationExpires = user.emailVerificationExpires;
+    if (user.passwordResetOtp !== undefined)
+      doc.passwordResetOtp = user.passwordResetOtp;
+    if (user.passwordResetToken !== undefined)
+      doc.passwordResetToken = user.passwordResetToken;
+    if (user.passwordResetExpires !== undefined)
+      doc.passwordResetExpires = user.passwordResetExpires;
     if (user.isDeleted !== undefined) doc.isDeleted = user.isDeleted;
     if (user.deletedAt !== undefined) doc.deletedAt = user.deletedAt;
 

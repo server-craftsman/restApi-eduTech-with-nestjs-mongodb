@@ -12,6 +12,12 @@ export class ParentStudentLinkDocument {
   @Prop({ default: false })
   isVerified!: boolean;
 
+  @Prop({ type: String, default: null })
+  linkCode?: string | null;
+
+  @Prop({ type: Date, default: null })
+  linkCodeExpires?: Date | null;
+
   @Prop({ default: () => new Date() })
   createdAt!: Date;
 }

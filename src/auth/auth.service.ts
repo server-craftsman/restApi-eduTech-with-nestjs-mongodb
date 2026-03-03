@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
 import { ParentProfileService } from '../parent-profiles/parent-profile.service';
@@ -434,5 +434,121 @@ export class AuthService {
 
   private generateVerificationToken(): string {
     return randomBytes(32).toString('hex');
+  }
+
+  // ─── Password reset (Security & Recovery Flow) ────────────────────────────
+
+  /**
+   * Step 1 — Forgot password:
+   * Generates a 6-digit OTP valid for 10 minutes and sends it to the
+   * registered email address. Always returns the same response regardless of
+   * whether the email exists (prevents user enumeration).
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const SAFE_MESSAGE =
+      'If this email is registered, a 6-digit OTP has been sent. Check your inbox.';
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user) return { message: SAFE_MESSAGE };
+
+    const otp = randomInt(100000, 999999).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await this.usersService.update(user.id, {
+      passwordResetOtp: otp,
+      passwordResetToken: null, // invalidate any previous reset token
+      passwordResetExpires: expires,
+    });
+
+    await this.emailVerificationService.sendPasswordResetOtp(user.email, otp);
+    this.logger.log(`Password reset OTP dispatched → ${user.email}`);
+    return { message: SAFE_MESSAGE };
+  }
+
+  /**
+   * Step 2 — Verify OTP:
+   * Validates the 6-digit OTP against the stored value and expiry.
+   * On success, consumes the OTP and returns a one-time reset token valid
+   * for 60 minutes that the client must send in Step 3.
+   */
+  async verifyOtp(
+    email: string,
+    otp: string,
+  ): Promise<{ resetToken: string; message: string }> {
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user || !user.passwordResetOtp || !user.passwordResetExpires) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    if (new Date() > user.passwordResetExpires) {
+      throw new BadRequestException(
+        'OTP has expired. Please request a new one.',
+      );
+    }
+
+    if (user.passwordResetOtp !== otp) {
+      throw new BadRequestException('Incorrect OTP. Please try again.');
+    }
+
+    // Consume the OTP and issue a one-time reset token (60 min window)
+    const resetToken = randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+
+    await this.usersService.update(user.id, {
+      passwordResetOtp: null,
+      passwordResetToken: resetToken,
+      passwordResetExpires: resetExpires,
+    });
+
+    this.logger.log(`OTP verified for ${user.email} — reset token issued`);
+    return {
+      resetToken,
+      message:
+        'OTP verified. Use the reset token to set a new password within 60 minutes.',
+    };
+  }
+
+  /**
+   * Step 3 — Reset password:
+   * Validates the reset token, updates the password hash, clears all reset
+   * fields, and revokes every active session so old devices are forced to
+   * re-authenticate (Step 4 — re-sync).
+   */
+  async resetPassword(
+    resetToken: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findByPasswordResetToken(resetToken);
+
+    if (!user || !user.passwordResetExpires) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    if (new Date() > user.passwordResetExpires) {
+      throw new BadRequestException(
+        'Reset token has expired. Please request a new OTP.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.usersService.update(user.id, {
+      passwordHash: hashedPassword,
+      passwordResetOtp: null,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    });
+
+    // Step 4 — Re-sync: revoke all active sessions on every device
+    await this.sessionService.deleteSessionsByUserId(user.id);
+
+    this.logger.log(
+      `Password reset for ${user.email} — all sessions revoked (re-sync).`,
+    );
+    return {
+      message:
+        'Password reset successfully. All devices have been signed out. Please sign in with your new password.',
+    };
   }
 }

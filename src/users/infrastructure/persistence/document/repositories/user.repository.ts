@@ -47,6 +47,13 @@ export class UserRepository extends UserRepositoryAbstract {
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
+  async findByPasswordResetToken(token: string): Promise<User | null> {
+    const doc = await this.model
+      .findOne({ passwordResetToken: token, ...NOT_DELETED })
+      .exec();
+    return doc ? this.mapper.toDomain(doc) : null;
+  }
+
   async findAllWithFilters(
     limit = 10,
     offset = 0,

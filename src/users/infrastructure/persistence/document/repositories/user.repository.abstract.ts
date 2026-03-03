@@ -14,6 +14,7 @@ export abstract class UserRepositoryAbstract {
   abstract softDelete(id: string): Promise<void>;
   abstract findByEmail(email: string): Promise<User | null>;
   abstract findByVerificationToken(token: string): Promise<User | null>;
+  abstract findByPasswordResetToken(token: string): Promise<User | null>;
   abstract getStatistics(): Promise<{
     total: number;
     byRole: Record<string, number>;

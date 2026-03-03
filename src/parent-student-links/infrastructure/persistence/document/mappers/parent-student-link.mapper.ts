@@ -5,11 +5,15 @@ import { ParentStudentLinkDocumentType } from '../schemas/parent-student-link.sc
 @Injectable()
 export class ParentStudentLinkMapper {
   toDomain(doc: ParentStudentLinkDocumentType): ParentStudentLink {
+    const raw = doc as unknown as Record<string, unknown>;
     return {
       id: doc._id.toString(),
       parentId: doc.parentId.toString(),
       studentId: doc.studentId.toString(),
       isVerified: doc.isVerified,
+      linkCode: (raw['linkCode'] as string | null | undefined) ?? null,
+      linkCodeExpires:
+        (raw['linkCodeExpires'] as Date | null | undefined) ?? null,
       createdAt: doc.createdAt,
     };
   }

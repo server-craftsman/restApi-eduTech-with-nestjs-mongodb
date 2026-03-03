@@ -31,6 +31,15 @@ export class UserDocument {
   @Prop({ type: Date, default: null })
   emailVerificationExpires?: Date | null;
 
+  @Prop({ type: String, default: null })
+  passwordResetOtp?: string | null;
+
+  @Prop({ type: String, default: null })
+  passwordResetToken?: string | null;
+
+  @Prop({ type: Date, default: null })
+  passwordResetExpires?: Date | null;
+
   @Prop({ default: false })
   isDeleted!: boolean;
 

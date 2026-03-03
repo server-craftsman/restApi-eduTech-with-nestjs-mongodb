@@ -2,6 +2,43 @@
 
 ## ✅ Successfully Implemented Features
 
+### 6. **Security & Recovery Flow** *(March 2026)*
+
+- ✅ Forgot password via 6-digit OTP (10-minute expiry, anti-enumeration safe)
+- ✅ OTP verified → one-time 64-char reset token issued (60-minute expiry)
+- ✅ Password reset + all sessions revoked on every device (Step 4 re-sync)
+- ✅ Cryptographically secure: `crypto.randomInt` for OTP, `crypto.randomBytes` for token
+
+**API Endpoints:**
+
+- `POST /auth/password/forgot` — send OTP to registered email
+- `POST /auth/password/verify-otp` — validate OTP, receive reset token
+- `POST /auth/password/reset` — set new password, revoke all sessions
+
+**Doc:** [`SECURITY_RECOVERY_FLOW.md`](./SECURITY_RECOVERY_FLOW.md)
+
+---
+
+### 7. **Parent Linking Flow** *(March 2026)*
+
+- ✅ Student generates 8-character alphanumeric link code (24-hour expiry)
+- ✅ Code reuse: same unexpired code returned on repeat requests
+- ✅ Parent submits code to establish a verified link (code consumed on use)
+- ✅ Duplicate and expired-code guards
+- ✅ Parent views enriched child profiles (XP, streak, grade, school)
+- ✅ Student views linked parent profiles (name, phone)
+
+**API Endpoints:**
+
+- `POST /parent-student-links/generate-code` — student generates shareable code
+- `POST /parent-student-links/connect` — parent connects using the code
+- `GET /parent-student-links/my-children` — parent: list verified children with progress
+- `GET /parent-student-links/my-parents` — student: list verified parents
+
+**Doc:** [`PARENT_LINKING_FLOW.md`](./PARENT_LINKING_FLOW.md)
+
+---
+
 ### 1. **Personalized Learning Path System**
 
 - ✅ Grade-based content filtering (Grade 10, 11, 12)

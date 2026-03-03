@@ -23,4 +23,8 @@ export abstract class ParentStudentLinkRepositoryAbstract {
   abstract findVerifiedByStudentId(
     studentId: string,
   ): Promise<ParentStudentLink[]>;
+  abstract findByLinkCode(code: string): Promise<ParentStudentLink | null>;
+  abstract findPendingByStudentId(
+    studentId: string,
+  ): Promise<ParentStudentLink | null>;
 }

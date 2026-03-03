@@ -52,4 +52,18 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   emailVerificationExpires?: Date | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  passwordResetOtp?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  passwordResetToken?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  passwordResetExpires?: Date | null;
 }

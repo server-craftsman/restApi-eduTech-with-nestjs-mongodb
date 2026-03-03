@@ -28,6 +28,9 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { User } from '../users/domain/user';
 
 @ApiTags('Auth')
@@ -264,6 +267,100 @@ export class AuthController extends BaseController {
       'Logged out from all devices',
       HttpStatus.OK,
     );
+  }
+
+  // ─── Password reset (Security & Recovery Flow) ──────────────────────────
+
+  /**
+   * Step 1 — Forgot password
+   * Sends a 6-digit OTP to the user's registered email.
+   */
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Step 1 — Forgot password: send OTP to registered email',
+    description:
+      'Generates a 6-digit OTP valid for **10 minutes** and dispatches it to the ' +
+      'registered email address. The response is always identical regardless of ' +
+      'whether the email exists (prevents user enumeration).',
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent (or email not found — same response)',
+  })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.forgotPassword(dto.email);
+    return this.sendSuccess(res, {}, result.message, HttpStatus.OK);
+  }
+
+  /**
+   * Step 2 — Verify OTP
+   * Validates the 6-digit OTP and issues a one-time reset token.
+   */
+  @Post('password/verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Step 2 — Verify OTP: exchange OTP for a reset token',
+    description:
+      'Validates the 6-digit OTP from Step 1. On success, returns a **reset token** ' +
+      'valid for **60 minutes** that must be supplied in Step 3. The OTP is consumed ' +
+      'immediately and cannot be reused.',
+  })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP valid — reset token returned',
+    schema: { properties: { resetToken: { type: 'string' } } },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid, incorrect, or expired OTP',
+  })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.verifyOtp(dto.email, dto.otp);
+    return this.sendSuccess(
+      res,
+      { resetToken: result.resetToken },
+      result.message,
+      HttpStatus.OK,
+    );
+  }
+
+  /**
+   * Step 3 — Reset password
+   * Sets the new password and revokes all active sessions (Step 4 re-sync).
+   */
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Step 3 — Reset password: set new password, sign out all devices',
+    description:
+      'Validates the reset token from Step 2, updates the password hash, and ' +
+      '**revokes every active session** across all devices (Step 4 — re-sync). ' +
+      'The user must sign in again with the new password.',
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password updated. All sessions revoked.',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired reset token' })
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.resetPassword(
+      dto.resetToken,
+      dto.newPassword,
+    );
+    return this.sendSuccess(res, {}, result.message, HttpStatus.OK);
   }
 
   // ─── Admin helpers ────────────────────────────────────────────────────────

@@ -107,4 +107,52 @@ export class EmailVerificationService {
     if (!expiryDate || Number.isNaN(expiryDate.getTime())) return true;
     return new Date() > expiryDate;
   }
+
+  /**
+   * Send a 6-digit password-reset OTP to the user's registered email address.
+   * The OTP expires in 10 minutes.
+   */
+  async sendPasswordResetOtp(email: string, otp: string): Promise<void> {
+    const subject = '🔐 Password Reset OTP — EduTech';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0a0a0a; background: #ffffff; }
+            .container { max-width: 640px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; }
+            .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e5e5; }
+            .title { font-size: 24px; letter-spacing: 0.02em; text-transform: uppercase; color: #0a0a0a; }
+            .otp-box { text-align: center; margin: 24px 0; padding: 24px; background: #f5f5f5; border-radius: 8px; border: 1px dashed #ccc; }
+            .otp-code { font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #0a0a0a; font-family: monospace; }
+            .note { margin: 16px 0; padding: 12px 14px; border: 1px dashed #b3b3b3; color: #333; border-radius: 6px; background: #fafafa; }
+            .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #4a4a4a; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="title">EduTech</div>
+            </div>
+            <p>You requested a password reset for your EduTech account.</p>
+            <p>Enter the following OTP to verify your identity:</p>
+            <div class="otp-box">
+              <div class="otp-code">${otp}</div>
+            </div>
+            <div class="note">
+              ⏱ This code expires in <strong>10 minutes</strong>.<br/>
+              If you did not request a password reset, please ignore this email — your account remains secure.
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} EduTech</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await this.mailerService.sendMail(email, subject, html);
+    this.logger.log(`Password reset OTP sent to ${email}`);
+  }
 }

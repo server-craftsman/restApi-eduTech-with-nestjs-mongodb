@@ -61,6 +61,10 @@ export class UsersService extends BaseService {
     return this.userRepository.findByVerificationToken(token);
   }
 
+  async findByPasswordResetToken(token: string): Promise<User | null> {
+    return this.userRepository.findByPasswordResetToken(token);
+  }
+
   async findAll(
     query: QueryUserDto,
   ): Promise<InfinityPaginationResponseDto<User>> {

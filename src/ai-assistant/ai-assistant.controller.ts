@@ -70,6 +70,11 @@ Student struggles with a problem → Copies the problem text → Pastes into \`q
     description: 'Invalid question, too short/long, or API key not configured',
   })
   @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description:
+      'AI provider rate-limited (Gemini free tier: 15 req/min). Retry after a short wait.',
+  })
+  @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized — JWT token missing or invalid',
   })

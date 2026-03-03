@@ -20,6 +20,9 @@ export interface User {
   emailVerificationStatus: EmailVerificationStatus;
   emailVerificationToken?: string | null;
   emailVerificationExpires?: Date | null;
+  passwordResetOtp?: string | null;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

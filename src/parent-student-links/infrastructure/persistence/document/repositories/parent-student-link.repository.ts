@@ -31,9 +31,11 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
     data: Omit<ParentStudentLink, 'id' | 'createdAt'>,
   ): Promise<ParentStudentLink> {
     const doc = await this.parentStudentLinkModel.create({
-      parentId: new Types.ObjectId(data.parentId),
+      parentId: data.parentId ? new Types.ObjectId(data.parentId) : undefined,
       studentId: new Types.ObjectId(data.studentId),
       isVerified: data.isVerified,
+      linkCode: data.linkCode ?? null,
+      linkCodeExpires: data.linkCodeExpires ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -47,6 +49,9 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
     if (data.studentId)
       updateData.studentId = new Types.ObjectId(data.studentId);
     if (data.isVerified !== undefined) updateData.isVerified = data.isVerified;
+    if (data.linkCode !== undefined) updateData.linkCode = data.linkCode;
+    if (data.linkCodeExpires !== undefined)
+      updateData.linkCodeExpires = data.linkCodeExpires;
 
     const doc = await this.parentStudentLinkModel.findByIdAndUpdate(
       id,
@@ -103,5 +108,21 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
       isVerified: true,
     });
     return this.mapper.toDomainArray(docs);
+  }
+
+  async findByLinkCode(code: string): Promise<ParentStudentLink | null> {
+    const doc = await this.parentStudentLinkModel.findOne({ linkCode: code });
+    return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  async findPendingByStudentId(
+    studentId: string,
+  ): Promise<ParentStudentLink | null> {
+    const doc = await this.parentStudentLinkModel.findOne({
+      studentId: new Types.ObjectId(studentId),
+      isVerified: false,
+      linkCode: { $ne: null },
+    });
+    return doc ? this.mapper.toDomain(doc) : null;
   }
 }

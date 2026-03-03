@@ -9,12 +9,16 @@ import { ParentStudentLinkRepositoryAbstract } from './infrastructure/persistenc
 import { ParentStudentLinkMapper } from './infrastructure/persistence/document/mappers/parent-student-link.mapper';
 import { ParentStudentLinkService } from './parent-student-link.service';
 import { ParentStudentLinkController } from './parent-student-link.controller';
+import { StudentProfileModule } from '../student-profiles/student-profile.module';
+import { ParentProfileModule } from '../parent-profiles/parent-profile.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: ParentStudentLinkDocument.name, schema: ParentStudentLinkSchema },
     ]),
+    StudentProfileModule,
+    ParentProfileModule,
   ],
   controllers: [ParentStudentLinkController],
   providers: [
