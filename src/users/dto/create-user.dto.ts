@@ -45,26 +45,19 @@ export class CreateUserDto {
   // ── Identity ────────────────────────────────────────────────────────────────
 
   @ApiPropertyOptional({
-    description:
-      'First name — required when role = TEACHER or PARENT (used to build profile fullName)',
+    description: 'First name — required when role = TEACHER',
     example: 'Nguyen',
   })
-  @ValidateIf(
-    (o: CreateUserDto) =>
-      o.role === UserRole.Teacher || o.role === UserRole.Parent,
-  )
+  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
   firstName?: string;
 
   @ApiPropertyOptional({
-    description: 'Last name — required when role = TEACHER or PARENT',
+    description: 'Last name — required when role = TEACHER',
     example: 'Van A',
   })
-  @ValidateIf(
-    (o: CreateUserDto) =>
-      o.role === UserRole.Teacher || o.role === UserRole.Parent,
-  )
+  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
   lastName?: string;
@@ -94,28 +87,28 @@ export class CreateUserDto {
   // ── Parent-specific ─────────────────────────────────────────────────────────
 
   @ApiPropertyOptional({
-    description: 'Phone number — required when role = PARENT',
+    description: 'Phone number (optional for PARENT)',
     example: '+84912345678',
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   phoneNumber?: string;
 
   @ApiPropertyOptional({
     enum: ParentRelationship,
     enumName: 'ParentRelationship',
-    description: 'Relationship to student — required when role = PARENT',
+    description: 'Relationship to student (optional for PARENT)',
     example: ParentRelationship.Mother,
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsEnum(ParentRelationship)
   relationship?: ParentRelationship;
 
   @ApiPropertyOptional({
-    description: 'National ID number (CCCD/CMND) — required when role = PARENT',
+    description: 'National ID number (CCCD/CMND — optional for PARENT)',
     example: '079200012345',
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   nationalIdNumber?: string;
 

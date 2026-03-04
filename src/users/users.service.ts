@@ -49,6 +49,11 @@ export class UsersService extends BaseService {
       createData.emailVerificationStatus = verificationStatus;
     }
 
+    if (typedDto.approvalStatus !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      createData.approvalStatus = typedDto.approvalStatus;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return this.userRepository.create(createData);
   }
@@ -61,9 +66,10 @@ export class UsersService extends BaseService {
     const hash = await bcrypt.hash(dto.password, 10);
     const role = dto.role ?? UserRole.Student;
 
-    // Admin-created accounts bypass approval & email verification
+    // Admin-created accounts bypass email verification.
+    // Only TEACHER requires admin approval; PARENT and STUDENT are NotRequired.
     const approvalStatus =
-      role === UserRole.Teacher || role === UserRole.Parent
+      role === UserRole.Teacher
         ? ApprovalStatus.Approved
         : ApprovalStatus.NotRequired;
 

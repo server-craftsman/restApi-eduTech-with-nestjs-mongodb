@@ -55,20 +55,32 @@ export class AuthService {
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 24);
 
+    // Normalise role early so every branch below sees the same value.
+    // The DTO allows role to be omitted, in which case Student is the default.
+    const effectiveRole = dto.role ?? UserRole.Student;
+
     const user = await this.usersService.create({
       email: dto.email,
       password: hashedPassword,
-      role: dto.role,
+      role: effectiveRole,
       isActive: true,
       emailVerificationStatus: EmailVerificationStatus.Pending,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
+      // Only TEACHER requires admin approval; PARENT and STUDENT get immediate access
+      approvalStatus:
+        effectiveRole === UserRole.Teacher
+          ? ApprovalStatus.PendingApproval
+          : ApprovalStatus.NotRequired,
     });
 
     // Auto-create the role-specific profile on registration
-    const fullName = `${dto.firstName} ${dto.lastName}`;
+    // firstName/lastName are optional for STUDENT/PARENT — fall back to email username
+    const fullName =
+      [dto.firstName, dto.lastName].filter(Boolean).join(' ') ||
+      dto.email.split('@')[0];
 
-    if (dto.role === UserRole.Student) {
+    if (effectiveRole === UserRole.Student) {
       try {
         await this.studentProfileService.createProfile({
           userId: user.id,
@@ -84,7 +96,7 @@ export class AuthService {
           error,
         );
       }
-    } else if (dto.role === UserRole.Parent) {
+    } else if (effectiveRole === UserRole.Parent) {
       try {
         await this.parentProfileService.createProfile({
           userId: user.id,
@@ -100,7 +112,7 @@ export class AuthService {
           error,
         );
       }
-    } else if (dto.role === UserRole.Teacher) {
+    } else if (effectiveRole === UserRole.Teacher) {
       try {
         await this.teacherProfileService.createProfile({
           userId: user.id,
@@ -126,7 +138,7 @@ export class AuthService {
     await this.emailVerificationService.sendVerificationEmail(
       user.email,
       verificationToken,
-      dto.firstName,
+      dto.firstName ?? dto.email.split('@')[0],
     );
 
     this.logger.log(`User registered: ${user.email} – verification email sent`);
@@ -220,8 +232,8 @@ export class AuthService {
       );
     }
 
-    // ── Approval guard for Teacher / Parent accounts ────────────────────────
-    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+    // ── Approval guard: only TEACHER accounts require admin approval ──────────
+    if (user.role === UserRole.Teacher) {
       if (user.approvalStatus === ApprovalStatus.PendingApproval) {
         throw new BadRequestException(
           'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
@@ -336,43 +348,46 @@ export class AuthService {
   // ─── OAuth sign-in ─────────────────────────────────────────────────────────
 
   /**
-   * Creates a session for a social OAuth user (Google / Facebook) and returns
-   * a full token pair — identical shape to email signIn().
-   * Called by OAuth callback controllers after Passport hydrates req.user.
-   * New OAuth users are automatically created as STUDENT with immediate session access.
+   * Handles OAuth callback. Returns different responses based on user status:
+   * - New users: completion token (user can choose role: STUDENT | TEACHER | PARENT)
+   * - Returning users: immediate session with tokens (if approved)
    */
   async signInWithOAuth(
     payload: { user: User; isNew: boolean },
     meta: { deviceInfo: string; ipAddress: string },
-  ): Promise<{
-    user: User & {
-      studentProfile?: any;
-      teacherProfile?: any;
-      parentProfile?: any;
-    };
-    accessToken: string;
-    refreshToken: string;
-    sessionId: string;
-  }> {
+  ): Promise<
+    | { needsProfileCompletion: true; completionToken: string }
+    | {
+        needsProfileCompletion: false;
+        user: User & {
+          studentProfile?: any;
+          teacherProfile?: any;
+          parentProfile?: any;
+        };
+        accessToken: string;
+        refreshToken: string;
+        sessionId: string;
+      }
+  > {
     const { user, isNew } = payload;
 
-    // ── Brand-new OAuth user: auto-create StudentProfile, open session ──────
+    // ── Brand-new OAuth user: return completion token ──────────────────────
+    // Frontend can choose role when completing profile:
+    // - STUDENT: immediate tokens
+    // - TEACHER/PARENT: pending approval
     if (isNew) {
-      // Create StudentProfile with default values (OAuth only provides email/name/avatar)
-      await this.studentProfileService.createProfile({
-        userId: user.id,
-        fullName: user.email?.split('@')[0] ?? 'Student',
-        diamondBalance: 0,
-        xpTotal: 0,
-        currentStreak: 0,
-      });
-      this.logger.log(
-        `New OAuth user ${user.email}: created as STUDENT with immediate session`,
+      const completionToken = this.buildOAuthCompletionToken(
+        user.id,
+        user.email ?? user.id,
       );
+      this.logger.log(
+        `New OAuth user ${user.email}: awaiting profile completion`,
+      );
+      return { needsProfileCompletion: true, completionToken };
     }
 
-    // ── Returning user: apply the same approval guard as email signIn ───────
-    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+    // ── Returning user: only TEACHER requires admin approval ─────────────────
+    if (user.role === UserRole.Teacher) {
       if (user.approvalStatus === ApprovalStatus.PendingApproval) {
         throw new BadRequestException(
           'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
@@ -399,6 +414,7 @@ export class AuthService {
     const userWithProfile = await this.getUserWithProfile(user);
     this.logger.log(`OAuth sign-in: ${user.email} | session: ${session.id}`);
     return {
+      needsProfileCompletion: false,
       user: userWithProfile,
       accessToken,
       refreshToken,
@@ -446,19 +462,20 @@ export class AuthService {
       );
     }
 
+    // Only TEACHER requires admin approval after email verification.
+    // PARENT and STUDENT get immediate access (NotRequired).
     const updatedUser = await this.usersService.update(user.id, {
       emailVerificationStatus: EmailVerificationStatus.Verified,
       emailVerificationToken: null,
       emailVerificationExpires: null,
-      // Set approval status based on role
       approvalStatus:
-        user.role === UserRole.Teacher || user.role === UserRole.Parent
+        user.role === UserRole.Teacher
           ? ApprovalStatus.PendingApproval
           : ApprovalStatus.NotRequired,
     });
 
-    // Notify Teacher/Parent that their account is now under admin review
-    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+    // Notify TEACHER that their account is now under admin review
+    if (user.role === UserRole.Teacher) {
       const firstName = user.email.split('@')[0];
       await this.emailVerificationService.sendPendingApprovalEmail(
         user.email,
@@ -466,7 +483,7 @@ export class AuthService {
         user.role,
       );
       this.logger.log(
-        `Email verified for ${user.role} ${user.email} — account pending approval`,
+        `Email verified for TEACHER ${user.email} — account pending approval`,
       );
       return {
         message:
@@ -807,12 +824,12 @@ export class AuthService {
 
     // ── TEACHER ─────────────────────────────────────────────────────────────
     if (role === UserRole.Teacher) {
-      await this.usersService.update(userId, {
+      await this.usersService.update(user.id, {
         role: UserRole.Teacher,
         approvalStatus: ApprovalStatus.PendingApproval,
       });
       await this.teacherProfileService.createProfile({
-        userId,
+        userId: user.id,
         fullName,
         bio: null,
         phoneNumber: null,
@@ -839,40 +856,62 @@ export class AuthService {
       };
     }
 
-    // ── PARENT ──────────────────────────────────────────────────────────────
+    // ── PARENT — no approval needed, create session immediately ────────────
     if (role === UserRole.Parent) {
-      await this.usersService.update(userId, {
+      await this.usersService.update(user.id, {
         role: UserRole.Parent,
-        approvalStatus: ApprovalStatus.PendingApproval,
+        approvalStatus: ApprovalStatus.NotRequired,
       });
-      await this.parentProfileService.createProfile({
-        userId,
-        fullName,
-        phoneNumber: dto.phoneNumber ?? '',
-        relationship: dto.relationship ?? null,
-        nationalIdNumber: dto.nationalIdNumber ?? null,
-        nationalIdImageUrl: null,
+      try {
+        await this.parentProfileService.createProfile({
+          userId: user.id,
+          fullName,
+          phoneNumber: dto.phoneNumber ?? '',
+          relationship: dto.relationship ?? null,
+          nationalIdNumber: dto.nationalIdNumber ?? null,
+          nationalIdImageUrl: null,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to create parent profile for ${user.email}`,
+          err,
+        );
+      }
+      const updatedParentUser = (await this.usersService.findById(
+        user.id,
+      )) as User;
+      const { token: parentRt, expiresAt: parentRtExp } =
+        this.buildRefreshToken(updatedParentUser.id);
+      const hashedParentRt = await bcrypt.hash(parentRt, 10);
+      const parentSession = await this.sessionService.createSession({
+        userId: updatedParentUser.id,
+        hashedRt: hashedParentRt,
+        deviceInfo: meta.deviceInfo,
+        ipAddress: meta.ipAddress,
+        expiresAt: parentRtExp,
       });
-      await this.emailVerificationService.sendPendingApprovalEmail(
-        user.email,
-        fullName,
-        UserRole.Parent,
+      const parentAccessToken = this.createAccessToken(
+        updatedParentUser,
+        parentSession.id,
       );
+      const parentWithProfile =
+        await this.getUserWithProfile(updatedParentUser);
       this.logger.log(
-        `OAuth parent profile submitted for approval: ${user.email}`,
+        `OAuth parent profile completed, session created: ${updatedParentUser.email} | ${parentSession.id}`,
       );
       return {
-        pendingApproval: true,
-        message:
-          'Your parent profile has been submitted for admin review. ' +
-          'You will receive an email once a decision has been made.',
+        pendingApproval: false,
+        user: parentWithProfile,
+        accessToken: parentAccessToken,
+        refreshToken: parentRt,
+        sessionId: parentSession.id,
       };
     }
 
     // ── STUDENT (default) — create profile + open session immediately ────────
     try {
       await this.studentProfileService.createProfile({
-        userId,
+        userId: user.id,
         fullName,
         gradeLevel: null,
         diamondBalance: 0,
@@ -886,7 +925,7 @@ export class AuthService {
       );
     }
 
-    const updatedUser = (await this.usersService.findById(userId)) as User;
+    const updatedUser = (await this.usersService.findById(user.id)) as User;
     const { token: refreshToken, expiresAt } = this.buildRefreshToken(
       updatedUser.id,
     );

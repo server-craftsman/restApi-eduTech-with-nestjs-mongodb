@@ -43,54 +43,47 @@ export class CompleteOAuthProfileDto {
 
   @ApiPropertyOptional({
     example: 'Nguyen',
-    description: 'Required when role = TEACHER or PARENT',
+    description: 'Required when role = TEACHER',
   })
-  @ValidateIf(
-    (o: CompleteOAuthProfileDto) =>
-      o.role === UserRole.Teacher || o.role === UserRole.Parent,
-  )
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
   firstName?: string;
 
   @ApiPropertyOptional({
     example: 'Van A',
-    description: 'Required when role = TEACHER or PARENT',
+    description: 'Required when role = TEACHER',
   })
-  @ValidateIf(
-    (o: CompleteOAuthProfileDto) =>
-      o.role === UserRole.Teacher || o.role === UserRole.Parent,
-  )
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
   lastName?: string;
 
-  // ── Parent-specific ─────────────────────────────────────────────────────────
+  // ── Parent-specific (all optional) ─────────────────────────────────────────
 
   @ApiPropertyOptional({
-    description: 'Phone number — required when role = PARENT',
+    description: 'Phone number (optional for PARENT)',
     example: '+84912345678',
   })
-  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   phoneNumber?: string;
 
   @ApiPropertyOptional({
     enum: ParentRelationship,
     enumName: 'ParentRelationship',
-    description: 'Relationship to student — required when role = PARENT',
+    description: 'Relationship to student (optional for PARENT)',
     example: ParentRelationship.Mother,
   })
-  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsEnum(ParentRelationship)
   relationship?: ParentRelationship;
 
   @ApiPropertyOptional({
-    description:
-      'National ID card number (CCCD/CMND) — required when role = PARENT',
+    description: 'National ID card number (CCCD/CMND — optional for PARENT)',
     example: '079200012345',
   })
-  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   nationalIdNumber?: string;
 

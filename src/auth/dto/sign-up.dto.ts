@@ -31,15 +31,23 @@ export class SignUpDto {
   @MinLength(8)
   password!: string;
 
-  @ApiProperty({ example: 'Alice' })
+  @ApiPropertyOptional({
+    example: 'Alice',
+    description: 'Required when role = TEACHER',
+  })
+  @ValidateIf((o: SignUpDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
-  firstName!: string;
+  firstName?: string;
 
-  @ApiProperty({ example: 'Johnson' })
+  @ApiPropertyOptional({
+    example: 'Johnson',
+    description: 'Required when role = TEACHER',
+  })
+  @ValidateIf((o: SignUpDto) => o.role === UserRole.Teacher)
   @IsString()
   @IsNotEmpty()
-  lastName!: string;
+  lastName?: string;
 
   @ApiPropertyOptional({
     enum: UserRole,
@@ -64,29 +72,28 @@ export class SignUpDto {
   // ── Parent-specific ────────────────────────────────────────────────────────
 
   @ApiPropertyOptional({
-    description: 'Phone number — required when role = PARENT',
+    description: 'Phone number (optional for PARENT)',
     example: '+84912345678',
   })
-  @ValidateIf((o: SignUpDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   phoneNumber?: string;
 
   @ApiPropertyOptional({
     enum: ParentRelationship,
     enumName: 'ParentRelationship',
-    description: 'Relationship to student — required when role = PARENT',
+    description: 'Relationship to student (optional for PARENT)',
     example: ParentRelationship.Mother,
   })
-  @ValidateIf((o: SignUpDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsEnum(ParentRelationship)
   relationship?: ParentRelationship;
 
   @ApiPropertyOptional({
-    description:
-      'National ID card number (CCCD/CMND) — required when role = PARENT',
+    description: 'National ID card number (CCCD/CMND — optional for PARENT)',
     example: '079200012345',
   })
-  @ValidateIf((o: SignUpDto) => o.role === UserRole.Parent)
+  @IsOptional()
   @IsString()
   nationalIdNumber?: string;
 
