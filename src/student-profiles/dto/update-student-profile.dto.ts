@@ -3,21 +3,11 @@ import {
   IsString,
   IsOptional,
   IsEnum,
-  IsInt,
-  Min,
   IsDateString,
 } from 'class-validator';
 import { GradeLevel } from '../../enums';
 
 export class UpdateStudentProfileDto {
-  @ApiPropertyOptional({
-    description: 'User ID this profile belongs to',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @IsString()
-  @IsOptional()
-  userId?: string;
-
   @ApiPropertyOptional({
     description: 'Student full name',
     example: 'Alice Smith',
@@ -59,30 +49,30 @@ export class UpdateStudentProfileDto {
   @IsOptional()
   gradeLevel?: GradeLevel | null;
 
-  @ApiPropertyOptional({
-    description: 'Diamond balance',
-    example: 100,
-  })
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  diamondBalance?: number;
+  // @ApiPropertyOptional({
+  //   description: 'Diamond balance',
+  //   example: 100,
+  // })
+  // @IsInt()
+  // @Min(0)
+  // @IsOptional()
+  // diamondBalance?: number;
 
-  @ApiPropertyOptional({
-    description: 'Total experience points',
-    example: 500,
-  })
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  xpTotal?: number;
+  // @ApiPropertyOptional({
+  //   description: 'Total experience points',
+  //   example: 500,
+  // })
+  // @IsInt()
+  // @Min(0)
+  // @IsOptional()
+  // xpTotal?: number;
 
-  @ApiPropertyOptional({
-    description: 'Current streak count',
-    example: 5,
-  })
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  currentStreak?: number;
+  // @ApiPropertyOptional({
+  //   description: 'Current streak count',
+  //   example: 5,
+  // })
+  // @IsInt()
+  // @Min(0)
+  // @IsOptional()
+  // currentStreak?: number;
 }

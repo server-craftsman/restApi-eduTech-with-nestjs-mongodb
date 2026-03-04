@@ -129,6 +129,47 @@ export class AuthService {
   // ─── Login ────────────────────────────────────────────────────────────────
 
   /**
+   * Lấy thông tin user + profile tương ứng dựa trên role.
+   * - Student → populate studentProfile
+   * - Teacher → populate teacherProfile
+   * - Parent  → populate parentProfile
+   * - Admin   → không có profile (chỉ trả về user data)
+   */
+  private async getUserWithProfile(user: User): Promise<
+    User & {
+      studentProfile?: any;
+      teacherProfile?: any;
+      parentProfile?: any;
+    }
+  > {
+    const result = { ...user } as User & {
+      studentProfile?: any;
+      teacherProfile?: any;
+      parentProfile?: any;
+    };
+
+    if (user.role === UserRole.Student) {
+      const profile = await this.studentProfileService.getProfileByUserId(
+        user.id,
+      );
+      result.studentProfile = profile ?? null;
+    } else if (user.role === UserRole.Teacher) {
+      const profile = await this.teacherProfileService.getProfileByUserId(
+        user.id,
+      );
+      result.teacherProfile = profile ?? null;
+    } else if (user.role === UserRole.Parent) {
+      const profile = await this.parentProfileService.getProfileByUserId(
+        user.id,
+      );
+      result.parentProfile = profile ?? null;
+    }
+    // Admin không có profile riêng
+
+    return result;
+  }
+
+  /**
    * Authenticates the user and persists a new session record containing the
    * hashed refresh token, device info (User-Agent) and IP address extracted
    * from the HTTP request in the controller.
@@ -137,7 +178,11 @@ export class AuthService {
     dto: SignInDto,
     meta: { deviceInfo: string; ipAddress: string },
   ): Promise<{
-    user: User;
+    user: User & {
+      studentProfile?: any;
+      teacherProfile?: any;
+      parentProfile?: any;
+    };
     accessToken: string;
     refreshToken: string;
     sessionId: string;
@@ -178,8 +223,14 @@ export class AuthService {
     });
 
     const accessToken = this.createAccessToken(user, session.id);
+    const userWithProfile = await this.getUserWithProfile(user);
     this.logger.log(`User signed in: ${user.email} | session: ${session.id}`);
-    return { user, accessToken, refreshToken, sessionId: session.id };
+    return {
+      user: userWithProfile,
+      accessToken,
+      refreshToken,
+      sessionId: session.id,
+    };
   }
 
   // ─── Refresh ──────────────────────────────────────────────────────────────
@@ -267,7 +318,11 @@ export class AuthService {
     user: User,
     meta: { deviceInfo: string; ipAddress: string },
   ): Promise<{
-    user: User;
+    user: User & {
+      studentProfile?: any;
+      teacherProfile?: any;
+      parentProfile?: any;
+    };
     accessToken: string;
     refreshToken: string;
     sessionId: string;
@@ -282,8 +337,14 @@ export class AuthService {
       expiresAt,
     });
     const accessToken = this.createAccessToken(user, session.id);
+    const userWithProfile = await this.getUserWithProfile(user);
     this.logger.log(`OAuth sign-in: ${user.email} | session: ${session.id}`);
-    return { user, accessToken, refreshToken, sessionId: session.id };
+    return {
+      user: userWithProfile,
+      accessToken,
+      refreshToken,
+      sessionId: session.id,
+    };
   }
 
   // ─── Logout ───────────────────────────────────────────────────────────────

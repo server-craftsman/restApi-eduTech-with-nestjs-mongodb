@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Body,
@@ -22,7 +21,6 @@ import {
 import { Response } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto, FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserDto } from './dto/user.dto';
 import { UserStatisticsDto } from './dto/user-statistics.dto';
@@ -136,27 +134,7 @@ export class UsersController extends BaseController {
     return this.sendSuccess(res, user, 'User retrieved successfully');
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // UPDATE
-  // ──────────────────────────────────────────────────────────────────────────
-
-  @Put(':id')
-  @Roles(UserRole.Admin)
-  @ApiOperation({ summary: 'Update user by ID (Admin only)' })
-  @ApiResponse({ status: 200, type: UserDto })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const user = await this.usersService.update(id, dto);
-    return this.sendSuccess(res, user, 'User updated successfully');
-  }
-
-  @Patch('admin/:id/status')
+  @Patch(':id/status')
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Update user active status explicitly (Admin only)',
