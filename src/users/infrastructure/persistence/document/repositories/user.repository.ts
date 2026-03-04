@@ -5,7 +5,11 @@ import { User } from '../../../../domain/user';
 import { UserRepositoryAbstract } from './user.repository.abstract';
 import { UserDocument, UserDocumentType } from '../schemas/user.schema';
 import { UserMapper } from '../mappers/user.mapper';
-import { UserRole, EmailVerificationStatus } from '../../../../../enums';
+import {
+  UserRole,
+  EmailVerificationStatus,
+  ApprovalStatus,
+} from '../../../../../enums';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
 
 /** Sentinel filter applied to every query — never return soft-deleted records unless explicitly requested. */
@@ -154,6 +158,29 @@ export class UserRepository extends UserRepositoryAbstract {
   // ──────────────────────────────────────────────
   // AGGREGATION
   // ──────────────────────────────────────────────
+
+  async findPendingApprovals(
+    limit = 10,
+    offset = 0,
+  ): Promise<[User[], number]> {
+    const query = {
+      role: { $in: [UserRole.Teacher, UserRole.Parent] },
+      approvalStatus: ApprovalStatus.PendingApproval,
+      ...NOT_DELETED,
+    };
+
+    const [docs, total] = await Promise.all([
+      this.model
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .exec(),
+      this.model.countDocuments(query).exec(),
+    ]);
+
+    return [this.mapper.toDomainArray(docs), total];
+  }
 
   async getStatistics(): Promise<{
     total: number;

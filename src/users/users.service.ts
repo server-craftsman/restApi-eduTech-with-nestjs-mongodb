@@ -1,17 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { User } from './domain/user';
 import { UserRepositoryAbstract } from './infrastructure/persistence/document/repositories/user.repository.abstract';
-import { UserRole } from '../enums';
+import { UserRole, EmailVerificationStatus, ApprovalStatus } from '../enums';
 import { BaseService } from '../core/base/base.service';
+import { CloudinaryAsset } from '../core/interfaces';
 import { infinityPagination } from '../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../utils/dto/infinity-pagination-response.dto';
+import { TeacherProfileService } from '../teacher-profiles/teacher-profile.service';
+import { ParentProfileService } from '../parent-profiles/parent-profile.service';
 
 @Injectable()
 export class UsersService extends BaseService {
-  constructor(private readonly userRepository: UserRepositoryAbstract) {
+  constructor(
+    private readonly userRepository: UserRepositoryAbstract,
+    private readonly teacherProfileService: TeacherProfileService,
+    private readonly parentProfileService: ParentProfileService,
+  ) {
     super();
   }
 
@@ -45,6 +53,62 @@ export class UsersService extends BaseService {
     return this.userRepository.create(createData);
   }
 
+  /**
+   * Admin-only creation: hashes password, marks email as Verified,
+   * auto-approves Teacher/Parent, and creates the role-specific profile.
+   */
+  async adminCreate(dto: CreateUserDto): Promise<User> {
+    const hash = await bcrypt.hash(dto.password, 10);
+    const role = dto.role ?? UserRole.Student;
+
+    // Admin-created accounts bypass approval & email verification
+    const approvalStatus =
+      role === UserRole.Teacher || role === UserRole.Parent
+        ? ApprovalStatus.Approved
+        : ApprovalStatus.NotRequired;
+
+    const user = await this.userRepository.create({
+      email: dto.email,
+      passwordHash: hash,
+      role,
+      avatarUrl: null,
+      isActive: true,
+      emailVerificationStatus: EmailVerificationStatus.Verified,
+      approvalStatus,
+      isDeleted: false,
+      deletedAt: null,
+    });
+
+    // Create role profile so downstream queries always find a profile
+    const fullName = `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim();
+
+    if (role === UserRole.Teacher) {
+      await this.teacherProfileService.createProfile({
+        userId: user.id,
+        fullName,
+        bio: null,
+        phoneNumber: null,
+        subjectsTaught: dto.subjectsTaught ?? [],
+        yearsOfExperience: dto.yearsOfExperience ?? null,
+        educationLevel: dto.educationLevel ?? null,
+        certificateUrls: [],
+        cvUrl: null,
+        linkedinUrl: null,
+      });
+    } else if (role === UserRole.Parent) {
+      await this.parentProfileService.createProfile({
+        userId: user.id,
+        fullName,
+        phoneNumber: dto.phoneNumber ?? '',
+        relationship: dto.relationship ?? null,
+        nationalIdNumber: dto.nationalIdNumber ?? null,
+        nationalIdImageUrl: null,
+      });
+    }
+
+    return user;
+  }
+
   // ──────────────────────────────────────────────
   // READ
   // ──────────────────────────────────────────────
@@ -63,6 +127,13 @@ export class UsersService extends BaseService {
 
   async findByPasswordResetToken(token: string): Promise<User | null> {
     return this.userRepository.findByPasswordResetToken(token);
+  }
+
+  async findPendingApprovals(
+    limit: number,
+    offset: number,
+  ): Promise<[User[], number]> {
+    return this.userRepository.findPendingApprovals(limit, offset);
   }
 
   async findAll(
@@ -98,6 +169,12 @@ export class UsersService extends BaseService {
     return this.userRepository.update(id, { isActive }) as Promise<User>;
   }
 
+  async updateAvatar(id: string, avatarUrl: CloudinaryAsset): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) throw new Error(`User with id ${id} not found`);
+    return this.userRepository.update(id, { avatarUrl }) as Promise<User>;
+  }
+
   // ──────────────────────────────────────────────
   // DELETE (soft)
   // ──────────────────────────────────────────────
@@ -116,7 +193,7 @@ export class UsersService extends BaseService {
     email?: string | null;
     displayName?: string | null;
     avatarUrl?: string | null;
-  }): Promise<User> {
+  }): Promise<{ user: User; isNew: boolean }> {
     if (payload.email) {
       const existing = await this.findByEmail(payload.email);
       if (existing) {
@@ -125,19 +202,27 @@ export class UsersService extends BaseService {
             avatarUrl: payload.avatarUrl,
             isActive: true,
           });
-          return (await this.findById(existing.id)) as User;
+          return {
+            user: (await this.findById(existing.id)) as User,
+            isNew: false,
+          };
         }
-        return existing;
+        return { user: existing, isNew: false };
       }
     }
 
-    return this.userRepository.create({
+    // OAuth provider already verified the email.
+    // New users start as Student + Verified; role can be upgraded in /auth/oauth/complete-profile.
+    const user = await this.userRepository.create({
       email: payload.email ?? `${payload.providerId}@${payload.provider}.local`,
       passwordHash: null,
       role: UserRole.Student,
       avatarUrl: payload.avatarUrl ?? null,
       isActive: true,
+      emailVerificationStatus: EmailVerificationStatus.Verified,
+      approvalStatus: ApprovalStatus.NotRequired,
     });
+    return { user, isNew: true };
   }
 
   // ──────────────────────────────────────────────

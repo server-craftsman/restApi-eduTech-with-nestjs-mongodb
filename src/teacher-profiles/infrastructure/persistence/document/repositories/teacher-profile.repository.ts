@@ -34,6 +34,13 @@ export class TeacherProfileRepository implements TeacherProfileRepositoryAbstrac
       userId: new Types.ObjectId(data.userId),
       fullName: data.fullName,
       bio: data.bio ?? null,
+      phoneNumber: data.phoneNumber ?? null,
+      subjectsTaught: data.subjectsTaught ?? [],
+      yearsOfExperience: data.yearsOfExperience ?? null,
+      educationLevel: data.educationLevel ?? null,
+      certificateUrls: data.certificateUrls ?? [],
+      cvUrl: data.cvUrl ?? null,
+      linkedinUrl: data.linkedinUrl ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -44,8 +51,21 @@ export class TeacherProfileRepository implements TeacherProfileRepositoryAbstrac
   ): Promise<TeacherProfile | null> {
     const updateData: Record<string, unknown> = {};
     if (data.userId) updateData.userId = new Types.ObjectId(data.userId);
-    if (data.fullName) updateData.fullName = data.fullName;
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
     if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.phoneNumber !== undefined)
+      updateData.phoneNumber = data.phoneNumber;
+    if (data.subjectsTaught !== undefined)
+      updateData.subjectsTaught = data.subjectsTaught;
+    if (data.yearsOfExperience !== undefined)
+      updateData.yearsOfExperience = data.yearsOfExperience;
+    if (data.educationLevel !== undefined)
+      updateData.educationLevel = data.educationLevel;
+    if (data.certificateUrls !== undefined)
+      updateData.certificateUrls = data.certificateUrls;
+    if (data.cvUrl !== undefined) updateData.cvUrl = data.cvUrl;
+    if (data.linkedinUrl !== undefined)
+      updateData.linkedinUrl = data.linkedinUrl;
 
     const doc = await this.teacherProfileModel.findByIdAndUpdate(
       id,

@@ -7,7 +7,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole, EmailVerificationStatus } from '../../enums';
+import { UserRole, EmailVerificationStatus, ApprovalStatus } from '../../enums';
 
 export class UpdateUserDto {
   @ApiPropertyOptional()
@@ -66,4 +66,34 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   passwordResetExpires?: Date | null;
+
+  @ApiPropertyOptional({
+    enum: ApprovalStatus,
+    enumName: 'ApprovalStatus',
+  })
+  @IsOptional()
+  @IsEnum(ApprovalStatus)
+  approvalStatus?: ApprovalStatus;
+
+  @ApiPropertyOptional({
+    description: 'Reason for approval rejection (Teacher/Parent only)',
+    example: 'Missing required documentation',
+  })
+  @IsOptional()
+  @IsString()
+  approvalRejectionReason?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Timestamp of the last approval review action',
+  })
+  @IsOptional()
+  approvalReviewedAt?: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'ID of the admin user who performed the last review action',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @IsOptional()
+  @IsString()
+  approvalReviewedBy?: string | null;
 }

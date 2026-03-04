@@ -18,7 +18,8 @@ import { SignInDto } from './dto/sign-in.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { User } from '../users/domain/user';
 import { EmailVerificationService } from './services/email-verification.service';
-import { EmailVerificationStatus, UserRole } from '../enums';
+import { CompleteOAuthProfileDto } from './dto/complete-oauth-profile.dto';
+import { EmailVerificationStatus, UserRole, ApprovalStatus } from '../enums';
 
 @Injectable()
 export class AuthService {
@@ -89,6 +90,9 @@ export class AuthService {
           userId: user.id,
           fullName,
           phoneNumber: dto.phoneNumber ?? '',
+          relationship: dto.relationship ?? null,
+          nationalIdNumber: dto.nationalIdNumber ?? null,
+          nationalIdImageUrl: null,
         });
       } catch (error) {
         this.logger.warn(
@@ -102,6 +106,13 @@ export class AuthService {
           userId: user.id,
           fullName,
           bio: null,
+          phoneNumber: null,
+          subjectsTaught: dto.subjectsTaught ?? [],
+          yearsOfExperience: dto.yearsOfExperience ?? null,
+          educationLevel: dto.educationLevel ?? null,
+          certificateUrls: [],
+          cvUrl: null,
+          linkedinUrl: null,
         });
       } catch (error) {
         this.logger.warn(
@@ -209,6 +220,21 @@ export class AuthService {
       );
     }
 
+    // ── Approval guard for Teacher / Parent accounts ────────────────────────
+    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+      if (user.approvalStatus === ApprovalStatus.PendingApproval) {
+        throw new BadRequestException(
+          'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
+        );
+      }
+      if (user.approvalStatus === ApprovalStatus.Rejected) {
+        throw new BadRequestException(
+          `Your account application was not approved. Reason: "${user.approvalRejectionReason ?? 'No reason provided'}". ` +
+            'Please update your profile and use POST /auth/resubmit-approval to resubmit for review.',
+        );
+      }
+    }
+
     const { token: refreshToken, expiresAt } = this.buildRefreshToken(user.id);
 
     // Hash the raw refresh token before storing – never persist tokens in plaintext
@@ -313,9 +339,10 @@ export class AuthService {
    * Creates a session for a social OAuth user (Google / Facebook) and returns
    * a full token pair — identical shape to email signIn().
    * Called by OAuth callback controllers after Passport hydrates req.user.
+   * New OAuth users are automatically created as STUDENT with immediate session access.
    */
   async signInWithOAuth(
-    user: User,
+    payload: { user: User; isNew: boolean },
     meta: { deviceInfo: string; ipAddress: string },
   ): Promise<{
     user: User & {
@@ -327,6 +354,38 @@ export class AuthService {
     refreshToken: string;
     sessionId: string;
   }> {
+    const { user, isNew } = payload;
+
+    // ── Brand-new OAuth user: auto-create StudentProfile, open session ──────
+    if (isNew) {
+      // Create StudentProfile with default values (OAuth only provides email/name/avatar)
+      await this.studentProfileService.createProfile({
+        userId: user.id,
+        fullName: user.email?.split('@')[0] ?? 'Student',
+        diamondBalance: 0,
+        xpTotal: 0,
+        currentStreak: 0,
+      });
+      this.logger.log(
+        `New OAuth user ${user.email}: created as STUDENT with immediate session`,
+      );
+    }
+
+    // ── Returning user: apply the same approval guard as email signIn ───────
+    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+      if (user.approvalStatus === ApprovalStatus.PendingApproval) {
+        throw new BadRequestException(
+          'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
+        );
+      }
+      if (user.approvalStatus === ApprovalStatus.Rejected) {
+        throw new BadRequestException(
+          `Your account application was not approved. Reason: "${user.approvalRejectionReason ?? 'No reason provided'}". ` +
+            'Please update your profile and use POST /auth/resubmit-approval to resubmit for review.',
+        );
+      }
+    }
+
     const { token: refreshToken, expiresAt } = this.buildRefreshToken(user.id);
     const hashedRt = await bcrypt.hash(refreshToken, 10);
     const session = await this.sessionService.createSession({
@@ -391,7 +450,31 @@ export class AuthService {
       emailVerificationStatus: EmailVerificationStatus.Verified,
       emailVerificationToken: null,
       emailVerificationExpires: null,
+      // Set approval status based on role
+      approvalStatus:
+        user.role === UserRole.Teacher || user.role === UserRole.Parent
+          ? ApprovalStatus.PendingApproval
+          : ApprovalStatus.NotRequired,
     });
+
+    // Notify Teacher/Parent that their account is now under admin review
+    if (user.role === UserRole.Teacher || user.role === UserRole.Parent) {
+      const firstName = user.email.split('@')[0];
+      await this.emailVerificationService.sendPendingApprovalEmail(
+        user.email,
+        firstName,
+        user.role,
+      );
+      this.logger.log(
+        `Email verified for ${user.role} ${user.email} — account pending approval`,
+      );
+      return {
+        message:
+          'Email verified successfully! Your account is now under admin review. ' +
+          'You will receive an email once your application has been processed.',
+        user: updatedUser,
+      };
+    }
 
     this.logger.log(`Email verified for user: ${user.email}`);
     return {
@@ -447,13 +530,387 @@ export class AuthService {
       avatarUrl: null,
       isActive: true,
       emailVerificationStatus: EmailVerificationStatus.Verified,
+      approvalStatus: ApprovalStatus.NotRequired,
     });
 
     this.logger.log(`Admin account created: ${adminEmail}`);
     return admin;
   }
 
+  // ─── Approval workflow (Teacher / Parent) ─────────────────────────────────
+
+  /**
+   * Returns a paginated list of Teacher/Parent users whose accounts
+   * are waiting for admin review (approvalStatus = PENDING_APPROVAL).
+   */
+  async getPendingApprovals(
+    page = 1,
+    limit = 20,
+  ): Promise<{ users: User[]; total: number; page: number; limit: number }> {
+    const offset = (page - 1) * limit;
+    const [users, total] = await this.usersService.findPendingApprovals(
+      limit,
+      offset,
+    );
+    return { users, total, page, limit };
+  }
+
+  /**
+   * Admin approves a Teacher/Parent account.
+   * Sets approvalStatus → APPROVED and sends a confirmation email.
+   */
+  async approveAccount(
+    userId: string,
+    adminId: string,
+  ): Promise<{ message: string; user: User }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new BadRequestException('User not found');
+
+    if (user.role !== UserRole.Teacher && user.role !== UserRole.Parent) {
+      throw new BadRequestException(
+        'Only Teacher and Parent accounts require approval',
+      );
+    }
+
+    if (user.approvalStatus === ApprovalStatus.Approved) {
+      throw new BadRequestException('Account is already approved');
+    }
+
+    const updated = await this.usersService.update(userId, {
+      approvalStatus: ApprovalStatus.Approved,
+      approvalRejectionReason: null,
+      approvalReviewedAt: new Date(),
+      approvalReviewedBy: adminId,
+    });
+
+    const firstName = updated.email.split('@')[0];
+    await this.emailVerificationService.sendApprovalEmail(
+      updated.email,
+      firstName,
+    );
+
+    this.logger.log(`Account approved: ${updated.email} by admin ${adminId}`);
+    return {
+      message: `Account for ${updated.email} has been approved.`,
+      user: updated,
+    };
+  }
+
+  /**
+   * Admin rejects a Teacher/Parent account with a mandatory reason.
+   * Sets approvalStatus → REJECTED and notifies the user by email.
+   */
+  async rejectAccount(
+    userId: string,
+    adminId: string,
+    reason: string,
+  ): Promise<{ message: string; user: User }> {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new BadRequestException('User not found');
+
+    if (user.role !== UserRole.Teacher && user.role !== UserRole.Parent) {
+      throw new BadRequestException(
+        'Only Teacher and Parent accounts require approval',
+      );
+    }
+
+    const updated = await this.usersService.update(userId, {
+      approvalStatus: ApprovalStatus.Rejected,
+      approvalRejectionReason: reason,
+      approvalReviewedAt: new Date(),
+      approvalReviewedBy: adminId,
+    });
+
+    const firstName = updated.email.split('@')[0];
+    await this.emailVerificationService.sendRejectionEmail(
+      updated.email,
+      firstName,
+      reason,
+    );
+
+    this.logger.log(
+      `Account rejected: ${updated.email} by admin ${adminId} — reason: ${reason}`,
+    );
+    return {
+      message: `Account for ${updated.email} has been rejected.`,
+      user: updated,
+    };
+  }
+
+  /**
+   * Allows a rejected Teacher/Parent to update their profile and resubmit
+   * for admin review.  Requires valid credentials (email + password).
+   * On success, sets approvalStatus back to PENDING_APPROVAL.
+   */
+  async resubmitForReview(dto: {
+    email: string;
+    password: string;
+    teacherData?: {
+      subjectsTaught?: string[];
+      yearsOfExperience?: number;
+      educationLevel?: string;
+      certificateUrls?: string[];
+      cvUrl?: string;
+      linkedinUrl?: string;
+      phoneNumber?: string;
+    };
+    parentData?: {
+      relationship?: string;
+      nationalIdNumber?: string;
+      nationalIdImageUrl?: string;
+      phoneNumber?: string;
+    };
+  }): Promise<{ message: string; user: User }> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) throw new BadRequestException('Invalid credentials');
+
+    if (!user.passwordHash) {
+      throw new BadRequestException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
+    if (!isPasswordValid) throw new BadRequestException('Invalid credentials');
+
+    if (user.approvalStatus !== ApprovalStatus.Rejected) {
+      throw new BadRequestException(
+        'Resubmission is only available for rejected accounts. ' +
+          `Current status: ${user.approvalStatus ?? 'none'}.`,
+      );
+    }
+
+    // Update role-specific profile with new information
+    if (user.role === UserRole.Teacher && dto.teacherData) {
+      const profile = await this.teacherProfileService.getProfileByUserId(
+        user.id,
+      );
+      if (profile) {
+        await this.teacherProfileService.updateProfile(profile.id, {
+          subjectsTaught: dto.teacherData.subjectsTaught,
+          yearsOfExperience: dto.teacherData.yearsOfExperience,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          educationLevel: dto.teacherData.educationLevel as any,
+          certificateUrls: dto.teacherData.certificateUrls,
+          cvUrl: dto.teacherData.cvUrl,
+          linkedinUrl: dto.teacherData.linkedinUrl,
+          phoneNumber: dto.teacherData.phoneNumber,
+        });
+      }
+    } else if (user.role === UserRole.Parent && dto.parentData) {
+      const profile = await this.parentProfileService.getProfileByUserId(
+        user.id,
+      );
+      if (profile) {
+        await this.parentProfileService.updateProfile(profile.id, {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          relationship: dto.parentData.relationship as any,
+          nationalIdNumber: dto.parentData.nationalIdNumber,
+          nationalIdImageUrl: dto.parentData.nationalIdImageUrl,
+          phoneNumber: dto.parentData.phoneNumber,
+        });
+      }
+    }
+
+    // Reset approval status to pending for new admin review
+    const updated = await this.usersService.update(user.id, {
+      approvalStatus: ApprovalStatus.PendingApproval,
+      approvalRejectionReason: null,
+      approvalReviewedAt: null,
+      approvalReviewedBy: null,
+    });
+
+    const firstName = updated.email.split('@')[0];
+    await this.emailVerificationService.sendPendingApprovalEmail(
+      updated.email,
+      firstName,
+      updated.role,
+    );
+
+    this.logger.log(`Account resubmitted for review: ${updated.email}`);
+    return {
+      message:
+        'Your updated application has been submitted for review. ' +
+        'You will receive an email once a decision has been made.',
+      user: updated,
+    };
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Short-lived (15 min) JWT used exclusively in the OAuth two-step registration.
+   * Payload carries `type: 'oauth-completion'` so it cannot be misused as an
+   * access token, and `displayName` so the profile-completion step can build a
+   * fullName without requiring the user to re-type their name for Student role.
+   */
+  private buildOAuthCompletionToken(
+    userId: string,
+    displayName: string,
+  ): string {
+    return this.jwtService.sign(
+      { sub: userId, displayName, type: 'oauth-completion' },
+      {
+        secret: this.configService.getOrThrow<string>('jwt.secret'),
+        expiresIn: '15m',
+      },
+    );
+  }
+
+  /**
+   * Step 2 of the OAuth two-step registration.
+   *
+   * - **STUDENT** (default): creates a student profile, opens a session, returns tokens.
+   * - **TEACHER / PARENT**: creates a role profile, sets `approvalStatus = PENDING_APPROVAL`,
+   *   sends a pending-approval email. No session is opened; the account must be
+   *   approved by an admin before the user can sign in.
+   */
+  async completeOAuthProfile(
+    dto: CompleteOAuthProfileDto,
+    meta: { deviceInfo: string; ipAddress: string },
+  ): Promise<
+    | { pendingApproval: true; message: string }
+    | {
+        pendingApproval: false;
+        user: User & { studentProfile?: any };
+        accessToken: string;
+        refreshToken: string;
+        sessionId: string;
+      }
+  > {
+    // ── Verify the completion token ─────────────────────────────────────────
+    let tokenPayload: { sub: string; displayName: string; type: string };
+    try {
+      tokenPayload = this.jwtService.verify(dto.completionToken, {
+        secret: this.configService.getOrThrow<string>('jwt.secret'),
+      });
+    } catch {
+      throw new BadRequestException(
+        'Invalid or expired completion token. Please sign in with Google/Facebook again.',
+      );
+    }
+    if (tokenPayload.type !== 'oauth-completion') {
+      throw new BadRequestException('Invalid token type.');
+    }
+
+    const userId = tokenPayload.sub;
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new BadRequestException('User not found.');
+
+    const role = dto.role ?? UserRole.Student;
+    // Prefer explicit name from form; fall back to OAuth displayName for Students
+    const fullName =
+      dto.firstName && dto.lastName
+        ? `${dto.firstName} ${dto.lastName}`.trim()
+        : tokenPayload.displayName;
+
+    // ── TEACHER ─────────────────────────────────────────────────────────────
+    if (role === UserRole.Teacher) {
+      await this.usersService.update(userId, {
+        role: UserRole.Teacher,
+        approvalStatus: ApprovalStatus.PendingApproval,
+      });
+      await this.teacherProfileService.createProfile({
+        userId,
+        fullName,
+        bio: null,
+        phoneNumber: null,
+        subjectsTaught: dto.subjectsTaught ?? [],
+        yearsOfExperience: dto.yearsOfExperience ?? null,
+        educationLevel: dto.educationLevel ?? null,
+        certificateUrls: [],
+        cvUrl: null,
+        linkedinUrl: null,
+      });
+      await this.emailVerificationService.sendPendingApprovalEmail(
+        user.email,
+        fullName,
+        UserRole.Teacher,
+      );
+      this.logger.log(
+        `OAuth teacher profile submitted for approval: ${user.email}`,
+      );
+      return {
+        pendingApproval: true,
+        message:
+          'Your teacher profile has been submitted for admin review. ' +
+          'You will receive an email once a decision has been made.',
+      };
+    }
+
+    // ── PARENT ──────────────────────────────────────────────────────────────
+    if (role === UserRole.Parent) {
+      await this.usersService.update(userId, {
+        role: UserRole.Parent,
+        approvalStatus: ApprovalStatus.PendingApproval,
+      });
+      await this.parentProfileService.createProfile({
+        userId,
+        fullName,
+        phoneNumber: dto.phoneNumber ?? '',
+        relationship: dto.relationship ?? null,
+        nationalIdNumber: dto.nationalIdNumber ?? null,
+        nationalIdImageUrl: null,
+      });
+      await this.emailVerificationService.sendPendingApprovalEmail(
+        user.email,
+        fullName,
+        UserRole.Parent,
+      );
+      this.logger.log(
+        `OAuth parent profile submitted for approval: ${user.email}`,
+      );
+      return {
+        pendingApproval: true,
+        message:
+          'Your parent profile has been submitted for admin review. ' +
+          'You will receive an email once a decision has been made.',
+      };
+    }
+
+    // ── STUDENT (default) — create profile + open session immediately ────────
+    try {
+      await this.studentProfileService.createProfile({
+        userId,
+        fullName,
+        gradeLevel: null,
+        diamondBalance: 0,
+        xpTotal: 0,
+        currentStreak: 0,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to create student profile for ${user.email}`,
+        err,
+      );
+    }
+
+    const updatedUser = (await this.usersService.findById(userId)) as User;
+    const { token: refreshToken, expiresAt } = this.buildRefreshToken(
+      updatedUser.id,
+    );
+    const hashedRt = await bcrypt.hash(refreshToken, 10);
+    const session = await this.sessionService.createSession({
+      userId: updatedUser.id,
+      hashedRt,
+      deviceInfo: meta.deviceInfo,
+      ipAddress: meta.ipAddress,
+      expiresAt,
+    });
+    const accessToken = this.createAccessToken(updatedUser, session.id);
+    const userWithProfile = await this.getUserWithProfile(updatedUser);
+    this.logger.log(
+      `OAuth student profile completed, session created: ${updatedUser.email} | ${session.id}`,
+    );
+    return {
+      pendingApproval: false,
+      user: userWithProfile,
+      accessToken,
+      refreshToken,
+      sessionId: session.id,
+    };
+  }
 
   createAccessToken(user: User, sessionId: string): string {
     const payload = {
@@ -567,6 +1024,53 @@ export class AuthService {
       resetToken,
       message:
         'OTP verified. Use the reset token to set a new password within 60 minutes.',
+    };
+  }
+
+  /**
+   * Change password for authenticated user (requires current password verification).
+   * Hashes the new password, updates it, and revokes all active sessions for security.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'User account does not have a password set',
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.usersService.update(userId, {
+      passwordHash: hashedPassword,
+    });
+
+    // Revoke all active sessions for security (force re-authentication on all devices)
+    await this.sessionService.deleteSessionsByUserId(userId);
+
+    this.logger.log(
+      `Password changed for ${user.email} — all sessions revoked.`,
+    );
+    return {
+      message:
+        'Password changed successfully. All devices have been signed out. Please sign in with your new password.',
     };
   }
 

@@ -16,6 +16,8 @@ import {
   ApiBody,
   ApiOperation,
   ApiBearerAuth,
+  ApiQuery,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { BaseController } from '../core/base/base.controller';
@@ -31,10 +33,21 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ApproveAccountDto } from './dto/approve-account.dto';
+import { RejectAccountDto } from './dto/reject-account.dto';
+import { ResubmitApprovalDto } from './dto/resubmit-approval.dto';
+import { CompleteOAuthProfileDto } from './dto/complete-oauth-profile.dto';
 import { User } from '../users/domain/user';
 
 @ApiTags('Auth')
 @Controller('auth')
+@ApiExtraModels(
+  ApproveAccountDto,
+  RejectAccountDto,
+  ResubmitApprovalDto,
+  CompleteOAuthProfileDto,
+)
 export class AuthController extends BaseController {
   constructor(private readonly authService: AuthService) {
     super();
@@ -363,6 +376,45 @@ export class AuthController extends BaseController {
     return this.sendSuccess(res, {}, result.message, HttpStatus.OK);
   }
 
+  // ─── Change password (Authenticated users only) ────────────────────────
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Change password for authenticated user',
+    description:
+      'Allows authenticated users to change their password by providing the current password ' +
+      'and the new password. Requires valid access token. ' +
+      '**All active sessions will be revoked after password change** (re-sync across all devices).',
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully. All sessions revoked.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized or current password is incorrect',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or invalid request',
+  })
+  async changePassword(
+    @Req() req: Request & { user: User },
+    @Body() dto: ChangePasswordDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.changePassword(
+      req.user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return this.sendSuccess(res, {}, result.message, HttpStatus.OK);
+  }
+
   // ─── Admin helpers ────────────────────────────────────────────────────────
 
   @Post('/migrate/users')
@@ -378,6 +430,227 @@ export class AuthController extends BaseController {
       { user: { id: admin.id, email: admin.email, role: admin.role } },
       'Admin account created successfully',
       HttpStatus.CREATED,
+    );
+  }
+
+  // ─── Approval workflow — Admin endpoints ──────────────────────────────────
+
+  /**
+   * GET /auth/admin/pending-approvals
+   * Returns paginated list of Teacher/Parent accounts awaiting review.
+   */
+  @Get('admin/pending-approvals')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List accounts pending admin approval (Admin only)',
+    description:
+      'Returns Teacher and Parent accounts whose email has been verified ' +
+      'but whose account has not yet been approved or rejected. ' +
+      'Ordered oldest-first (FIFO review queue).',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiResponse({
+    status: 200,
+    description: 'Pending-approval accounts listed',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getPendingApprovals(
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.getPendingApprovals(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 20,
+    );
+    return this.sendSuccess(
+      res,
+      result,
+      'Pending approvals retrieved successfully',
+      HttpStatus.OK,
+    );
+  }
+
+  /**
+   * POST /auth/admin/approve
+   * Admin approves a Teacher/Parent account → user can now log in.
+   */
+  @Post('admin/approve')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Approve a Teacher/Parent account (Admin only)',
+    description:
+      'Sets the account status to APPROVED and sends a confirmation email. ' +
+      'The user can log in immediately after approval.',
+  })
+  @ApiBody({ type: ApproveAccountDto })
+  @ApiResponse({ status: 200, description: 'Account approved' })
+  @ApiResponse({
+    status: 400,
+    description: 'User not found or already approved',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async approveAccount(
+    @Body() dto: ApproveAccountDto,
+    @Req() req: Request & { user: User },
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.approveAccount(
+      dto.userId,
+      req.user.id,
+    );
+    return this.sendSuccess(
+      res,
+      { user: result.user },
+      result.message,
+      HttpStatus.OK,
+    );
+  }
+
+  /**
+   * POST /auth/admin/reject
+   * Admin rejects a Teacher/Parent account with a mandatory reason.
+   */
+  @Post('admin/reject')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reject a Teacher/Parent account (Admin only)',
+    description:
+      'Sets the account status to REJECTED, stores the rejection reason, ' +
+      'and sends a notification email with the reason and instructions for resubmission.',
+  })
+  @ApiBody({ type: RejectAccountDto })
+  @ApiResponse({ status: 200, description: 'Account rejected' })
+  @ApiResponse({ status: 400, description: 'User not found or invalid role' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async rejectAccount(
+    @Body() dto: RejectAccountDto,
+    @Req() req: Request & { user: User },
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.rejectAccount(
+      dto.userId,
+      req.user.id,
+      dto.reason,
+    );
+    return this.sendSuccess(
+      res,
+      { user: result.user },
+      result.message,
+      HttpStatus.OK,
+    );
+  }
+
+  // ─── Approval workflow — User resubmission ────────────────────────────────
+
+  /**
+   * POST /auth/resubmit-approval
+   * Allows a REJECTED Teacher/Parent to update their profile data and
+   * re-submit the application for admin review.
+   */
+  @Post('resubmit-approval')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resubmit application after rejection (Teacher/Parent only)',
+    description:
+      'Available only for accounts with approvalStatus = REJECTED. ' +
+      'Authenticate with email + password, then provide updated profile data. ' +
+      'On success, resets the status to PENDING_APPROVAL and notifies the admin team.',
+  })
+  @ApiBody({ type: ResubmitApprovalDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Application resubmitted for review',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Invalid credentials, wrong role, or account not in REJECTED state',
+  })
+  async resubmitForReview(
+    @Body() dto: ResubmitApprovalDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.authService.resubmitForReview({
+      email: dto.email,
+      password: dto.password,
+      teacherData: dto.teacherData,
+      parentData: dto.parentData,
+    });
+    return this.sendSuccess(
+      res,
+      { user: result.user },
+      result.message,
+      HttpStatus.OK,
+    );
+  }
+
+  // ─── OAuth two-step registration — complete profile ───────────────────────
+
+  /**
+   * POST /auth/oauth/complete-profile
+   *
+   * Called after a Google / Facebook OAuth callback responds with
+   * `{ needsProfileCompletion: true, completionToken }`.
+   *
+   * - **STUDENT** (default / no role): creates student profile, returns full tokens.
+   * - **TEACHER**: creates teacher profile → `approvalStatus = PENDING_APPROVAL`.
+   * - **PARENT**: creates parent profile → `approvalStatus = PENDING_APPROVAL`.
+   *
+   * Teacher/Parent receive a pending-approval email and must wait for admin review
+   * before they can sign in.
+   */
+  @Post('oauth/complete-profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete OAuth profile after first Google/Facebook login',
+    description:
+      'Use the completionToken from the OAuth callback to set your role and provide ' +
+      'role-specific fields. Student role returns tokens immediately. ' +
+      'Teacher/Parent roles enter pending-approval state.',
+  })
+  @ApiBody({ type: CompleteOAuthProfileDto })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Student: returns tokens. Teacher/Parent: returns pendingApproval=true message.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid/expired completionToken or validation error',
+  })
+  async completeOAuthProfile(
+    @Body() dto: CompleteOAuthProfileDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const deviceInfo = String(req.headers['user-agent'] ?? 'Unknown Device');
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')[0]
+        ?.trim() ??
+      req.socket.remoteAddress ??
+      '0.0.0.0';
+
+    const result = await this.authService.completeOAuthProfile(dto, {
+      deviceInfo,
+      ipAddress,
+    });
+
+    if (result.pendingApproval) {
+      return this.sendSuccess(res, null, result.message, HttpStatus.OK);
+    }
+    return this.sendSuccess(
+      res,
+      result,
+      'Profile completed successfully',
+      HttpStatus.OK,
     );
   }
 }

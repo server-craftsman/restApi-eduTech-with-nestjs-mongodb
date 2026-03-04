@@ -34,6 +34,9 @@ export class ParentProfileRepository implements ParentProfileRepositoryAbstract 
       userId: new Types.ObjectId(data.userId),
       fullName: data.fullName,
       phoneNumber: data.phoneNumber,
+      relationship: data.relationship ?? null,
+      nationalIdNumber: data.nationalIdNumber ?? null,
+      nationalIdImageUrl: data.nationalIdImageUrl ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -44,8 +47,15 @@ export class ParentProfileRepository implements ParentProfileRepositoryAbstract 
   ): Promise<ParentProfile | null> {
     const updateData: Record<string, unknown> = {};
     if (data.userId) updateData.userId = new Types.ObjectId(data.userId);
-    if (data.fullName) updateData.fullName = data.fullName;
-    if (data.phoneNumber) updateData.phoneNumber = data.phoneNumber;
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.phoneNumber !== undefined)
+      updateData.phoneNumber = data.phoneNumber;
+    if (data.relationship !== undefined)
+      updateData.relationship = data.relationship;
+    if (data.nationalIdNumber !== undefined)
+      updateData.nationalIdNumber = data.nationalIdNumber;
+    if (data.nationalIdImageUrl !== undefined)
+      updateData.nationalIdImageUrl = data.nationalIdImageUrl;
 
     const doc = await this.parentProfileModel.findByIdAndUpdate(
       id,

@@ -35,7 +35,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     const displayName = profile.displayName ?? 'Facebook User';
     const avatarUrl = profile.photos?.[0]?.value ?? null;
 
-    const user = await this.usersService.upsertSocialUser({
+    const result = await this.usersService.upsertSocialUser({
       provider: 'facebook',
       providerId: profile.id,
       email,
@@ -43,6 +43,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       avatarUrl,
     });
 
-    return user;
+    return result;
   }
 }

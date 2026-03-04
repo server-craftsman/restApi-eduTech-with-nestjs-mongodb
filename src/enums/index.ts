@@ -7,3 +7,6 @@ export * from './question-type.enum';
 export * from './difficulty.enum';
 export * from './transaction-status.enum';
 export * from './course-status.enum';
+export * from './approval-status.enum';
+export * from './teacher-education-level.enum';
+export * from './parent-relationship.enum';

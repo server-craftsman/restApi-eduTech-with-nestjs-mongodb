@@ -15,6 +15,11 @@ export abstract class UserRepositoryAbstract {
   abstract findByEmail(email: string): Promise<User | null>;
   abstract findByVerificationToken(token: string): Promise<User | null>;
   abstract findByPasswordResetToken(token: string): Promise<User | null>;
+  /** Returns [Teacher|Parent users with approvalStatus=PENDING_APPROVAL, total count] */
+  abstract findPendingApprovals(
+    limit: number,
+    offset: number,
+  ): Promise<[User[], number]>;
   abstract getStatistics(): Promise<{
     total: number;
     byRole: Record<string, number>;

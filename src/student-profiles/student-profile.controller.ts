@@ -2,8 +2,6 @@ import {
   Controller,
   Get,
   Put,
-  Patch,
-  Delete,
   Param,
   Body,
   UseGuards,
@@ -11,8 +9,6 @@ import {
   Res,
   HttpStatus,
   NotFoundException,
-  HttpCode,
-  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -86,60 +82,60 @@ export class StudentProfileController extends BaseController {
     return this.sendSuccess(res, updated, 'Profile updated', HttpStatus.OK);
   }
 
-  @Patch('me/xp')
-  @Roles(UserRole.Student)
-  @ApiOperation({ summary: 'Add XP to my student profile' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: { amount: { type: 'integer', example: 50 } },
-      required: ['amount'],
-    },
-  })
-  @ApiResponse({ status: 200, description: 'XP added' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Profile not found' })
-  async addMyXp(
-    @Req() req: Request & { user: User },
-    @Body('amount', ParseIntPipe) amount: number,
-    @Res() res: Response,
-  ) {
-    const existing = await this.studentProfileService.getProfileByUserId(
-      req.user.id,
-    );
-    if (!existing) throw new NotFoundException('Student profile not found');
-    const updated = await this.studentProfileService.addXp(existing.id, amount);
-    return this.sendSuccess(res, updated, 'XP added', HttpStatus.OK);
-  }
+  // @Patch('me/xp')
+  // @Roles(UserRole.Student)
+  // @ApiOperation({ summary: 'Add XP to my student profile' })
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: { amount: { type: 'integer', example: 50 } },
+  //     required: ['amount'],
+  //   },
+  // })
+  // @ApiResponse({ status: 200, description: 'XP added' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiResponse({ status: 404, description: 'Profile not found' })
+  // async addMyXp(
+  //   @Req() req: Request & { user: User },
+  //   @Body('amount', ParseIntPipe) amount: number,
+  //   @Res() res: Response,
+  // ) {
+  //   const existing = await this.studentProfileService.getProfileByUserId(
+  //     req.user.id,
+  //   );
+  //   if (!existing) throw new NotFoundException('Student profile not found');
+  //   const updated = await this.studentProfileService.addXp(existing.id, amount);
+  //   return this.sendSuccess(res, updated, 'XP added', HttpStatus.OK);
+  // }
 
-  @Patch('me/diamonds')
-  @Roles(UserRole.Student)
-  @ApiOperation({ summary: 'Add diamonds to my student profile' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: { amount: { type: 'integer', example: 10 } },
-      required: ['amount'],
-    },
-  })
-  @ApiResponse({ status: 200, description: 'Diamonds added' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'Profile not found' })
-  async addMyDiamonds(
-    @Req() req: Request & { user: User },
-    @Body('amount', ParseIntPipe) amount: number,
-    @Res() res: Response,
-  ) {
-    const existing = await this.studentProfileService.getProfileByUserId(
-      req.user.id,
-    );
-    if (!existing) throw new NotFoundException('Student profile not found');
-    const updated = await this.studentProfileService.addDiamonds(
-      existing.id,
-      amount,
-    );
-    return this.sendSuccess(res, updated, 'Diamonds added', HttpStatus.OK);
-  }
+  // @Patch('me/diamonds')
+  // @Roles(UserRole.Student)
+  // @ApiOperation({ summary: 'Add diamonds to my student profile' })
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: { amount: { type: 'integer', example: 10 } },
+  //     required: ['amount'],
+  //   },
+  // })
+  // @ApiResponse({ status: 200, description: 'Diamonds added' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiResponse({ status: 404, description: 'Profile not found' })
+  // async addMyDiamonds(
+  //   @Req() req: Request & { user: User },
+  //   @Body('amount', ParseIntPipe) amount: number,
+  //   @Res() res: Response,
+  // ) {
+  //   const existing = await this.studentProfileService.getProfileByUserId(
+  //     req.user.id,
+  //   );
+  //   if (!existing) throw new NotFoundException('Student profile not found');
+  //   const updated = await this.studentProfileService.addDiamonds(
+  //     existing.id,
+  //     amount,
+  //   );
+  //   return this.sendSuccess(res, updated, 'Diamonds added', HttpStatus.OK);
+  // }
 
   // ─── Admin endpoints ──────────────────────────────────────────────────────
 
@@ -187,16 +183,16 @@ export class StudentProfileController extends BaseController {
     return this.sendSuccess(res, profile, 'Profile updated', HttpStatus.OK);
   }
 
-  @Delete(':id')
-  @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.Admin)
-  @ApiOperation({ summary: '[Admin] Delete a student profile by ID' })
-  @ApiParam({ name: 'id', description: 'Profile ObjectId' })
-  @ApiResponse({ status: 200, description: 'Profile deleted' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async deleteProfile(@Param('id') id: string, @Res() res: Response) {
-    await this.studentProfileService.deleteProfile(id);
-    return this.sendSuccess(res, {}, 'Profile deleted', HttpStatus.OK);
-  }
+  // @Delete(':id')
+  // @HttpCode(HttpStatus.OK)
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({ summary: '[Admin] Delete a student profile by ID' })
+  // @ApiParam({ name: 'id', description: 'Profile ObjectId' })
+  // @ApiResponse({ status: 200, description: 'Profile deleted' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // @ApiResponse({ status: 403, description: 'Forbidden' })
+  // async deleteProfile(@Param('id') id: string, @Res() res: Response) {
+  //   await this.studentProfileService.deleteProfile(id);
+  //   return this.sendSuccess(res, {}, 'Profile deleted', HttpStatus.OK);
+  // }
 }

@@ -25,10 +25,13 @@ import { QueryUserDto, FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { UserDto } from './dto/user.dto';
 import { UserStatisticsDto } from './dto/user-statistics.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UpdateUserAvatarDto } from './dto/update-user-avatar.dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
 import { UserRole } from '../enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from './domain/user';
 import { InfinityPaginationResponse } from '../utils/dto/infinity-pagination-response.dto';
 
 @ApiTags('Users')
@@ -47,7 +50,10 @@ export class UsersController extends BaseController {
 
   @Post()
   @Roles(UserRole.Admin)
-  @ApiOperation({ summary: 'Create a new user (Admin only)' })
+  @ApiOperation({
+    summary:
+      'Create a new user (Admin only) — auto-verifies email, auto-approves Teacher/Parent, creates role profile',
+  })
   @ApiResponse({ status: 201, type: UserDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -55,7 +61,7 @@ export class UsersController extends BaseController {
     @Body() dto: CreateUserDto,
     @Res() res: Response,
   ): Promise<Response> {
-    const user = await this.usersService.create(dto);
+    const user = await this.usersService.adminCreate(dto);
     return this.sendSuccess(
       res,
       user,
@@ -154,6 +160,28 @@ export class UsersController extends BaseController {
       user,
       `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
     );
+  }
+
+  @Patch('me/avatar')
+  @ApiOperation({
+    summary:
+      'Update my avatar — upload file first to /uploads, then pass avatar object here',
+    description:
+      'Updates the avatar URL of the currently authenticated user. Pass the avatar object returned from POST /uploads.',
+  })
+  @ApiResponse({ status: 200, type: UserDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateMyAvatar(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateUserAvatarDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const updated = await this.usersService.updateAvatar(
+      user.id,
+      dto.avatarUrl,
+    );
+    return this.sendSuccess(res, updated, 'Avatar updated successfully');
   }
 
   // ──────────────────────────────────────────────────────────────────────────

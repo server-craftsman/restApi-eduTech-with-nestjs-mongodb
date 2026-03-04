@@ -1,6 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { UserRole, EmailVerificationStatus } from '../../../../../enums';
+import {
+  UserRole,
+  EmailVerificationStatus,
+  ApprovalStatus,
+} from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: 'users' })
 export class UserDocument {
@@ -39,6 +43,20 @@ export class UserDocument {
 
   @Prop({ type: Date, default: null })
   passwordResetExpires?: Date | null;
+
+  // ── Approval workflow (Teacher / Parent accounts) ──────────────────────────
+  @Prop({ type: String, enum: ApprovalStatus, default: null })
+  approvalStatus?: ApprovalStatus | null;
+
+  @Prop({ type: String, default: null })
+  approvalRejectionReason?: string | null;
+
+  @Prop({ type: Date, default: null })
+  approvalReviewedAt?: Date | null;
+
+  /** MongoDB ObjectId string of the admin who performed the last review. */
+  @Prop({ type: String, default: null })
+  approvalReviewedBy?: string | null;
 
   @Prop({ default: false })
   isDeleted!: boolean;

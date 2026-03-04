@@ -32,7 +32,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const displayName = profile.displayName ?? 'Google User';
     const avatarUrl = profile.photos?.[0]?.value ?? null;
 
-    const user = await this.usersService.upsertSocialUser({
+    const result = await this.usersService.upsertSocialUser({
       provider: 'google',
       providerId: profile.id,
       email,
@@ -40,6 +40,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       avatarUrl,
     });
 
-    return user;
+    return result;
   }
 }

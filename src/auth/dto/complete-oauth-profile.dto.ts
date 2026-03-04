@@ -1,15 +1,13 @@
 import {
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
   IsString,
-  MinLength,
+  IsEnum,
+  IsOptional,
   IsArray,
   IsNumber,
   Min,
   Max,
   ValidateIf,
+  IsNotEmpty,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -19,38 +17,36 @@ import {
   ParentRelationship,
 } from '../../enums';
 
-export class CreateUserDto {
-  @ApiProperty({ example: 'user@example.com' })
-  @IsEmail()
-  email!: string;
-
+export class CompleteOAuthProfileDto {
   @ApiProperty({
-    minLength: 8,
-    description: 'Plain password — will be hashed by the service',
+    description:
+      'Short-lived token returned when the OAuth callback responds with needsProfileCompletion = true.',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(8)
-  password!: string;
+  completionToken!: string;
 
   @ApiPropertyOptional({
     enum: UserRole,
     enumName: 'UserRole',
+    description:
+      'Desired role. Defaults to STUDENT (immediate session). TEACHER/PARENT enter pending-approval.',
     default: UserRole.Student,
+    example: UserRole.Teacher,
   })
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
 
-  // ── Identity ────────────────────────────────────────────────────────────────
+  // ── Identity — required for TEACHER / PARENT ────────────────────────────────
 
   @ApiPropertyOptional({
-    description:
-      'First name — required when role = TEACHER or PARENT (used to build profile fullName)',
     example: 'Nguyen',
+    description: 'Required when role = TEACHER or PARENT',
   })
   @ValidateIf(
-    (o: CreateUserDto) =>
+    (o: CompleteOAuthProfileDto) =>
       o.role === UserRole.Teacher || o.role === UserRole.Parent,
   )
   @IsString()
@@ -58,38 +54,16 @@ export class CreateUserDto {
   firstName?: string;
 
   @ApiPropertyOptional({
-    description: 'Last name — required when role = TEACHER or PARENT',
     example: 'Van A',
+    description: 'Required when role = TEACHER or PARENT',
   })
   @ValidateIf(
-    (o: CreateUserDto) =>
+    (o: CompleteOAuthProfileDto) =>
       o.role === UserRole.Teacher || o.role === UserRole.Parent,
   )
   @IsString()
   @IsNotEmpty()
   lastName?: string;
-
-  // ── Common optional ─────────────────────────────────────────────────────────
-
-  // @ApiPropertyOptional()
-  // @IsOptional()
-  // @IsString()
-  // @MaxLength(512)
-  // avatarUrl?: string;
-
-  // @ApiPropertyOptional({ default: true })
-  // @IsOptional()
-  // @IsBoolean()
-  // isActive?: boolean;
-
-  // @ApiPropertyOptional({
-  //   enum: EmailVerificationStatus,
-  //   enumName: 'EmailVerificationStatus',
-  //   description: 'Leave unset — service auto-sets Verified for admin-created accounts',
-  // })
-  // @IsOptional()
-  // @IsEnum(EmailVerificationStatus)
-  // emailVerificationStatus?: EmailVerificationStatus | null;
 
   // ── Parent-specific ─────────────────────────────────────────────────────────
 
@@ -97,7 +71,7 @@ export class CreateUserDto {
     description: 'Phone number — required when role = PARENT',
     example: '+84912345678',
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
   @IsString()
   phoneNumber?: string;
 
@@ -107,15 +81,16 @@ export class CreateUserDto {
     description: 'Relationship to student — required when role = PARENT',
     example: ParentRelationship.Mother,
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
   @IsEnum(ParentRelationship)
   relationship?: ParentRelationship;
 
   @ApiPropertyOptional({
-    description: 'National ID number (CCCD/CMND) — required when role = PARENT',
+    description:
+      'National ID card number (CCCD/CMND) — required when role = PARENT',
     example: '079200012345',
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Parent)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Parent)
   @IsString()
   nationalIdNumber?: string;
 
@@ -123,10 +98,11 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     type: [String],
-    description: 'Subjects taught — required when role = TEACHER',
+    description:
+      'Subjects the teacher is qualified to teach — required when role = TEACHER',
     example: ['Mathematics', 'Physics'],
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Teacher)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Teacher)
   @IsArray()
   @IsString({ each: true })
   subjectsTaught?: string[];
@@ -138,7 +114,7 @@ export class CreateUserDto {
     minimum: 0,
     maximum: 60,
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Teacher)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Teacher)
   @IsNumber()
   @Min(0)
   @Max(60)
@@ -151,7 +127,7 @@ export class CreateUserDto {
     description: 'Highest education level — required when role = TEACHER',
     example: TeacherEducationLevel.Master,
   })
-  @ValidateIf((o: CreateUserDto) => o.role === UserRole.Teacher)
+  @ValidateIf((o: CompleteOAuthProfileDto) => o.role === UserRole.Teacher)
   @IsEnum(TeacherEducationLevel)
   educationLevel?: TeacherEducationLevel;
 }

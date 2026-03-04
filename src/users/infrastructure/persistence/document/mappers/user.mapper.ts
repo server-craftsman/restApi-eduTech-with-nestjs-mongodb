@@ -20,6 +20,10 @@ export class UserMapper {
       passwordResetOtp: doc.passwordResetOtp ?? null,
       passwordResetToken: doc.passwordResetToken ?? null,
       passwordResetExpires: doc.passwordResetExpires ?? null,
+      approvalStatus: doc.approvalStatus ?? null,
+      approvalRejectionReason: doc.approvalRejectionReason ?? null,
+      approvalReviewedAt: doc.approvalReviewedAt ?? null,
+      approvalReviewedBy: doc.approvalReviewedBy ?? null,
       isDeleted: doc.isDeleted ?? false,
       deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
@@ -51,6 +55,14 @@ export class UserMapper {
       doc.passwordResetToken = user.passwordResetToken;
     if (user.passwordResetExpires !== undefined)
       doc.passwordResetExpires = user.passwordResetExpires;
+    if (user.approvalStatus !== undefined)
+      doc.approvalStatus = user.approvalStatus;
+    if (user.approvalRejectionReason !== undefined)
+      doc.approvalRejectionReason = user.approvalRejectionReason;
+    if (user.approvalReviewedAt !== undefined)
+      doc.approvalReviewedAt = user.approvalReviewedAt;
+    if (user.approvalReviewedBy !== undefined)
+      doc.approvalReviewedBy = user.approvalReviewedBy;
     if (user.isDeleted !== undefined) doc.isDeleted = user.isDeleted;
     if (user.deletedAt !== undefined) doc.deletedAt = user.deletedAt;
 

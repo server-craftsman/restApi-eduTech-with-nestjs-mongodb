@@ -155,4 +155,132 @@ export class EmailVerificationService {
     await this.mailerService.sendMail(email, subject, html);
     this.logger.log(`Password reset OTP sent to ${email}`);
   }
+
+  // ── Approval workflow emails ───────────────────────────────────────────────
+
+  /**
+   * Sent after a Teacher/Parent verifies their email, informing them
+   * that their account is now awaiting admin review.
+   */
+  async sendPendingApprovalEmail(
+    email: string,
+    firstName: string,
+    role: string,
+  ): Promise<void> {
+    const subject = '⏳ Account Under Review — EduTech';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="UTF-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0a0a0a; background: #ffffff; }
+            .container { max-width: 640px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; }
+            .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e5e5; }
+            .title { font-size: 24px; letter-spacing: 0.02em; text-transform: uppercase; color: #0a0a0a; }
+            .note { margin: 16px 0; padding: 12px 14px; border: 1px dashed #b3b3b3; color: #333; border-radius: 6px; background: #fafafa; }
+            .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #4a4a4a; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><div class="title">EduTech</div></div>
+            <p>Hi ${firstName},</p>
+            <p>Your email has been verified. Your <strong>${role}</strong> account registration is currently under review by our admin team.</p>
+            <div class="note">
+              ⏱ We typically review new accounts within <strong>1–2 business days</strong>.<br/>
+              You will receive an email once a decision has been made.
+            </div>
+            <p>In the meantime, please make sure your profile information (qualifications, documents, contact details) is complete, as this will help speed up the review.</p>
+            <p>Questions? Reply to this email — we're happy to help.</p>
+            <div class="footer"><p>&copy; ${new Date().getFullYear()} EduTech</p></div>
+          </div>
+        </body>
+      </html>
+    `;
+    await this.mailerService.sendMail(email, subject, html);
+    this.logger.log(`Pending-approval email sent to ${email}`);
+  }
+
+  /**
+   * Sent when an admin approves a Teacher/Parent account.
+   */
+  async sendApprovalEmail(email: string, firstName: string): Promise<void> {
+    const subject = '✅ Account Approved — EduTech';
+    const loginUrl = `${this.appUrl}/auth/email/login`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="UTF-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0a0a0a; background: #ffffff; }
+            .container { max-width: 640px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; }
+            .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e5e5; }
+            .title { font-size: 24px; letter-spacing: 0.02em; text-transform: uppercase; color: #0a0a0a; }
+            .button { display: inline-block; padding: 12px 28px; border: 1px solid #0a0a0a; color: #0a0a0a; text-decoration: none; border-radius: 6px; font-weight: 600; }
+            .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #4a4a4a; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><div class="title">EduTech</div></div>
+            <p>Hi ${firstName},</p>
+            <p>🎉 Congratulations! Your account has been <strong>approved</strong> by our admin team.</p>
+            <p>You can now log in and start using the platform:</p>
+            <p><a href="${loginUrl}" class="button">Log In Now</a></p>
+            <div class="footer"><p>&copy; ${new Date().getFullYear()} EduTech</p></div>
+          </div>
+        </body>
+      </html>
+    `;
+    await this.mailerService.sendMail(email, subject, html);
+    this.logger.log(`Approval email sent to ${email}`);
+  }
+
+  /**
+   * Sent when an admin rejects a Teacher/Parent account.
+   * Includes the rejection reason and instructions for resubmission.
+   */
+  async sendRejectionEmail(
+    email: string,
+    firstName: string,
+    reason: string,
+  ): Promise<void> {
+    const subject = '❌ Account Not Approved — EduTech';
+    const resubmitUrl = `${this.appUrl}/auth/resubmit-approval`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="UTF-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0a0a0a; background: #ffffff; }
+            .container { max-width: 640px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; }
+            .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e5e5; }
+            .title { font-size: 24px; letter-spacing: 0.02em; text-transform: uppercase; color: #0a0a0a; }
+            .reason-box { margin: 16px 0; padding: 12px 14px; border-left: 4px solid #cc0000; background: #fff5f5; border-radius: 0 6px 6px 0; color: #550000; }
+            .note { margin: 16px 0; padding: 12px 14px; border: 1px dashed #b3b3b3; color: #333; border-radius: 6px; background: #fafafa; }
+            .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #4a4a4a; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><div class="title">EduTech</div></div>
+            <p>Hi ${firstName},</p>
+            <p>We have reviewed your account application. Unfortunately, it was <strong>not approved</strong> at this time.</p>
+            <div class="reason-box">
+              <strong>Reason provided by the reviewer:</strong><br/>
+              ${reason}
+            </div>
+            <div class="note">
+              You can update your profile information and re-submit your application using the endpoint below. Our team will review it again.<br/><br/>
+              <strong>Resubmit endpoint:</strong> <code>POST ${resubmitUrl}</code>
+            </div>
+            <p>If you believe this decision was made in error, please reply to this email with any supporting documentation.</p>
+            <div class="footer"><p>&copy; ${new Date().getFullYear()} EduTech</p></div>
+          </div>
+        </body>
+      </html>
+    `;
+    await this.mailerService.sendMail(email, subject, html);
+    this.logger.log(`Rejection email sent to ${email}`);
+  }
 }

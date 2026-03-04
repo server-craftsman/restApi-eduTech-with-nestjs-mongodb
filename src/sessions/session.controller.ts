@@ -1,6 +1,10 @@
 import { Controller, Get, Delete, Param } from '@nestjs/common';
 import { SessionService } from './session.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags(
+  'Sessions - This controller should NOT be called directly. Use the AuthService REVOKE METHODS instead.',
+)
 @Controller('sessions')
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}

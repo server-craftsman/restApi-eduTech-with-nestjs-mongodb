@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { ParentRelationship } from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: 'parent_profiles' })
 export class ParentProfileDocument {
@@ -11,6 +12,16 @@ export class ParentProfileDocument {
 
   @Prop({ required: true, unique: true })
   phoneNumber!: string;
+
+  // ── Approval-review fields ─────────────────────────────────────────────────
+  @Prop({ type: String, enum: ParentRelationship, default: null })
+  relationship?: ParentRelationship | null;
+
+  @Prop({ type: String, default: null })
+  nationalIdNumber?: string | null;
+
+  @Prop({ type: String, default: null })
+  nationalIdImageUrl?: string | null;
 }
 
 export type ParentProfileDocumentType =

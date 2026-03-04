@@ -47,7 +47,7 @@ export class AuthGoogleController {
     },
   })
   async googleCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user as User;
+    const { user, isNew } = req.user as { user: User; isNew: boolean };
     const deviceInfo = String(req.headers['user-agent'] ?? 'Unknown Device');
     const ipAddress =
       (req.headers['x-forwarded-for'] as string | undefined)
@@ -56,10 +56,10 @@ export class AuthGoogleController {
       req.socket.remoteAddress ??
       '0.0.0.0';
 
-    const result = await this.authService.signInWithOAuth(user, {
-      deviceInfo,
-      ipAddress,
-    });
+    const result = await this.authService.signInWithOAuth(
+      { user, isNew },
+      { deviceInfo, ipAddress },
+    );
     return res.json(result);
   }
 }

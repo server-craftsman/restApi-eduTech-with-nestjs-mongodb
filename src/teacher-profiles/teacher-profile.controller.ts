@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Param,
   Body,
   UseGuards,
@@ -11,7 +10,6 @@ import {
   Res,
   HttpStatus,
   NotFoundException,
-  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -201,14 +199,14 @@ export class TeacherProfileController extends BaseController {
     return this.sendSuccess(res, profile, 'Bio updated', HttpStatus.OK);
   }
 
-  @Delete(':id')
-  @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.Admin)
-  @ApiOperation({ summary: '[Admin] Delete a teacher profile by ID' })
-  @ApiParam({ name: 'id', description: 'Profile ObjectId' })
-  @ApiResponse({ status: 200, description: 'Profile deleted' })
-  async deleteProfile(@Param('id') id: string, @Res() res: Response) {
-    await this.teacherProfileService.deleteProfile(id);
-    return this.sendSuccess(res, {}, 'Profile deleted', HttpStatus.OK);
-  }
+  // @Delete(':id')
+  // @HttpCode(HttpStatus.OK)
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({ summary: '[Admin] Delete a teacher profile by ID' })
+  // @ApiParam({ name: 'id', description: 'Profile ObjectId' })
+  // @ApiResponse({ status: 200, description: 'Profile deleted' })
+  // async deleteProfile(@Param('id') id: string, @Res() res: Response) {
+  //   await this.teacherProfileService.deleteProfile(id);
+  //   return this.sendSuccess(res, {}, 'Profile deleted', HttpStatus.OK);
+  // }
 }
