@@ -9,8 +9,20 @@ export class ChapterDocument {
   @Prop({ required: true })
   title!: string;
 
+  @Prop({ type: String, default: null })
+  description?: string | null;
+
   @Prop({ required: true, default: 0 })
   orderIndex!: number;
+
+  @Prop({ default: false })
+  isPublished!: boolean;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
+  @Prop({ type: Date, default: null })
+  deletedAt?: Date | null;
 }
 
 export type ChapterDocumentType = HydratedDocument<ChapterDocument> & {

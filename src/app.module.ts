@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { configuration, envValidationSchema } from './config';
 import { DatabaseModule } from './database';
 import { StorageModule } from './storage';
@@ -43,6 +44,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
       load: [configuration],
       validationSchema: envValidationSchema,
     }),
+    ScheduleModule.forRoot(),
     CoreModule,
     DatabaseModule,
     StorageModule,

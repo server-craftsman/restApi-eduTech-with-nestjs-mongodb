@@ -5,72 +5,97 @@ import {
   IsBoolean,
   IsEnum,
   IsOptional,
+  MinLength,
+  MaxLength,
+  ValidateNested,
 } from 'class-validator';
-import { GradeLevel, CourseType } from '../../enums';
+import { Type } from 'class-transformer';
+import { CourseType } from '../../enums';
+import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
 
+/**
+ * DTO for creating a new course
+ * Only TEACHER and ADMIN can create courses
+ * Course author is automatically set from JWT token (currentUser)
+ */
 export class CreateCourseDto {
   @ApiProperty({
-    description: 'Subject ID this course belongs to',
+    description: 'Subject ID this course belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Subject ID must be a valid string' })
+  @IsNotEmpty({ message: 'Subject ID is required' })
   subjectId!: string;
 
   @ApiProperty({
-    description: 'Grade level ID this course belongs to',
+    description:
+      'Grade level ID this course belongs to (MongoDB ObjectId) - reference to GradeLevel document',
     example: '507f1f77bcf86cd799439012',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Grade level ID must be a valid string' })
+  @IsNotEmpty({ message: 'Grade level ID is required' })
   gradeLevelId!: string;
 
   @ApiProperty({
-    description: 'Grade level (10, 11, 12) for content filtering',
-    enum: GradeLevel,
-    example: GradeLevel.Grade10,
-  })
-  @IsEnum(GradeLevel)
-  gradeLevel!: GradeLevel;
-
-  @ApiProperty({
-    description: 'Course title',
+    description: 'Course title - descriptive name of the course',
     example: 'Introduction to Mathematics',
+    minLength: 5,
+    maxLength: 255,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Course title must be a string' })
+  @IsNotEmpty({ message: 'Course title is required' })
+  @MinLength(5, { message: 'Course title must be at least 5 characters long' })
+  @MaxLength(255, { message: 'Course title must not exceed 255 characters' })
   title!: string;
 
   @ApiProperty({
-    description: 'Course description',
-    example: 'Learn the fundamentals of mathematics',
+    description: 'Detailed course description for learners',
+    example:
+      'Learn the fundamentals of mathematics from basics to advanced concepts',
+    minLength: 10,
+    maxLength: 2000,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Course description must be a string' })
+  @IsNotEmpty({ message: 'Course description is required' })
+  @MinLength(10, {
+    message: 'Course description must be at least 10 characters long',
+  })
+  @MaxLength(2000, {
+    message: 'Course description must not exceed 2000 characters',
+  })
   description!: string;
 
   @ApiProperty({
-    description: 'Thumbnail URL for the course',
-    example: 'https://example.com/thumbnail.jpg',
+    description:
+      'Course thumbnail image - Cloudinary asset with publicId and URL',
+    type: CloudinaryAssetDto,
+    example: {
+      publicId: 'courses/math-101/thumbnail',
+      url: 'https://res.cloudinary.com/your-account/image/upload/v1234567890/courses/math-101/thumbnail.jpg',
+    },
   })
-  @IsString()
-  @IsNotEmpty()
-  thumbnailUrl!: string;
+  @ValidateNested()
+  @Type(() => CloudinaryAssetDto)
+  @IsNotEmpty({ message: 'Thumbnail is required' })
+  thumbnailUrl!: CloudinaryAssetDto;
 
   @ApiProperty({
-    description: 'Course type (Free or Premium)',
+    description: 'Course type - determines if course is free or premium',
     enum: CourseType,
     example: CourseType.Free,
   })
-  @IsEnum(CourseType)
+  @IsEnum(CourseType, { message: 'Course type must be a valid enum value' })
+  @IsNotEmpty({ message: 'Course type is required' })
   type!: CourseType;
 
   @ApiProperty({
-    description: 'Whether the course requires a pro subscription',
+    description:
+      'Legacy field - use type instead. Indicates if course requires pro subscription',
     example: false,
     required: false,
+    deprecated: true,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'isPro must be a boolean' })
   @IsOptional()
   isPro?: boolean;
 }

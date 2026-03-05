@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiResponse,
@@ -49,7 +50,10 @@ import { User } from '../users/domain/user';
   CompleteOAuthProfileDto,
 )
 export class AuthController extends BaseController {
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {
     super();
   }
 
@@ -106,14 +110,22 @@ export class AuthController extends BaseController {
   ): Promise<void> {
     try {
       const result = await this.authService.verifyEmail(dto.token);
+      const appUrl =
+        this.configService.get<string>('app.url') || 'http://localhost:3000';
       return res.render('email-verified', {
         message: result.message,
         email: result.user.email,
+        appUrl,
       });
     } catch (error) {
+      const appUrl =
+        this.configService.get<string>('app.url') || 'http://localhost:3000';
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      return res.render('verification-error', { message: errorMessage });
+      return res.render('verification-error', {
+        message: errorMessage,
+        appUrl,
+      });
     }
   }
 

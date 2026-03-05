@@ -3,6 +3,7 @@ import {
   IsString,
   IsOptional,
   MaxLength,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -13,11 +14,13 @@ export class UpdateSubjectDto {
     description:
       'Subject name — slug will be automatically regenerated when this changes',
     example: 'Toán Học Nâng Cao',
+    minLength: 3,
     maxLength: 120,
   })
-  @IsString()
+  @IsString({ message: 'Subject name must be a string' })
   @IsOptional()
-  @MaxLength(120)
+  @MinLength(3, { message: 'Subject name must be at least 3 characters long' })
+  @MaxLength(120, { message: 'Subject name must not exceed 120 characters' })
   name?: string;
 
   @ApiPropertyOptional({

@@ -3,8 +3,14 @@ import { HydratedDocument, Types } from 'mongoose';
 
 @Schema({ timestamps: false, collection: 'parent_student_links' })
 export class ParentStudentLinkDocument {
-  @Prop({ required: true, type: Types.ObjectId, ref: 'parent_profiles' })
-  parentId!: Types.ObjectId;
+  /** Null until the parent connects via connectByCode (Step 2). */
+  @Prop({
+    required: false,
+    type: Types.ObjectId,
+    ref: 'parent_profiles',
+    default: null,
+  })
+  parentId?: Types.ObjectId | null;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'student_profiles' })
   studentId!: Types.ObjectId;
@@ -17,6 +23,10 @@ export class ParentStudentLinkDocument {
 
   @Prop({ type: Date, default: null })
   linkCodeExpires?: Date | null;
+
+  /** Tracks when the last automated progress report was sent so cron logic can throttle correctly. */
+  @Prop({ type: Date, default: null })
+  lastReportSentAt?: Date | null;
 
   @Prop({ default: () => new Date() })
   createdAt!: Date;

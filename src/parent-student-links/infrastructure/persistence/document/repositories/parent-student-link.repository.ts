@@ -31,11 +31,12 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
     data: Omit<ParentStudentLink, 'id' | 'createdAt'>,
   ): Promise<ParentStudentLink> {
     const doc = await this.parentStudentLinkModel.create({
-      parentId: data.parentId ? new Types.ObjectId(data.parentId) : undefined,
+      parentId: data.parentId ? new Types.ObjectId(data.parentId) : null,
       studentId: new Types.ObjectId(data.studentId),
       isVerified: data.isVerified,
       linkCode: data.linkCode ?? null,
       linkCodeExpires: data.linkCodeExpires ?? null,
+      lastReportSentAt: data.lastReportSentAt ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -52,6 +53,8 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
     if (data.linkCode !== undefined) updateData.linkCode = data.linkCode;
     if (data.linkCodeExpires !== undefined)
       updateData.linkCodeExpires = data.linkCodeExpires;
+    if (data.lastReportSentAt !== undefined)
+      updateData.lastReportSentAt = data.lastReportSentAt;
 
     const doc = await this.parentStudentLinkModel.findByIdAndUpdate(
       id,
@@ -124,5 +127,13 @@ export class ParentStudentLinkRepository implements ParentStudentLinkRepositoryA
       linkCode: { $ne: null },
     });
     return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  async findAllVerified(): Promise<ParentStudentLink[]> {
+    const docs = await this.parentStudentLinkModel.find({
+      isVerified: true,
+      parentId: { $exists: true, $ne: null },
+    });
+    return this.mapper.toDomainArray(docs);
   }
 }

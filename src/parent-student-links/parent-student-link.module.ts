@@ -11,6 +11,11 @@ import { ParentStudentLinkService } from './parent-student-link.service';
 import { ParentStudentLinkController } from './parent-student-link.controller';
 import { StudentProfileModule } from '../student-profiles/student-profile.module';
 import { ParentProfileModule } from '../parent-profiles/parent-profile.module';
+import { LessonProgressModule } from '../lesson-progress/lesson-progress.module';
+import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
+import { MailModule } from '../mail/mail.module';
+import { UsersModule } from '../users/users.module';
+import { SmsService, ZaloService } from './services/messaging.service';
 
 @Module({
   imports: [
@@ -19,6 +24,10 @@ import { ParentProfileModule } from '../parent-profiles/parent-profile.module';
     ]),
     StudentProfileModule,
     ParentProfileModule,
+    LessonProgressModule,
+    QuizAttemptModule,
+    MailModule,
+    UsersModule,
   ],
   controllers: [ParentStudentLinkController],
   providers: [
@@ -28,6 +37,8 @@ import { ParentProfileModule } from '../parent-profiles/parent-profile.module';
       useClass: ParentStudentLinkRepository,
     },
     ParentStudentLinkMapper,
+    SmsService,
+    ZaloService,
   ],
   exports: [ParentStudentLinkService, ParentStudentLinkRepositoryAbstract],
 })

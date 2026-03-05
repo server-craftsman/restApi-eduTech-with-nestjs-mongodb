@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiExtraModels,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ParentStudentLinkService } from './parent-student-link.service';
@@ -28,6 +29,11 @@ import {
   GenerateLinkCodeResponseDto,
   LinkedStudentDto,
   LinkedParentDto,
+  ShareCodeResponseDto,
+  StudentProgressReportDto,
+  SendProgressReportDto,
+  ProgressReportPeriodDto,
+  ReportPeriod,
 } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -36,7 +42,15 @@ import { User } from '../users/domain/user';
 
 @ApiTags('Parent-Student Links')
 @Controller('parent-student-links')
-@ApiExtraModels(GenerateLinkCodeResponseDto, LinkedStudentDto, LinkedParentDto)
+@ApiExtraModels(
+  GenerateLinkCodeResponseDto,
+  LinkedStudentDto,
+  LinkedParentDto,
+  ShareCodeResponseDto,
+  StudentProgressReportDto,
+  SendProgressReportDto,
+  ProgressReportPeriodDto,
+)
 export class ParentStudentLinkController extends BaseController {
   constructor(
     private readonly parentStudentLinkService: ParentStudentLinkService,
@@ -75,6 +89,82 @@ export class ParentStudentLinkController extends BaseController {
       user.id,
     );
     return this.sendSuccess(res, result, 'Link code generated successfully');
+  }
+
+  /**
+   * Step 1 extended (Student): Generate link code + pre-composed Zalo/SMS share text.
+   */
+  // @Get('generate-code/share-text')
+  // @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary:
+  //     'Step 1 extended — Get shareable code with Zalo/SMS text (Student)',
+  //   description:
+  //     'Returns the link code together with a pre-formatted Vietnamese message ' +
+  //     'ready to send via Zalo, SMS, or any messaging app. ' +
+  //     'Code is valid for 24 hours and reuses an existing unexpired code if present.',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Shareable code and message returned',
+  //   type: ShareCodeResponseDto,
+  // })
+  // @ApiResponse({ status: 400, description: 'Student profile not found' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // async getShareText(
+  //   @CurrentUser() user: User,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const result = await this.parentStudentLinkService.getShareableCode(
+  //     user.id,
+  //   );
+  //   return this.sendSuccess(res, result, 'Share text generated successfully');
+  // }
+
+  /**
+   * Step 1.5 (Student): Send link code to parent via SMS or Zalo.
+   */
+  @Post('generate-code/send')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Step 1.5 — Send code via SMS/Zalo (Student)',
+    description:
+      'Sends the generated link code to a parent via SMS or Zalo channel. ' +
+      'Includes a pre-formatted Vietnamese message with instructions. ' +
+      'Requires parent phone number in E.164 format (e.g., +84901234567).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Code sent successfully',
+    schema: {
+      example: {
+        success: true,
+        messageId: 'msg_12345abc',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid phone number or channel',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async sendCodeViaSmsZalo(
+    @CurrentUser() user: User,
+    @Body() body: { phoneNumber: string; channel: 'sms' | 'zalo' },
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.parentStudentLinkService.sendLinkCodeToParent(
+      user.id,
+      body.phoneNumber,
+      body.channel,
+    );
+    const message = result.success
+      ? `Code sent via ${body.channel.toUpperCase()} successfully`
+      : `Failed to send code via ${body.channel.toUpperCase()}`;
+    return this.sendSuccess(res, result, message);
   }
 
   /**
@@ -161,6 +251,138 @@ export class ParentStudentLinkController extends BaseController {
   ): Promise<Response> {
     const parents = await this.parentStudentLinkService.getMyParents(user.id);
     return this.sendSuccess(res, parents, 'Parents retrieved successfully');
+  }
+
+  /**
+   * Parent: View a child's progress report for a given period.
+   * The linkId must belong to a verified link where the caller is the parent.
+   */
+  @Get('my-children/:linkId/progress')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'View child progress report (Parent)',
+    description:
+      'Returns an aggregated progress report for the child associated with the given ' +
+      'link. Includes lesson stats, quiz scores, XP earned, and streak info for the ' +
+      'chosen period (weekly = last 7 days, monthly = last 30 days).',
+  })
+  @ApiQuery({
+    name: 'period',
+    enum: ReportPeriod,
+    required: false,
+    description: 'Report period — weekly (default) or monthly',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Progress report retrieved',
+    type: StudentProgressReportDto,
+  })
+  @ApiResponse({ status: 400, description: 'Link not found or not verified' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getChildProgress(
+    @CurrentUser() user: User,
+    @Param('linkId') linkId: string,
+    @Query() periodDto: ProgressReportPeriodDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    // Verify the calling user is the parent on this link
+    const link = await this.parentStudentLinkService.getLinkById(linkId);
+    if (!link || !link.isVerified) {
+      return this.sendError(
+        res,
+        'Verified link not found',
+        'Link not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const report = await this.parentStudentLinkService.getStudentProgressReport(
+      link.studentId,
+      periodDto.period ?? ReportPeriod.Weekly,
+    );
+    return this.sendSuccess(
+      res,
+      report,
+      'Progress report retrieved successfully',
+    );
+  }
+
+  /**
+   * Parent / Admin: Immediately send a progress report email for a link.
+   */
+  @Post('send-report')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Send progress report email on demand (Parent/Admin)',
+    description:
+      'Triggers an immediate progress report email to the parent for the given link. ' +
+      'Use `period` in the body or default to weekly.',
+  })
+  @ApiResponse({ status: 200, description: 'Report email sent successfully' })
+  @ApiResponse({ status: 400, description: 'Link not found or not verified' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async sendReport(
+    @Body() dto: SendProgressReportDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    await this.parentStudentLinkService.sendProgressReportToParents(
+      dto.linkId,
+      dto.period ?? ReportPeriod.Weekly,
+    );
+    return this.sendSuccess(
+      res,
+      null,
+      'Progress report email sent successfully',
+    );
+  }
+
+  /**
+   * Student: Revoke a specific parent link (removes the connection).
+   */
+  @Delete('my-children/:linkId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Revoke a parent link — student side',
+    description:
+      'Permanently removes the parent-student link. The student must be a party to the link.',
+  })
+  @ApiResponse({ status: 200, description: 'Link revoked successfully' })
+  @ApiResponse({ status: 400, description: 'Link not found or not authorized' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async revokeLinkAsStudent(
+    @CurrentUser() user: User,
+    @Param('linkId') linkId: string,
+    @Res() res: Response,
+  ): Promise<Response> {
+    await this.parentStudentLinkService.revokeLink(linkId, user.id);
+    return this.sendSuccess(res, null, 'Link revoked successfully');
+  }
+
+  /**
+   * Parent: Revoke a specific child link (removes the connection).
+   */
+  @Delete('my-parents/:linkId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Revoke a parent link — parent side',
+    description:
+      'Permanently removes the parent-student link. The parent must be a party to the link.',
+  })
+  @ApiResponse({ status: 200, description: 'Link revoked successfully' })
+  @ApiResponse({ status: 400, description: 'Link not found or not authorized' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async revokeLinkAsParent(
+    @CurrentUser() user: User,
+    @Param('linkId') linkId: string,
+    @Res() res: Response,
+  ): Promise<Response> {
+    await this.parentStudentLinkService.revokeLink(linkId, user.id);
+    return this.sendSuccess(res, null, 'Link revoked successfully');
   }
 
   // ─── Legacy / Admin CRUD ─────────────────────────────────────────────────

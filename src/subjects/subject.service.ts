@@ -175,9 +175,24 @@ export class SubjectService extends BaseCrudService<
   /**
    * Create a new subject.
    * Slug is auto-generated from name — not accepted from the client.
+   * Validates subject name uniqueness and icon URL requirements.
    */
   async createSubject(dto: CreateSubjectDto): Promise<Subject> {
+    // Validate icon URL has required fields
+    if (!dto.iconUrl?.publicId || !dto.iconUrl?.url) {
+      throw new Error('Icon URL must contain both publicId and url');
+    }
+
     const slug = this.generateSlug(dto.name);
+
+    // Check for duplicate slug
+    const existingSubject = await this.subjectRepository.findBySlug(slug);
+    if (existingSubject) {
+      throw new Error(
+        `Subject with name "${dto.name}" already exists (slug: ${slug})`,
+      );
+    }
+
     return this.subjectRepository.create({
       name: dto.name,
       slug,
@@ -188,20 +203,53 @@ export class SubjectService extends BaseCrudService<
   /**
    * Update a subject by ID.
    * If name is changed, slug is automatically regenerated.
+   * Validates slug uniqueness and ensures at least one field is updated.
    */
   async updateSubject(id: string, dto: UpdateSubjectDto): Promise<Subject> {
-    const updateData: Partial<Subject> = {};
-    if (dto.name !== undefined) {
-      updateData.name = dto.name;
-      updateData.slug = this.generateSlug(dto.name);
+    const subject = await this.findById(id);
+    if (!subject) {
+      throw new NotFoundException(`Subject with id ${id} not found`);
     }
+
+    // Ensure at least one field is being updated
+    if (!dto.name && !dto.iconUrl) {
+      throw new Error(
+        'At least one field (name or iconUrl) must be provided for update',
+      );
+    }
+
+    const updateData: Partial<Subject> = {};
+
+    if (dto.name !== undefined) {
+      const newSlug = this.generateSlug(dto.name);
+
+      // Check for slug collision with another subject
+      if (newSlug !== subject.slug) {
+        const duplicateSubject =
+          await this.subjectRepository.findBySlug(newSlug);
+        if (duplicateSubject) {
+          throw new Error(
+            `Subject with name "${dto.name}" already exists (slug: ${newSlug})`,
+          );
+        }
+      }
+
+      updateData.name = dto.name;
+      updateData.slug = newSlug;
+    }
+
     if (dto.iconUrl !== undefined) {
+      if (!dto.iconUrl.publicId || !dto.iconUrl.url) {
+        throw new Error('Icon URL must contain both publicId and url');
+      }
       updateData.iconUrl = dto.iconUrl;
     }
+
     const updated = await this.update(id, updateData);
     if (!updated) {
       throw new NotFoundException(`Subject with id ${id} not found`);
     }
+
     return updated;
   }
 

@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CourseRepositoryAbstract } from './infrastructure/persistence/document/repositories/course.repository.abstract';
 import { Course } from './domain/course';
 import { GradeLevel, CourseStatus } from '../enums';
@@ -14,12 +18,46 @@ export class CourseService extends BaseService {
   async createCourse(
     data: Omit<Course, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Course> {
+    // Validate required fields
+    if (!data.title || data.title.trim().length === 0) {
+      throw new BadRequestException(
+        'Course title is required and cannot be empty',
+      );
+    }
+    if (!data.description || data.description.trim().length === 0) {
+      throw new BadRequestException(
+        'Course description is required and cannot be empty',
+      );
+    }
+    if (!data.subjectId) {
+      throw new BadRequestException('Subject ID is required');
+    }
+    if (!data.gradeLevelId) {
+      throw new BadRequestException('Grade level ID is required');
+    }
+    if (!data.type) {
+      throw new BadRequestException('Course type is required');
+    }
+
+    // Validate thumbnailUrl Cloudinary asset
+    if (
+      !data.thumbnailUrl ||
+      !data.thumbnailUrl.publicId ||
+      !data.thumbnailUrl.url
+    ) {
+      throw new BadRequestException(
+        'Thumbnail must contain both publicId and url from Cloudinary upload',
+      );
+    }
+
     // Automatically set status to Draft for new courses
     const courseData = {
       ...data,
       status: CourseStatus.Draft,
       isDeleted: false,
       deletedAt: null,
+      title: data.title.trim(),
+      description: data.description.trim(),
     };
     return this.courseRepository.create(courseData);
   }
@@ -133,6 +171,37 @@ export class CourseService extends BaseService {
     id: string,
     data: Partial<Course>,
   ): Promise<Course | null> {
+    // Validate the course exists
+    const existingCourse = await this.courseRepository.findByIdNotDeleted(id);
+    if (!existingCourse) {
+      throw new NotFoundException(`Course with id ${id} not found`);
+    }
+
+    // Validate field constraints
+    if (data.title !== undefined) {
+      if (data.title.trim().length === 0) {
+        throw new BadRequestException('Course title cannot be empty');
+      }
+      data.title = data.title.trim();
+    }
+
+    if (data.description !== undefined) {
+      if (data.description.trim().length === 0) {
+        throw new BadRequestException('Course description cannot be empty');
+      }
+      data.description = data.description.trim();
+    }
+
+    // Validate thumbnailUrl Cloudinary asset if provided
+    if (
+      data.thumbnailUrl &&
+      (!data.thumbnailUrl.publicId || !data.thumbnailUrl.url)
+    ) {
+      throw new BadRequestException(
+        'Thumbnail must contain both publicId and url from Cloudinary upload',
+      );
+    }
+
     // Remove fields that shouldn't be updated directly
     const { ...updateData } = data;
     return this.courseRepository.update(id, updateData);
@@ -142,6 +211,16 @@ export class CourseService extends BaseService {
     id: string,
     status: CourseStatus,
   ): Promise<Course | null> {
+    const existingCourse = await this.courseRepository.findByIdNotDeleted(id);
+    if (!existingCourse) {
+      throw new NotFoundException(`Course with id ${id} not found`);
+    }
+
+    // Validate status transition
+    if (!Object.values(CourseStatus).includes(status)) {
+      throw new BadRequestException(`Invalid course status: ${status}`);
+    }
+
     return this.courseRepository.update(id, { status });
   }
 

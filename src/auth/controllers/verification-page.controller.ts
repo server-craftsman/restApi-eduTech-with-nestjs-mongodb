@@ -1,13 +1,16 @@
 import { Controller, Get, Query, Render } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class VerificationPageController {
+  constructor(private readonly configService: ConfigService) {}
   @Get('verify-email')
   @Render('verify-email')
   verifyEmailPage(@Query('token') token: string) {
     return {
       token,
-      apiUrl: process.env.APP_URL,
+      apiUrl:
+        this.configService.get<string>('app.url') || 'http://localhost:3000',
     };
   }
 
@@ -15,7 +18,8 @@ export class VerificationPageController {
   @Render('email-verified')
   emailVerifiedPage() {
     return {
-      appUrl: process.env.FRONT_END,
+      appUrl:
+        this.configService.get<string>('app.url') || 'http://localhost:3000',
     };
   }
 
@@ -24,7 +28,8 @@ export class VerificationPageController {
   verificationErrorPage(@Query('reason') reason?: string) {
     return {
       reason: reason || 'Unknown error',
-      appUrl: process.env.FRONT_END,
+      appUrl:
+        this.configService.get<string>('app.url') || 'http://localhost:3000',
     };
   }
 }

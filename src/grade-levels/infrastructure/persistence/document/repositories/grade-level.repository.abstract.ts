@@ -12,4 +12,5 @@ export abstract class GradeLevelRepositoryAbstract {
   ): Promise<GradeLevel | null>;
   abstract delete(id: string): Promise<void>;
   abstract findByValue(value: number): Promise<GradeLevel | null>;
+  abstract findByName(name: string): Promise<GradeLevel | null>;
 }

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { GradeLevel, CourseStatus, CourseType } from '../../../../../enums';
+import { CourseStatus, CourseType } from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: 'courses' })
 export class CourseDocument {
@@ -9,9 +9,6 @@ export class CourseDocument {
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'grade_levels' })
   gradeLevelId!: Types.ObjectId;
-
-  @Prop({ required: true, enum: GradeLevel })
-  gradeLevel!: GradeLevel;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
   authorId!: Types.ObjectId;
@@ -22,8 +19,17 @@ export class CourseDocument {
   @Prop({ required: true })
   description!: string;
 
-  @Prop({ required: true })
-  thumbnailUrl!: string;
+  @Prop({
+    required: true,
+    type: {
+      publicId: { type: String, required: true },
+      url: { type: String, required: true },
+    },
+  })
+  thumbnailUrl!: {
+    publicId: string;
+    url: string;
+  };
 
   @Prop({ enum: CourseStatus, default: CourseStatus.Draft })
   status!: CourseStatus;

@@ -1,68 +1,79 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
 
+/**
+ * DTO for updating a course
+ * Only the course author (TEACHER) or ADMIN can update courses
+ * Partial update - all fields are optional
+ */
 export class UpdateCourseDto {
   @ApiPropertyOptional({
-    description: 'Subject ID this course belongs to',
-    example: '507f1f77bcf86cd799439011',
+    description: 'Course title update',
+    example: 'Advanced Mathematics - 2026 Edition',
+    minLength: 5,
+    maxLength: 255,
   })
-  @IsString()
+  @IsString({ message: 'Course title must be a string' })
   @IsOptional()
-  subjectId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Grade level ID this course belongs to',
-    example: '507f1f77bcf86cd799439012',
-  })
-  @IsString()
-  @IsOptional()
-  gradeLevelId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Author ID (user who created the course)',
-    example: '507f1f77bcf86cd799439013',
-  })
-  @IsString()
-  @IsOptional()
-  authorId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Course title',
-    example: 'Advanced Mathematics',
-  })
-  @IsString()
-  @IsOptional()
+  @MinLength(5, { message: 'Course title must be at least 5 characters long' })
+  @MaxLength(255, { message: 'Course title must not exceed 255 characters' })
   title?: string;
 
   @ApiPropertyOptional({
-    description: 'Course description',
-    example: 'Dive deeper into mathematics',
+    description: 'Course description update',
+    example: 'Dive deeper into advanced mathematics topics',
+    minLength: 10,
+    maxLength: 2000,
   })
-  @IsString()
+  @IsString({ message: 'Course description must be a string' })
   @IsOptional()
+  @MinLength(10, {
+    message: 'Course description must be at least 10 characters long',
+  })
+  @MaxLength(2000, {
+    message: 'Course description must not exceed 2000 characters',
+  })
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'Thumbnail URL for the course',
-    example: 'https://example.com/new-thumbnail.jpg',
+    description:
+      'Course thumbnail image update - Cloudinary asset with publicId and URL',
+    type: CloudinaryAssetDto,
+    example: {
+      publicId: 'courses/math-101/thumbnail-v2',
+      url: 'https://res.cloudinary.com/your-account/image/upload/v1234567890/courses/math-101/thumbnail-v2.jpg',
+    },
   })
-  @IsString()
+  @ValidateNested()
+  @Type(() => CloudinaryAssetDto)
   @IsOptional()
-  thumbnailUrl?: string;
+  thumbnailUrl?: CloudinaryAssetDto;
 
   @ApiPropertyOptional({
-    description: 'Whether the course is published',
-    example: false,
+    description: 'Legacy field - whether the course is published',
+    example: true,
+    deprecated: true,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'isPublished must be a boolean' })
   @IsOptional()
   isPublished?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Whether the course requires a pro subscription',
-    example: true,
+    description:
+      'Legacy field - whether the course requires a pro subscription',
+    example: false,
+    deprecated: true,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'isPro must be a boolean' })
   @IsOptional()
   isPro?: boolean;
 }

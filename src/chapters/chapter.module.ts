@@ -19,11 +19,11 @@ import { ChapterController } from './chapter.controller';
   controllers: [ChapterController],
   providers: [
     ChapterService,
+    ChapterMapper,
     {
       provide: ChapterRepositoryAbstract,
       useClass: ChapterRepository,
     },
-    ChapterMapper,
   ],
   exports: [ChapterService, ChapterRepositoryAbstract],
 })

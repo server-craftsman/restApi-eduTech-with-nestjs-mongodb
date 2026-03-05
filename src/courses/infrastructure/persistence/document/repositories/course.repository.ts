@@ -46,7 +46,6 @@ export class CourseRepository
     const createData = {
       subjectId: new Types.ObjectId(data.subjectId),
       gradeLevelId: new Types.ObjectId(data.gradeLevelId),
-      gradeLevel: data.gradeLevel,
       authorId: new Types.ObjectId(data.authorId),
       title: data.title,
       description: data.description,
@@ -69,7 +68,6 @@ export class CourseRepository
       updateData.subjectId = new Types.ObjectId(data.subjectId);
     if (data.gradeLevelId)
       updateData.gradeLevelId = new Types.ObjectId(data.gradeLevelId);
-    if (data.gradeLevel) updateData.gradeLevel = data.gradeLevel;
     if (data.authorId) updateData.authorId = new Types.ObjectId(data.authorId);
     if (data.title) updateData.title = data.title;
     if (data.description) updateData.description = data.description;

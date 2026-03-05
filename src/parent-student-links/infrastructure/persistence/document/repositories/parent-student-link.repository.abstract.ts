@@ -27,4 +27,6 @@ export abstract class ParentStudentLinkRepositoryAbstract {
   abstract findPendingByStudentId(
     studentId: string,
   ): Promise<ParentStudentLink | null>;
+  /** Returns all verified links — used by the weekly/monthly cron reporter. */
+  abstract findAllVerified(): Promise<ParentStudentLink[]>;
 }

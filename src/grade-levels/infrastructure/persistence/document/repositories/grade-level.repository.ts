@@ -63,4 +63,9 @@ export class GradeLevelRepository implements GradeLevelRepositoryAbstract {
     const doc = await this.gradeLevelModel.findOne({ value });
     return doc ? this.mapper.toDomain(doc) : null;
   }
+
+  async findByName(name: string): Promise<GradeLevel | null> {
+    const doc = await this.gradeLevelModel.findOne({ name });
+    return doc ? this.mapper.toDomain(doc) : null;
+  }
 }
