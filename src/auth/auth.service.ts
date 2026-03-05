@@ -67,7 +67,7 @@ export class AuthService {
       emailVerificationStatus: EmailVerificationStatus.Pending,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
-      // Only TEACHER requires admin approval; PARENT and STUDENT get immediate access
+      // Only TEACHER requires approval; STUDENT and PARENT get immediate access after email verification
       approvalStatus:
         effectiveRole === UserRole.Teacher
           ? ApprovalStatus.PendingApproval

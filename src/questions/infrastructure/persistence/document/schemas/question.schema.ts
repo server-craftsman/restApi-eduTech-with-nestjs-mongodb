@@ -3,6 +3,9 @@ import { HydratedDocument, Types } from 'mongoose';
 
 @Schema({ timestamps: true, collection: 'questions' })
 export class QuestionDocument {
+  @Prop({ type: Types.ObjectId, ref: 'quizzes' })
+  quizId?: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'lessons' })
   lessonId?: Types.ObjectId;
 
@@ -26,6 +29,18 @@ export class QuestionDocument {
 
   @Prop({ required: true })
   explanation!: string;
+
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
+
+  @Prop({ default: 10 })
+  points!: number;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
+  @Prop({ type: Date, default: null })
+  deletedAt?: Date | null;
 }
 
 export type QuestionDocumentType = HydratedDocument<QuestionDocument> & {

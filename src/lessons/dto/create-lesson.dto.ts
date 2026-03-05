@@ -1,67 +1,109 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsInt, Min, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  Min,
+  MaxLength,
+  MinLength,
+  IsBoolean,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { UploadUrlDto } from '../../uploads/dto';
 
+/**
+ * DTO for creating a new lesson
+ * Only TEACHER and ADMIN can create lessons
+ */
 export class CreateLessonDto {
   @ApiProperty({
-    description: 'Chapter ID this lesson belongs to',
+    description: 'Chapter ID this lesson belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Chapter ID must be a valid string' })
+  @IsNotEmpty({ message: 'Chapter ID is required' })
   chapterId!: string;
 
   @ApiProperty({
-    description: 'Lesson title',
+    description: 'Lesson title - descriptive name',
     example: 'Variables and Data Types',
+    minLength: 3,
+    maxLength: 200,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Lesson title must be a string' })
+  @IsNotEmpty({ message: 'Lesson title is required' })
+  @MinLength(3, { message: 'Lesson title must be at least 3 characters long' })
+  @MaxLength(200, { message: 'Lesson title must not exceed 200 characters' })
   title!: string;
 
   @ApiProperty({
-    description: 'Lesson description',
-    example: 'Learn about variables and basic data types',
+    description: 'Detailed description of lesson content',
+    example: 'Learn about variables and basic data types in programming',
+    minLength: 10,
+    maxLength: 1000,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Description must be a string' })
+  @IsNotEmpty({ message: 'Description is required' })
+  @MinLength(10, { message: 'Description must be at least 10 characters' })
+  @MaxLength(1000, { message: 'Description must not exceed 1000 characters' })
   description!: string;
 
   @ApiProperty({
-    description: 'Display order of the lesson',
-    example: 1,
+    description: 'Display order of the lesson within chapter (0-based index)',
+    example: 0,
+    minimum: 0,
   })
-  @IsInt()
-  @Min(0)
+  @IsInt({ message: 'Order index must be an integer' })
+  @Min(0, { message: 'Order index must be at least 0' })
   orderIndex!: number;
 
   @ApiProperty({
     description: 'Duration of the lesson in seconds',
     example: 600,
+    minimum: 1,
   })
-  @IsInt()
-  @Min(0)
+  @IsInt({ message: 'Duration must be an integer' })
+  @Min(1, { message: 'Duration must be at least 1 second' })
   durationSeconds!: number;
 
   @ApiProperty({
-    description: 'Video URL for the lesson',
-    example: 'https://example.com/video.mp4',
+    description: 'Video upload information (URL and optional file size)',
+    type: UploadUrlDto,
   })
-  @IsString()
-  @IsNotEmpty()
-  videoUrl!: string;
+  @ValidateNested()
+  @Type(() => UploadUrlDto)
+  video!: UploadUrlDto;
 
   @ApiProperty({
-    description: 'Lesson content in Markdown format',
-    example: '# Introduction\n\nThis is the lesson content...',
+    description: 'Markdown content for the lesson',
+    example:
+      '# Introduction to Variables\n\nVariables are used to store data...',
+    minLength: 1,
+    maxLength: 10000,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Content must be a string' })
+  @IsNotEmpty({ message: 'Content is required' })
+  @MinLength(1, { message: 'Content cannot be empty' })
+  @MaxLength(10000, { message: 'Content must not exceed 10000 characters' })
   contentMd!: string;
 
   @ApiProperty({
-    description: 'Whether this lesson is available as a preview',
+    description: 'Whether this lesson is a free preview',
     example: false,
+    default: false,
   })
-  @IsBoolean()
-  isPreview!: boolean;
+  @IsBoolean({ message: 'isPreview must be a boolean' })
+  @IsOptional()
+  isPreview?: boolean;
+
+  @ApiProperty({
+    description: 'Associated quiz ID (optional)',
+    example: '507f1f77bcf86cd799439022',
+    required: false,
+  })
+  @IsString({ message: 'Quiz ID must be a string' })
+  @IsOptional()
+  quizId?: string;
 }

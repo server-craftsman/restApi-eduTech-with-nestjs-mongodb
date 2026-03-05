@@ -109,7 +109,7 @@ export class LearningPathService {
             status: this.getLessonStatus(lessonProgress, prerequisiteCompleted),
             progress: lessonProgress?.progressPercent || 0,
             prerequisiteCompleted,
-            videoUrl: lesson.videoUrl,
+            videoUrl: lesson.video.url,
             quizId: lesson.quizId,
           };
 
@@ -263,11 +263,10 @@ export class LearningPathService {
   ): Promise<boolean> {
     if (!quizId) return true; // Nếu không có quiz thì coi như đã pass
 
-    const bestAttempt =
-      await this.quizAttemptService.findBestAttemptByUserAndQuiz(
-        userId,
-        quizId,
-      );
+    const bestAttempt = await this.quizAttemptService.getBestAttempt(
+      userId,
+      quizId,
+    );
     return (bestAttempt?.score || 0) >= passingScore;
   }
 }

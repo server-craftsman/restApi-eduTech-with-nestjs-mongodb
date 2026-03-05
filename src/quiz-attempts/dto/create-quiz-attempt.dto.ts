@@ -1,23 +1,19 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
-  IsBoolean,
   IsInt,
   Min,
-  IsOptional,
   IsArray,
+  ValidateNested,
+  IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class CreateQuizAttemptDto {
-  @ApiProperty({
-    description: 'User ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @IsString()
-  @IsNotEmpty()
-  userId!: string;
-
+/**
+ * Individual answer in quiz attempt DTO
+ */
+export class AnswerDto {
   @ApiProperty({
     description: 'Question ID',
     example: '507f1f77bcf86cd799439012',
@@ -26,16 +22,54 @@ export class CreateQuizAttemptDto {
   @IsNotEmpty()
   questionId!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    description: 'Selected answer(s)',
+    example: 'A',
+    type: String,
+  })
+  @IsNotEmpty()
+  selectedAnswer!: string | string[];
+
+  @ApiProperty({
+    description: 'Whether answer is correct',
+    example: true,
+  })
+  isCorrect!: boolean;
+
+  @ApiProperty({
+    description: 'Time spent on this question in milliseconds',
+    example: 5000,
+    minimum: 0,
+  })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  timeSpentMs?: number;
+}
+
+/**
+ * Create Quiz Attempt DTO
+ * Used when a student submits a quiz
+ */
+export class CreateQuizAttemptDto {
+  @ApiProperty({
     description: 'Quiz ID',
     example: '507f1f77bcf86cd799439013',
   })
   @IsString()
-  @IsOptional()
-  quizId?: string;
+  @IsNotEmpty()
+  quizId!: string;
 
-  @ApiPropertyOptional({
-    description: 'Lesson ID',
+  @ApiProperty({
+    description: 'User ID of the student',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @ApiProperty({
+    description: 'Lesson ID (optional)',
     example: '507f1f77bcf86cd799439014',
   })
   @IsString()
@@ -43,74 +77,48 @@ export class CreateQuizAttemptDto {
   lessonId?: string;
 
   @ApiProperty({
-    description: 'Whether the answer was correct',
-    example: true,
-  })
-  @IsBoolean()
-  isCorrect!: boolean;
-
-  @ApiProperty({
-    description: 'User answer',
-    example: '4',
-  })
-  @IsString()
-  @IsNotEmpty()
-  userAnswer!: string;
-
-  @ApiPropertyOptional({
-    description: 'Quiz score (0-100)',
-    example: 85,
-  })
-  @IsInt()
-  @IsOptional()
-  @Min(0)
-  score?: number;
-
-  @ApiPropertyOptional({
-    description: 'Total number of questions',
-    example: 10,
-  })
-  @IsInt()
-  @IsOptional()
-  @Min(0)
-  totalQuestions?: number;
-
-  @ApiPropertyOptional({
-    description: 'Number of correct answers',
-    example: 8,
-  })
-  @IsInt()
-  @IsOptional()
-  @Min(0)
-  correctAnswers?: number;
-
-  @ApiPropertyOptional({
-    description: 'All answers in the quiz',
-    example: [
-      { questionId: '1', selectedAnswer: 'A', isCorrect: true },
-      { questionId: '2', selectedAnswer: 'B', isCorrect: false },
-    ],
+    description: 'Array of answers for each question',
+    type: [AnswerDto],
   })
   @IsArray()
-  @IsOptional()
-  answers?: Array<{
-    questionId: string;
-    selectedAnswer: string;
-    isCorrect: boolean;
-  }>;
+  @ValidateNested({ each: true })
+  @Type(() => AnswerDto)
+  answers!: AnswerDto[];
 
   @ApiProperty({
-    description: 'Time spent on the question in milliseconds',
-    example: 5000,
+    description: 'Total time spent on quiz in milliseconds',
+    example: 600000,
+    minimum: 0,
   })
   @IsInt()
   @Min(0)
-  timeSpentMs!: number;
+  totalTimeSpentMs!: number;
 
-  @ApiPropertyOptional({
-    description: 'When the attempt was completed',
-    example: '2024-02-26T21:00:00Z',
+  @ApiProperty({
+    description: 'Score achieved (0-100)',
+    example: 85,
+    minimum: 0,
+    maximum: 100,
   })
-  @IsOptional()
-  completedAt?: Date;
+  @IsInt()
+  @Min(0)
+  score!: number;
+
+  @ApiProperty({
+    description: 'Total number of questions',
+    example: 10,
+    minimum: 1,
+  })
+  @IsInt()
+  @Min(1)
+  totalQuestions!: number;
+
+  @ApiProperty({
+    description: 'Number of correct answers',
+    example: 8,
+    minimum: 0,
+  })
+  @IsInt()
+  @Min(0)
+  correctAnswers!: number;
 }

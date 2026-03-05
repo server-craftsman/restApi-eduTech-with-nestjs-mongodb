@@ -1,45 +1,49 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsInt, Min, IsOptional } from 'class-validator';
+import { IsString, IsInt, Min, Max, IsOptional, IsEnum } from 'class-validator';
 
+/**
+ * Update Quiz Attempt DTO
+ * Used by ADMIN to update/grade quiz attempts
+ * Students cannot update their own attempts
+ */
 export class UpdateQuizAttemptDto {
   @ApiPropertyOptional({
-    description: 'User ID',
-    example: '507f1f77bcf86cd799439011',
+    description: 'Updated score (0-100)',
+    example: 90,
+    minimum: 0,
+    maximum: 100,
   })
-  @IsString()
+  @IsInt()
+  @Min(0)
+  @Max(100)
   @IsOptional()
-  userId?: string;
+  score?: number;
 
   @ApiPropertyOptional({
-    description: 'Question ID',
-    example: '507f1f77bcf86cd799439012',
-  })
-  @IsString()
-  @IsOptional()
-  questionId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether the answer was correct',
-    example: false,
-  })
-  @IsBoolean()
-  @IsOptional()
-  isCorrect?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'User answer',
-    example: '5',
-  })
-  @IsString()
-  @IsOptional()
-  userAnswer?: string;
-
-  @ApiPropertyOptional({
-    description: 'Time spent on the question in milliseconds',
-    example: 7000,
+    description: 'Updated number of correct answers',
+    example: 9,
+    minimum: 0,
   })
   @IsInt()
   @Min(0)
   @IsOptional()
-  timeSpentMs?: number;
+  correctAnswers?: number;
+
+  @ApiPropertyOptional({
+    description: 'Status of the attempt',
+    enum: ['submitted', 'graded', 'in-progress'],
+    example: 'graded',
+  })
+  @IsEnum(['submitted', 'graded', 'in-progress'])
+  @IsOptional()
+  status?: 'submitted' | 'graded' | 'in-progress';
+
+  @ApiPropertyOptional({
+    description: 'Grading notes or feedback',
+    example: 'Good effort, review question 5',
+    maxLength: 1000,
+  })
+  @IsString()
+  @IsOptional()
+  gradingNotes?: string;
 }

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { UploadUrlDto } from '../../uploads/dto';
 
 export class LessonSearchResultDto {
   @ApiProperty({
@@ -26,10 +27,10 @@ export class LessonSearchResultDto {
   description!: string;
 
   @ApiProperty({
-    description: 'Lecture video URL',
-    example: 'https://res.cloudinary.com/...',
+    description: 'Video upload information (URL and file size)',
+    type: UploadUrlDto,
   })
-  videoUrl!: string;
+  video!: UploadUrlDto;
 
   @ApiProperty({ description: 'Video duration in seconds', example: 1800 })
   durationSeconds!: number;
@@ -73,10 +74,10 @@ export class MaterialSearchResultDto {
   title!: string;
 
   @ApiProperty({
-    description: 'File download URL',
-    example: 'https://res.cloudinary.com/...pdf',
+    description: 'File upload information (URL and file size)',
+    type: UploadUrlDto,
   })
-  fileUrl!: string;
+  file!: UploadUrlDto;
 
   @ApiProperty({
     description: 'File type (pdf, docx, pptx...)',

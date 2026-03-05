@@ -1,3 +1,5 @@
+import { IUploadFile } from '../../uploads/interfaces';
+
 export interface Lesson {
   id: string;
   chapterId: string;
@@ -5,10 +7,13 @@ export interface Lesson {
   description: string;
   orderIndex: number;
   durationSeconds: number;
-  videoUrl: string;
-  quizId?: string; // Thêm để link với quiz
+  video: IUploadFile;
+  quizId?: string; // Link to quiz
   contentMd: string;
   isPreview: boolean;
+  // Soft-delete fields
+  isDeleted: boolean;
+  deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

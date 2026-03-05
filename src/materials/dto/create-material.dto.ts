@@ -1,36 +1,77 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { UploadUrlDto } from '../../uploads/dto';
 
+export enum MaterialType {
+  PDF = 'PDF',
+  DOC = 'DOC',
+  IMAGE = 'IMAGE',
+  VIDEO = 'VIDEO',
+  AUDIO = 'AUDIO',
+  PRESENTATION = 'PRESENTATION',
+  SPREADSHEET = 'SPREADSHEET',
+  ARCHIVE = 'ARCHIVE',
+  OTHER = 'OTHER',
+}
+
+/**
+ * DTO for creating a new material
+ * Only TEACHER and ADMIN can create materials
+ */
 export class CreateMaterialDto {
   @ApiProperty({
-    description: 'Lesson ID this material belongs to',
+    description: 'Lesson ID this material belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Lesson ID must be a valid string' })
+  @IsNotEmpty({ message: 'Lesson ID is required' })
   lessonId!: string;
 
   @ApiProperty({
-    description: 'Material title',
+    description: 'Material title/name',
     example: 'Course Notes PDF',
+    minLength: 3,
+    maxLength: 200,
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Title must be a string' })
+  @IsNotEmpty({ message: 'Title is required' })
+  @MinLength(3, { message: 'Title must be at least 3 characters' })
+  @MaxLength(200, { message: 'Title must not exceed 200 characters' })
   title!: string;
 
   @ApiProperty({
-    description: 'File URL for the material',
-    example: 'https://example.com/material.pdf',
+    description: 'File upload information (URL and optional file size)',
+    type: UploadUrlDto,
   })
-  @IsString()
-  @IsNotEmpty()
-  fileUrl!: string;
+  @ValidateNested()
+  @Type(() => UploadUrlDto)
+  file!: UploadUrlDto;
 
   @ApiProperty({
-    description: 'Type of the material',
-    example: 'pdf',
+    description: 'Type of material file',
+    enum: MaterialType,
+    example: MaterialType.PDF,
   })
-  @IsString()
-  @IsNotEmpty()
-  type!: string;
+  @IsEnum(MaterialType, { message: 'Type must be a valid material type' })
+  type!: MaterialType;
+
+  @ApiPropertyOptional({
+    description: 'Description of the material',
+    example: 'Comprehensive notes covering chapters 1-3',
+    minLength: 0,
+    maxLength: 500,
+  })
+  @IsString({ message: 'Description must be a string' })
+  @MaxLength(500, { message: 'Description must not exceed 500 characters' })
+  @IsOptional()
+  description?: string;
 }

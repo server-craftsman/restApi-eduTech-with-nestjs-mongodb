@@ -48,7 +48,7 @@ export class SearchService {
       chapterId: l.chapterId,
       title: l.title,
       description: l.description,
-      videoUrl: l.videoUrl,
+      video: l.video,
       durationSeconds: l.durationSeconds,
       contentMd: l.contentMd,
       isPreview: l.isPreview,
@@ -60,7 +60,7 @@ export class SearchService {
       id: m.id,
       lessonId: m.lessonId,
       title: m.title,
-      fileUrl: m.fileUrl,
+      file: m.file,
       type: m.type,
       createdAt: m.createdAt,
     }));

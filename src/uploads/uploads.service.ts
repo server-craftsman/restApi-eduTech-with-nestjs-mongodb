@@ -81,4 +81,46 @@ export class UploadsService {
       resource_type: resourceType,
     });
   }
+
+  /**
+   * Validate if a URL is valid and properly formatted
+   * @param url - URL to validate
+   * @returns true if URL is valid, false otherwise
+   */
+  isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Validate file size is within acceptable limits
+   * @param fileSize - File size in bytes
+   * @param maxSize - Maximum allowed size in bytes (default: 500MB for videos, 100MB for documents)
+   * @returns true if file size is valid
+   */
+  isValidFileSize(
+    fileSize: number,
+    maxSize: number = 500 * 1024 * 1024,
+  ): boolean {
+    return fileSize > 0 && fileSize <= maxSize;
+  }
+
+  /**
+   * Format file size for display (e.g., "2.5 MB")
+   * @param bytes - File size in bytes
+   * @returns Formatted file size string
+   */
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
 }

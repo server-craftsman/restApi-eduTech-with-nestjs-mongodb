@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, UpdateQuery } from 'mongoose';
@@ -83,28 +84,20 @@ export class QuestionRepository implements QuestionRepositoryAbstract {
       { $sample: { size: limit } },
     ]);
 
-    interface QuestionDoc {
-      _id: Types.ObjectId;
-      lessonId?: Types.ObjectId;
-      contentHtml: string;
-      type: string;
-      difficulty: string;
-      options: string[];
-      correctAnswer: string;
-      explanation?: string;
-      createdAt: Date;
-      updatedAt: Date;
-    }
-
-    return docs.map((doc: QuestionDoc) => ({
+    return docs.map((doc: any) => ({
       id: doc._id.toString(),
       lessonId: doc.lessonId?.toString(),
+      quizId: doc.quizId?.toString(),
       contentHtml: doc.contentHtml,
       type: doc.type,
       difficulty: doc.difficulty,
       options: doc.options,
       correctAnswer: doc.correctAnswer,
       explanation: doc.explanation ?? '',
+      tags: doc.tags ?? [],
+      points: doc.points ?? 10,
+      isDeleted: doc.isDeleted ?? false,
+      deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     }));

@@ -1,36 +1,60 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { MaterialType } from './create-material.dto';
+import { UploadUrlDto } from '../../uploads/dto';
 
+/**
+ * DTO for updating an existing material
+ * All fields are optional - only provided fields will be updated
+ * Only TEACHER and ADMIN can update materials
+ */
 export class UpdateMaterialDto {
-  @ApiPropertyOptional({
-    description: 'Lesson ID this material belongs to',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @IsString()
-  @IsOptional()
-  lessonId?: string;
-
   @ApiPropertyOptional({
     description: 'Material title',
     example: 'Updated Course Notes',
+    minLength: 3,
+    maxLength: 200,
   })
-  @IsString()
+  @IsString({ message: 'Title must be a string' })
+  @MinLength(3, { message: 'Title must be at least 3 characters' })
+  @MaxLength(200, { message: 'Title must not exceed 200 characters' })
   @IsOptional()
   title?: string;
 
   @ApiPropertyOptional({
-    description: 'File URL for the material',
-    example: 'https://example.com/updated-material.pdf',
+    description: 'File upload information (URL and optional file size)',
+    type: UploadUrlDto,
   })
-  @IsString()
+  @ValidateNested()
+  @Type(() => UploadUrlDto)
   @IsOptional()
-  fileUrl?: string;
+  file?: UploadUrlDto;
 
   @ApiPropertyOptional({
-    description: 'Type of the material',
-    example: 'docx',
+    description: 'Type of material file',
+    enum: MaterialType,
+    example: MaterialType.PDF,
   })
-  @IsString()
+  @IsEnum(MaterialType, { message: 'Type must be a valid material type' })
   @IsOptional()
-  type?: string;
+  type?: MaterialType;
+
+  @ApiPropertyOptional({
+    description: 'Description of the material',
+    example: 'Updated comprehensive notes',
+    minLength: 0,
+    maxLength: 500,
+  })
+  @IsString({ message: 'Description must be a string' })
+  @MaxLength(500, { message: 'Description must not exceed 500 characters' })
+  @IsOptional()
+  description?: string;
 }

@@ -60,14 +60,15 @@ export class UsersService extends BaseService {
 
   /**
    * Admin-only creation: hashes password, marks email as Verified,
-   * auto-approves Teacher/Parent, and creates the role-specific profile.
+   * auto-approves Teacher, and creates the role-specific profile.
+   * PARENT accounts do NOT require approval (same as STUDENT).
    */
   async adminCreate(dto: CreateUserDto): Promise<User> {
     const hash = await bcrypt.hash(dto.password, 10);
     const role = dto.role ?? UserRole.Student;
 
     // Admin-created accounts bypass email verification.
-    // Only TEACHER requires admin approval; PARENT and STUDENT are NotRequired.
+    // Only TEACHER requires approval; PARENT and STUDENT are NotRequired.
     const approvalStatus =
       role === UserRole.Teacher
         ? ApprovalStatus.Approved

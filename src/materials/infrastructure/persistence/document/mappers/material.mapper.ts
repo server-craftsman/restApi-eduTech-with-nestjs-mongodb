@@ -9,8 +9,16 @@ export class MaterialMapper {
       id: doc._id.toString(),
       lessonId: doc.lessonId.toString(),
       title: doc.title,
-      fileUrl: doc.fileUrl,
+      file: {
+        url: doc.file.url,
+        fileSize: doc.file.fileSize ?? undefined,
+        publicId: doc.file.publicId ?? undefined,
+      },
       type: doc.type,
+      description: doc.description,
+      downloadCount: doc.downloadCount ?? 0,
+      isDeleted: doc.isDeleted ?? false,
+      deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };

@@ -338,7 +338,7 @@ export class ParentStudentLinkService {
     // Fetch raw data
     const [allLessonProgress, allQuizAttempts] = await Promise.all([
       this.lessonProgressService.findByUserId(studentUserId),
-      this.quizAttemptService.findByUserId(studentUserId),
+      this.quizAttemptService.getUserAttempts(studentUserId),
     ]);
 
     // Filter to period
@@ -348,8 +348,8 @@ export class ParentStudentLinkService {
     });
 
     const periodQuiz = allQuizAttempts.filter((qa) => {
-      const ts = qa.completedAt
-        ? new Date(qa.completedAt)
+      const ts = qa.submittedAt
+        ? new Date(qa.submittedAt)
         : new Date(qa.createdAt);
       return ts >= periodStart && ts <= periodEnd;
     });
@@ -377,17 +377,17 @@ export class ParentStudentLinkService {
     // Build quiz summary list (most recent first, capped at 20)
     const quizAttempts: QuizAttemptSummaryDto[] = periodQuiz
       .sort((a, b) => {
-        const aTs = a.completedAt
-          ? new Date(a.completedAt).getTime()
+        const aTs = a.submittedAt
+          ? new Date(a.submittedAt).getTime()
           : new Date(a.createdAt).getTime();
-        const bTs = b.completedAt
-          ? new Date(b.completedAt).getTime()
+        const bTs = b.submittedAt
+          ? new Date(b.submittedAt).getTime()
           : new Date(b.createdAt).getTime();
         return bTs - aTs;
       })
       .slice(0, 20)
       .map((qa) => ({
-        completedAt: qa.completedAt ?? new Date(qa.createdAt),
+        completedAt: qa.submittedAt ?? new Date(qa.createdAt),
         score: qa.score ?? 0,
         totalQuestions: qa.totalQuestions ?? 0,
         correctAnswers: qa.correctAnswers ?? 0,

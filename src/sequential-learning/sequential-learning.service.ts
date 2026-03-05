@@ -90,32 +90,24 @@ export class SequentialLearningService {
     // Chấm điểm quiz
     const result = this.gradeQuiz(lesson.quizId, answers);
 
-    // Lưu kết quả
-    for (const answer of answers) {
-      const detail = result.details.find(
-        (d) => d.questionId === answer.questionId,
-      );
-      await this.quizAttemptService.create({
-        userId,
-        questionId: answer.questionId,
-        quizId: lesson.quizId,
-        lessonId,
-        isCorrect: detail?.correct || false,
-        userAnswer: answer.selectedAnswer,
-        score: result.score,
-        totalQuestions: result.totalQuestions,
-        correctAnswers: result.correctAnswers,
-        answers: answers.map((a) => ({
-          questionId: a.questionId,
-          selectedAnswer: a.selectedAnswer,
-          isCorrect:
-            result.details.find((d) => d.questionId === a.questionId)
-              ?.correct || false,
-        })),
+    // Lưu kết quả - submit the entire quiz attempt at once
+    await this.quizAttemptService.submitAttempt({
+      userId,
+      quizId: lesson.quizId,
+      lessonId,
+      answers: answers.map((a) => ({
+        questionId: a.questionId,
+        selectedAnswer: a.selectedAnswer,
+        isCorrect:
+          result.details.find((d) => d.questionId === a.questionId)?.correct ||
+          false,
         timeSpentMs: 0,
-        completedAt: new Date(),
-      });
-    }
+      })),
+      score: result.score,
+      totalQuestions: result.totalQuestions,
+      correctAnswers: result.correctAnswers,
+      totalTimeSpentMs: 0,
+    });
 
     // Cập nhật lesson progress nếu đạt điểm
     if (result.passed) {

@@ -1,0 +1,136 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+/**
+ * Answer in quiz attempt response DTO
+ */
+export class QuizAttemptAnswerDto {
+  @ApiProperty({
+    description: 'Question ID',
+    example: '507f1f77bcf86cd799439012',
+  })
+  questionId!: string;
+
+  @ApiProperty({
+    description: 'Selected answer(s)',
+    example: 'A',
+  })
+  selectedAnswer!: string | string[];
+
+  @ApiProperty({
+    description: 'Whether answer is correct',
+    example: true,
+  })
+  isCorrect!: boolean;
+
+  @ApiProperty({
+    description: 'Time spent on this question in milliseconds',
+    example: 5000,
+  })
+  timeSpentMs?: number;
+}
+
+/**
+ * Quiz Attempt response DTO
+ * Represents a student's quiz submission
+ */
+export class QuizAttemptDto {
+  @ApiProperty({
+    description: 'Quiz attempt ID',
+    example: '507f1f77bcf86cd799439001',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: 'User ID of student',
+    example: '507f1f77bcf86cd799439011',
+  })
+  userId!: string;
+
+  @ApiProperty({
+    description: 'Quiz ID',
+    example: '507f1f77bcf86cd799439013',
+  })
+  quizId!: string;
+
+  @ApiProperty({
+    description: 'Lesson ID (optional)',
+    example: '507f1f77bcf86cd799439014',
+    nullable: true,
+  })
+  lessonId?: string | null;
+
+  @ApiProperty({
+    description: 'Answers submitted',
+    type: [QuizAttemptAnswerDto],
+  })
+  answers!: QuizAttemptAnswerDto[];
+
+  @ApiProperty({
+    description: 'Score achieved (0-100)',
+    example: 85,
+  })
+  score!: number;
+
+  @ApiProperty({
+    description: 'Total questions in the quiz',
+    example: 10,
+  })
+  totalQuestions!: number;
+
+  @ApiProperty({
+    description: 'Number of correct answers',
+    example: 8,
+  })
+  correctAnswers!: number;
+
+  @ApiProperty({
+    description: 'Total time spent on quiz in milliseconds',
+    example: 600000,
+  })
+  totalTimeSpentMs!: number;
+
+  @ApiProperty({
+    description: 'Status of the attempt',
+    enum: ['submitted', 'graded', 'in-progress'],
+    example: 'graded',
+  })
+  status!: 'submitted' | 'graded' | 'in-progress';
+
+  @ApiProperty({
+    description: 'When the attempt was submitted',
+    example: '2024-02-26T21:00:00Z',
+  })
+  submittedAt!: Date;
+
+  @ApiProperty({
+    description: 'When the attempt was graded',
+    example: '2024-02-26T21:30:00Z',
+    nullable: true,
+  })
+  gradedAt?: Date | null;
+
+  @ApiProperty({
+    description: 'Soft delete flag',
+    example: false,
+  })
+  isDeleted!: boolean;
+
+  @ApiProperty({
+    description: 'When the record was soft-deleted',
+    example: null,
+    nullable: true,
+  })
+  deletedAt?: Date | null;
+
+  @ApiProperty({
+    description: 'Created timestamp',
+    example: '2024-02-26T20:50:00Z',
+  })
+  createdAt!: Date;
+
+  @ApiProperty({
+    description: 'Updated timestamp',
+    example: '2024-02-26T21:30:00Z',
+  })
+  updatedAt!: Date;
+}

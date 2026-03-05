@@ -18,14 +18,34 @@ export class LessonDocument {
   @Prop({ required: true, default: 0 })
   durationSeconds!: number;
 
-  @Prop({ required: true })
-  videoUrl!: string;
+  @Prop({
+    required: true,
+    type: {
+      url: { type: String, required: true },
+      fileSize: { type: Number, default: null },
+      publicId: { type: String, default: null },
+    },
+  })
+  video!: {
+    url: string;
+    fileSize?: number | null;
+    publicId?: string | null;
+  };
 
   @Prop({ required: true, default: '' })
   contentMd!: string;
 
   @Prop({ default: false })
   isPreview!: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'quizzes', default: null })
+  quizId?: Types.ObjectId | null;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
+  @Prop({ type: Date, default: null })
+  deletedAt?: Date | null;
 }
 
 export type LessonDocumentType = HydratedDocument<LessonDocument> & {

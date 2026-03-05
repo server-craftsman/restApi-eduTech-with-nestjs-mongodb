@@ -33,9 +33,13 @@ export class LessonRepository implements LessonRepositoryAbstract {
       description: data.description,
       orderIndex: data.orderIndex,
       durationSeconds: data.durationSeconds,
-      videoUrl: data.videoUrl,
+      video: {
+        url: data.video.url,
+        fileSize: data.video.fileSize,
+      },
       contentMd: data.contentMd,
       isPreview: data.isPreview,
+      quizId: data.quizId ? new Types.ObjectId(data.quizId) : null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -50,9 +54,15 @@ export class LessonRepository implements LessonRepositoryAbstract {
     if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
     if (data.durationSeconds !== undefined)
       updateData.durationSeconds = data.durationSeconds;
-    if (data.videoUrl) updateData.videoUrl = data.videoUrl;
+    if (data.video)
+      updateData.video = {
+        url: data.video.url,
+        fileSize: data.video.fileSize,
+      };
     if (data.contentMd !== undefined) updateData.contentMd = data.contentMd;
     if (data.isPreview !== undefined) updateData.isPreview = data.isPreview;
+    if (data.quizId !== undefined)
+      updateData.quizId = data.quizId ? new Types.ObjectId(data.quizId) : null;
 
     const doc = await this.lessonModel.findByIdAndUpdate(
       id,

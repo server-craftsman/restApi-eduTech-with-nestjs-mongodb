@@ -12,9 +12,16 @@ export class LessonMapper {
       description: doc.description,
       orderIndex: doc.orderIndex,
       durationSeconds: doc.durationSeconds,
-      videoUrl: doc.videoUrl,
+      video: {
+        url: doc.video.url,
+        fileSize: doc.video.fileSize ?? undefined,
+        publicId: doc.video.publicId ?? undefined,
+      },
       contentMd: doc.contentMd,
       isPreview: doc.isPreview,
+      quizId: doc.quizId?.toString() ?? undefined,
+      isDeleted: doc.isDeleted ?? false,
+      deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };

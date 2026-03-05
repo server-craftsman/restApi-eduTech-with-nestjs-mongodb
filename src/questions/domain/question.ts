@@ -1,12 +1,24 @@
+import { QuestionType, Difficulty } from '../../enums';
+
+/**
+ * Question domain interface
+ * Represents quiz/assessment questions
+ */
 export interface Question {
   id: string;
   lessonId?: string;
+  quizId?: string;
   contentHtml: string;
-  type: string; // QuestionType: MULTIPLE_CHOICE, FILL_IN_BLANK, TRUE_FALSE
-  difficulty: string; // Difficulty: EASY, MEDIUM, HARD
-  options: string[]; // JSON array with strings
-  correctAnswer: string;
+  type: QuestionType;
+  difficulty: Difficulty;
+  options: string[]; // JSON array of option strings
+  correctAnswer: string; // Index or value depending on question type
   explanation: string;
+  tags?: string[]; // Topic tags for filtering
+  points?: number; // Points awarded for correct answer
+  // Soft-delete fields
+  isDeleted: boolean;
+  deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

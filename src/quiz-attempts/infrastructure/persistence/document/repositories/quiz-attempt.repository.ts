@@ -10,83 +10,92 @@ import { QuizAttemptMapper } from '../mappers/quiz-attempt.mapper';
 import { QuizAttempt } from '../../../../domain/quiz-attempt';
 
 @Injectable()
-export class QuizAttemptRepository implements QuizAttemptRepositoryAbstract {
+export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
+  private readonly NOT_DELETED = { isDeleted: { $ne: true } };
+
+  private readonly model: Model<QuizAttemptDocumentType>;
+  private readonly mapper: QuizAttemptMapper;
+
   constructor(
     @InjectModel(QuizAttemptDocument.name)
-    private readonly quizAttemptModel: Model<QuizAttemptDocumentType>,
-    private readonly mapper: QuizAttemptMapper,
-  ) {}
+    model: Model<QuizAttemptDocumentType>,
+    mapper: QuizAttemptMapper,
+  ) {
+    super();
+    this.model = model;
+    this.mapper = mapper;
+  }
 
   async findById(id: string): Promise<QuizAttempt | null> {
-    const doc = await this.quizAttemptModel.findById(id);
+    const doc = await this.model.findOne({
+      _id: id,
+      ...this.NOT_DELETED,
+    });
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
   async findAll(): Promise<QuizAttempt[]> {
-    const docs = await this.quizAttemptModel.find();
+    const docs = await this.model.find(this.NOT_DELETED);
     return this.mapper.toDomainArray(docs);
   }
 
   async create(
-    data: Omit<QuizAttempt, 'id' | 'createdAt'>,
+    data: Omit<QuizAttempt, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<QuizAttempt> {
-    const createData: {
-      userId: Types.ObjectId;
-      questionId: Types.ObjectId;
-      isCorrect: boolean;
-      userAnswer?: string | number | boolean | string[];
-      score: number;
-      totalQuestions: number;
-      correctAnswers: number;
-      answers?: Array<{
-        questionId: string;
-        selectedAnswer: string | number | boolean | string[];
-        isCorrect: boolean;
-      }>;
-      timeSpentMs?: number;
-      quizId?: Types.ObjectId;
-      lessonId?: Types.ObjectId;
-      completedAt?: Date;
-    } = {
-      userId: new Types.ObjectId(data.userId),
-      questionId: new Types.ObjectId(data.questionId),
-      isCorrect: data.isCorrect,
-      userAnswer: data.userAnswer,
-      score: data.score,
-      totalQuestions: data.totalQuestions,
-      correctAnswers: data.correctAnswers,
-      answers: data.answers || [],
-      timeSpentMs: data.timeSpentMs,
-    };
-
-    if (data.quizId) {
-      createData.quizId = new Types.ObjectId(data.quizId);
-    }
-    if (data.lessonId) {
-      createData.lessonId = new Types.ObjectId(data.lessonId);
-    }
-    if (data.completedAt) {
-      createData.completedAt = data.completedAt;
-    }
-
-    const doc = await this.quizAttemptModel.create(createData);
+    const doc = await this.model.create({
+      ...this.mapper.toDocument(data),
+      isDeleted: false,
+      deletedAt: null,
+    });
     return this.mapper.toDomain(doc);
   }
 
+  async update(id: string, data: Partial<QuizAttempt>): Promise<QuizAttempt> {
+    const updated = await this.model.findOneAndUpdate(
+      { _id: id, ...this.NOT_DELETED },
+      { $set: this.mapper.toDocument(data) },
+      { new: true },
+    );
+    if (!updated) throw new Error(`Quiz attempt with id ${id} not found`);
+    return this.mapper.toDomain(updated);
+  }
+
   async delete(id: string): Promise<void> {
-    await this.quizAttemptModel.findByIdAndDelete(id);
+    await this.model.findByIdAndDelete(id);
+  }
+
+  async softDelete(id: string): Promise<void> {
+    await this.model.findOneAndUpdate(
+      { _id: id, ...this.NOT_DELETED },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      },
+    );
   }
 
   async findByUserId(userId: string): Promise<QuizAttempt[]> {
-    const docs = await this.quizAttemptModel.find({
+    const docs = await this.model.find({
       userId: new Types.ObjectId(userId),
+      ...this.NOT_DELETED,
+    });
+    return this.mapper.toDomainArray(docs);
+  }
+
+  async findByQuizId(quizId: string): Promise<QuizAttempt[]> {
+    const docs = await this.model.find({
+      quizId: new Types.ObjectId(quizId),
+      ...this.NOT_DELETED,
     });
     return this.mapper.toDomainArray(docs);
   }
 
   async findByQuestionId(questionId: string): Promise<QuizAttempt[]> {
-    const docs = await this.quizAttemptModel.find({
-      questionId: new Types.ObjectId(questionId),
+    const docs = await this.model.find({
+      'answers.questionId': questionId,
+      ...this.NOT_DELETED,
     });
     return this.mapper.toDomainArray(docs);
   }
@@ -95,9 +104,22 @@ export class QuizAttemptRepository implements QuizAttemptRepositoryAbstract {
     userId: string,
     questionId: string,
   ): Promise<QuizAttempt[]> {
-    const docs = await this.quizAttemptModel.find({
+    const docs = await this.model.find({
       userId: new Types.ObjectId(userId),
-      questionId: new Types.ObjectId(questionId),
+      'answers.questionId': questionId,
+      ...this.NOT_DELETED,
+    });
+    return this.mapper.toDomainArray(docs);
+  }
+
+  async findByUserAndQuiz(
+    userId: string,
+    quizId: string,
+  ): Promise<QuizAttempt[]> {
+    const docs = await this.model.find({
+      userId: new Types.ObjectId(userId),
+      quizId: new Types.ObjectId(quizId),
+      ...this.NOT_DELETED,
     });
     return this.mapper.toDomainArray(docs);
   }
@@ -109,10 +131,11 @@ export class QuizAttemptRepository implements QuizAttemptRepositoryAbstract {
     averageTimeSpentMs: number;
     totalTimeSpentMs: number;
   }> {
-    const stats = await this.quizAttemptModel.aggregate([
+    const stats = await this.model.aggregate([
       {
         $match: {
           userId: new Types.ObjectId(userId),
+          isDeleted: { $ne: true },
         },
       },
       {
@@ -121,11 +144,17 @@ export class QuizAttemptRepository implements QuizAttemptRepositoryAbstract {
           totalAttempts: { $sum: 1 },
           correctAttempts: {
             $sum: {
-              $cond: ['$isCorrect', 1, 0],
+              $cond: [
+                {
+                  $eq: ['$score', 100],
+                },
+                1,
+                0,
+              ],
             },
           },
-          averageTimeSpentMs: { $avg: '$timeSpentMs' },
-          totalTimeSpentMs: { $sum: '$timeSpentMs' },
+          averageTimeSpentMs: { $avg: '$totalTimeSpentMs' },
+          totalTimeSpentMs: { $sum: '$totalTimeSpentMs' },
         },
       },
     ]);
@@ -163,10 +192,11 @@ export class QuizAttemptRepository implements QuizAttemptRepositoryAbstract {
     userId: string,
     quizId: string,
   ): Promise<QuizAttempt | null> {
-    const doc = await this.quizAttemptModel
+    const doc = await this.model
       .findOne({
         userId: new Types.ObjectId(userId),
         quizId: new Types.ObjectId(quizId),
+        ...this.NOT_DELETED,
       })
       .sort({ score: -1, createdAt: -1 });
 

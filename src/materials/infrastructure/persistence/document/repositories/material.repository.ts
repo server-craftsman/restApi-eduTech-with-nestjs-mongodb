@@ -33,8 +33,13 @@ export class MaterialRepository implements MaterialRepositoryAbstract {
     const doc = await this.materialModel.create({
       lessonId: new Types.ObjectId(data.lessonId),
       title: data.title,
-      fileUrl: data.fileUrl,
+      file: {
+        url: data.file.url,
+        fileSize: data.file.fileSize,
+      },
       type: data.type,
+      description: data.description,
+      downloadCount: data.downloadCount,
     });
     return this.mapper.toDomain(doc);
   }
@@ -43,8 +48,16 @@ export class MaterialRepository implements MaterialRepositoryAbstract {
     const updateData: Record<string, unknown> = {};
     if (data.lessonId) updateData.lessonId = new Types.ObjectId(data.lessonId);
     if (data.title) updateData.title = data.title;
-    if (data.fileUrl) updateData.fileUrl = data.fileUrl;
+    if (data.file)
+      updateData.file = {
+        url: data.file.url,
+        fileSize: data.file.fileSize,
+      };
     if (data.type) updateData.type = data.type;
+    if (data.description !== undefined)
+      updateData.description = data.description;
+    if (data.downloadCount !== undefined)
+      updateData.downloadCount = data.downloadCount;
 
     const doc = await this.materialModel.findByIdAndUpdate(
       id,
