@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { GradeLevel } from '../../../../../enums';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'student_profiles' })
+@Schema({ timestamps: true, collection: CollectionName.StudentProfiles })
 export class StudentProfileDocument {
   @Prop({ required: true, type: Types.ObjectId, ref: 'users', unique: true })
   userId!: Types.ObjectId;

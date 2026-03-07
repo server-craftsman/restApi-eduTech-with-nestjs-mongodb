@@ -3,6 +3,7 @@ import { CourseService } from '../courses/course.service';
 import { LessonService } from '../lessons/lesson.service';
 import { LessonProgressService } from '../lesson-progress/lesson-progress.service';
 import { QuizAttemptService } from '../quiz-attempts/quiz-attempt.service';
+import { QuestionService } from '../questions/question.service';
 import { GradeLevel } from '../enums';
 import { LessonProgress } from '../lesson-progress/domain/lesson-progress';
 
@@ -15,7 +16,7 @@ export interface LearningPathNode {
   children?: LearningPathNode[];
   prerequisiteCompleted?: boolean;
   videoUrl?: string;
-  quizId?: string;
+  hasQuiz?: boolean;
 }
 
 export interface LessonUnlockResult {
@@ -31,6 +32,7 @@ export class LearningPathService {
     private readonly lessonService: LessonService,
     private readonly lessonProgressService: LessonProgressService,
     private readonly quizAttemptService: QuizAttemptService,
+    private readonly questionService: QuestionService,
   ) {}
 
   async getLearningPath(
@@ -110,7 +112,6 @@ export class LearningPathService {
             progress: lessonProgress?.progressPercent || 0,
             prerequisiteCompleted,
             videoUrl: lesson.video.url,
-            quizId: lesson.quizId,
           };
 
           chapterNode.children!.push(lessonNode);
@@ -147,8 +148,9 @@ export class LearningPathService {
       userId,
       previousLesson.id,
     );
-    const quizPassed = previousLesson.quizId
-      ? await this.checkQuizPassed(userId, previousLesson.quizId, 80)
+    const hasQuestions = await this.lessonHasQuestions(previousLesson.id);
+    const quizPassed = hasQuestions
+      ? await this.checkQuizPassed(userId, previousLesson.id, 80)
       : true; // If no quiz, consider it passed
 
     if (!videoCompleted) {
@@ -227,8 +229,9 @@ export class LearningPathService {
       userId,
       previousLesson.id,
     );
-    const quizPassed = previousLesson.quizId
-      ? await this.checkQuizPassed(userId, previousLesson.quizId, 80)
+    const hasQuestions = await this.lessonHasQuestions(previousLesson.id);
+    const quizPassed = hasQuestions
+      ? await this.checkQuizPassed(userId, previousLesson.id, 80)
       : true; // If no quiz, consider it passed
 
     return videoCompleted && quizPassed;
@@ -258,15 +261,18 @@ export class LearningPathService {
 
   private async checkQuizPassed(
     userId: string,
-    quizId: string,
+    lessonId: string,
     passingScore: number,
   ): Promise<boolean> {
-    if (!quizId) return true; // Nếu không có quiz thì coi như đã pass
-
     const bestAttempt = await this.quizAttemptService.getBestAttempt(
       userId,
-      quizId,
+      lessonId,
     );
     return (bestAttempt?.score || 0) >= passingScore;
+  }
+
+  private async lessonHasQuestions(lessonId: string): Promise<boolean> {
+    const questions = await this.questionService.findByLessonId(lessonId);
+    return questions.length > 0;
   }
 }

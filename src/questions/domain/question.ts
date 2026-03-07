@@ -6,8 +6,7 @@ import { QuestionType, Difficulty } from '../../enums';
  */
 export interface Question {
   id: string;
-  lessonId?: string;
-  quizId?: string;
+  lessonId: string;
   contentHtml: string;
   type: QuestionType;
   difficulty: Difficulty;

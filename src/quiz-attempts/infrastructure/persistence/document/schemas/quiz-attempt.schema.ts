@@ -1,16 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'quiz_attempts' })
-export class QuizAttemptDocument {
+@Schema({ timestamps: true, collection: CollectionName.QuizAttempts })
+export class QuizAttemptDocument extends BaseSchemaFields {
   @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
   userId!: Types.ObjectId;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'quizzes' })
-  quizId!: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'lessons' })
-  lessonId?: Types.ObjectId;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'lessons' })
+  lessonId!: Types.ObjectId;
 
   @Prop({ type: Array, default: [] })
   answers!: Array<{
@@ -41,11 +42,6 @@ export class QuizAttemptDocument {
   @Prop({ type: Date })
   gradedAt?: Date;
 
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
 }
 
 export type QuizAttemptDocumentType = HydratedDocument<QuizAttemptDocument> & {

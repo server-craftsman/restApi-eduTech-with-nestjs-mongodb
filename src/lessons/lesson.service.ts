@@ -53,7 +53,6 @@ export class LessonService {
       },
       contentMd: dto.contentMd,
       isPreview: dto.isPreview ?? false,
-      quizId: dto.quizId,
       isDeleted: false,
       deletedAt: null,
     };
@@ -125,7 +124,6 @@ export class LessonService {
       };
     if (dto.contentMd !== undefined) updateData.contentMd = dto.contentMd;
     if (dto.isPreview !== undefined) updateData.isPreview = dto.isPreview;
-    if (dto.quizId !== undefined) updateData.quizId = dto.quizId;
 
     const updated = await this.lessonRepository.update(id, updateData);
     if (!updated) {
@@ -144,7 +142,7 @@ export class LessonService {
     if (!lesson) {
       throw new NotFoundException(`Lesson with ID ${id} not found`);
     }
-    await this.lessonRepository.delete(id);
+    await this.lessonRepository.softDelete(id);
   }
 
   /**

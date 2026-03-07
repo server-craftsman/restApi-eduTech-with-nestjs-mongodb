@@ -7,7 +7,7 @@ export abstract class LessonRepositoryAbstract {
     data: Omit<Lesson, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Lesson>;
   abstract update(id: string, data: Partial<Lesson>): Promise<Lesson | null>;
-  abstract delete(id: string): Promise<void>;
+  abstract softDelete(id: string): Promise<void>;
   abstract findByChapterId(chapterId: string): Promise<Lesson[]>;
   abstract findByChapterIdOrdered(chapterId: string): Promise<Lesson[]>;
   abstract findByCourseId(courseId: string): Promise<Lesson[]>;

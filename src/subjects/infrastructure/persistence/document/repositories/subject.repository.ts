@@ -9,9 +9,7 @@ import { SubjectRepositoryAbstract } from './subject.repository.abstract';
 import { SubjectMapper } from '../mappers/subject.mapper';
 import { Subject } from '../../../../domain/subject';
 import { BaseRepositoryImpl } from '../../../../../core/base/base.repository.impl';
-
-// Sentinel applied to all queries to exclude soft-deleted records
-const NOT_DELETED = { isDeleted: { $ne: true } };
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
 export class SubjectRepository

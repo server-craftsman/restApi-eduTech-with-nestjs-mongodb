@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -11,9 +11,10 @@ import {
 import { Type } from 'class-transformer';
 
 /**
- * Individual answer in quiz attempt DTO
+ * Individual answer submitted by the student.
+ * isCorrect is NOT accepted — computed server-side.
  */
-export class AnswerDto {
+export class SubmitAnswerDto {
   @ApiProperty({
     description: 'Question ID',
     example: '507f1f77bcf86cd799439012',
@@ -23,20 +24,13 @@ export class AnswerDto {
   questionId!: string;
 
   @ApiProperty({
-    description: 'Selected answer(s)',
-    example: 'A',
-    type: String,
+    description: 'Selected answer (text or value)',
+    example: 'Paris',
   })
   @IsNotEmpty()
   selectedAnswer!: string | string[];
 
-  @ApiProperty({
-    description: 'Whether answer is correct',
-    example: true,
-  })
-  isCorrect!: boolean;
-
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Time spent on this question in milliseconds',
     example: 5000,
     minimum: 0,
@@ -49,41 +43,27 @@ export class AnswerDto {
 
 /**
  * Create Quiz Attempt DTO
- * Used when a student submits a quiz
+ * Used when a student submits quiz answers for a lesson.
+ * score, correctAnswers, totalQuestions, isCorrect are computed server-side.
+ * userId is extracted from JWT token — NOT accepted in the body.
  */
 export class CreateQuizAttemptDto {
   @ApiProperty({
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
-  })
-  @IsString()
-  @IsNotEmpty()
-  quizId!: string;
-
-  @ApiProperty({
-    description: 'User ID of the student',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @IsString()
-  @IsNotEmpty()
-  userId!: string;
-
-  @ApiProperty({
-    description: 'Lesson ID (optional)',
+    description: 'Lesson ID the quiz belongs to',
     example: '507f1f77bcf86cd799439014',
   })
   @IsString()
-  @IsOptional()
-  lessonId?: string;
+  @IsNotEmpty()
+  lessonId!: string;
 
   @ApiProperty({
-    description: 'Array of answers for each question',
-    type: [AnswerDto],
+    description: 'Array of student answers for each question',
+    type: [SubmitAnswerDto],
   })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => AnswerDto)
-  answers!: AnswerDto[];
+  @Type(() => SubmitAnswerDto)
+  answers!: SubmitAnswerDto[];
 
   @ApiProperty({
     description: 'Total time spent on quiz in milliseconds',
@@ -93,32 +73,4 @@ export class CreateQuizAttemptDto {
   @IsInt()
   @Min(0)
   totalTimeSpentMs!: number;
-
-  @ApiProperty({
-    description: 'Score achieved (0-100)',
-    example: 85,
-    minimum: 0,
-    maximum: 100,
-  })
-  @IsInt()
-  @Min(0)
-  score!: number;
-
-  @ApiProperty({
-    description: 'Total number of questions',
-    example: 10,
-    minimum: 1,
-  })
-  @IsInt()
-  @Min(1)
-  totalQuestions!: number;
-
-  @ApiProperty({
-    description: 'Number of correct answers',
-    example: 8,
-    minimum: 0,
-  })
-  @IsInt()
-  @Min(0)
-  correctAnswers!: number;
 }

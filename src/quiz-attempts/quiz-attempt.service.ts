@@ -4,49 +4,89 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { QuizAttemptRepositoryAbstract } from './infrastructure/persistence/document/repositories/quiz-attempt.repository.abstract';
-import { QuizAttempt } from './domain/quiz-attempt';
+import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
+import { QuizAttempt, QuestionAnswer } from './domain/quiz-attempt';
 import { CreateQuizAttemptDto, UpdateQuizAttemptDto } from './dto';
+import { Question } from '../questions/domain/question';
+import { QuestionType } from '../enums';
 
 @Injectable()
 export class QuizAttemptService {
   constructor(
     private readonly quizAttemptRepository: QuizAttemptRepositoryAbstract,
+    private readonly questionRepository: QuestionRepositoryAbstract,
   ) {}
 
   /**
-   * Submit a quiz attempt
-   * Records student's quiz submission with answers and score
+   * Submit a quiz attempt — grades server-side.
+   * userId comes from JWT (passed by controller), NOT from request body.
+   * score, correctAnswers, totalQuestions, isCorrect are all computed here.
    */
-  async submitAttempt(dto: CreateQuizAttemptDto): Promise<QuizAttempt> {
-    if (!dto.quizId || !dto.userId) {
-      throw new BadRequestException('Quiz ID and User ID are required');
-    }
-
+  async submitAttempt(
+    userId: string,
+    dto: CreateQuizAttemptDto,
+  ): Promise<QuizAttempt> {
     if (!dto.answers || dto.answers.length === 0) {
       throw new BadRequestException('At least one answer is required');
     }
 
-    if (dto.score < 0 || dto.score > 100) {
-      throw new BadRequestException('Score must be between 0 and 100');
-    }
-
-    if (dto.correctAnswers < 0 || dto.correctAnswers > dto.totalQuestions) {
-      throw new BadRequestException(
-        'Correct answers cannot exceed total questions',
+    // Fetch all questions for this lesson
+    const questions =
+      await this.questionRepository.findByLessonId(dto.lessonId);
+    if (questions.length === 0) {
+      throw new NotFoundException(
+        `No questions found for lesson ${dto.lessonId}`,
       );
     }
 
-    const attemptData = {
-      userId: dto.userId.trim(),
-      quizId: dto.quizId.trim(),
-      lessonId: dto.lessonId ? dto.lessonId.trim() : undefined,
-      answers: dto.answers,
-      score: dto.score,
-      totalQuestions: dto.totalQuestions,
-      correctAnswers: dto.correctAnswers,
+    // Build a lookup map: questionId → Question
+    const questionMap = new Map<string, Question>();
+    for (const q of questions) {
+      questionMap.set(q.id, q);
+    }
+
+    // Grade each answer server-side
+    let correctCount = 0;
+    const gradedAnswers: QuestionAnswer[] = dto.answers.map((ans) => {
+      const question = questionMap.get(ans.questionId);
+      if (!question) {
+        // Question not found — treat as incorrect
+        return {
+          questionId: ans.questionId,
+          selectedAnswer: ans.selectedAnswer,
+          isCorrect: false,
+          timeSpentMs: ans.timeSpentMs,
+        };
+      }
+
+      const isCorrect = this.checkAnswer(question, ans.selectedAnswer);
+      if (isCorrect) correctCount++;
+
+      return {
+        questionId: ans.questionId,
+        selectedAnswer: ans.selectedAnswer,
+        isCorrect,
+        timeSpentMs: ans.timeSpentMs,
+      };
+    });
+
+    const totalQuestions = questions.length;
+    const score =
+      totalQuestions > 0
+        ? Math.round((correctCount / totalQuestions) * 100)
+        : 0;
+
+    const attemptData: Omit<QuizAttempt, 'id' | 'createdAt' | 'updatedAt'> = {
+      userId,
+      lessonId: dto.lessonId,
+      answers: gradedAnswers,
+      score,
+      totalQuestions,
+      correctAnswers: correctCount,
       totalTimeSpentMs: dto.totalTimeSpentMs,
-      status: 'graded' as const,
+      status: 'graded',
       submittedAt: new Date(),
+      gradedAt: new Date(),
       isDeleted: false,
       deletedAt: null,
     };
@@ -82,13 +122,13 @@ export class QuizAttemptService {
   }
 
   /**
-   * Get quiz attempts for a specific quiz
+   * Get quiz attempts for a specific lesson
    */
-  async getQuizAttempts(quizId: string): Promise<QuizAttempt[]> {
-    if (!quizId) {
-      throw new BadRequestException('Quiz ID is required');
+  async getLessonAttempts(lessonId: string): Promise<QuizAttempt[]> {
+    if (!lessonId) {
+      throw new BadRequestException('Lesson ID is required');
     }
-    return this.quizAttemptRepository.findByQuizId(quizId.trim());
+    return this.quizAttemptRepository.findByLessonId(lessonId.trim());
   }
 
   /**
@@ -141,58 +181,37 @@ export class QuizAttemptService {
   }
 
   /**
-   * Calculate score for quiz attempt
-   * Compares submitted answers with correct answers
-   */
-  calculateScore(answers: Array<{ isCorrect: boolean }>): number {
-    if (!answers || answers.length === 0) {
-      return 0;
-    }
-    const correctCount = answers.filter((a) => a.isCorrect).length;
-    return Math.round((correctCount / answers.length) * 100);
-  }
-
-  /**
-   * Get best attempt by user for a quiz
+   * Get best attempt by user for a lesson
    */
   async getBestAttempt(
     userId: string,
-    quizId: string,
+    lessonId: string,
   ): Promise<QuizAttempt | null> {
-    if (!userId || !quizId) {
-      throw new BadRequestException('User ID and Quiz ID are required');
+    if (!userId || !lessonId) {
+      throw new BadRequestException('User ID and Lesson ID are required');
     }
-    const attempts = await this.quizAttemptRepository.findByUserAndQuiz(
+    return this.quizAttemptRepository.findBestAttemptByUserAndLesson(
       userId.trim(),
-      quizId.trim(),
-    );
-
-    if (!attempts || attempts.length === 0) {
-      return null;
-    }
-
-    // Sort by score descending and return highest scoring attempt
-    return attempts.reduce((best, current) =>
-      current.score > best.score ? current : best,
+      lessonId.trim(),
     );
   }
 
   /**
-   * Get quiz statistics (aggregate data)
+   * Get lesson quiz statistics (aggregate data)
    */
-  async getQuizStatistics(quizId: string): Promise<{
+  async getLessonStatistics(lessonId: string): Promise<{
     totalAttempts: number;
     averageScore: number;
     highestScore: number;
     lowestScore: number;
     passRate: number;
   }> {
-    if (!quizId) {
-      throw new BadRequestException('Quiz ID is required');
+    if (!lessonId) {
+      throw new BadRequestException('Lesson ID is required');
     }
 
-    const attempts = await this.quizAttemptRepository.findByQuizId(
-      quizId.trim(),
+    const attempts = await this.quizAttemptRepository.findByLessonId(
+      lessonId.trim(),
     );
 
     if (attempts.length === 0) {
@@ -262,36 +281,36 @@ export class QuizAttemptService {
   }
 
   /**
-   * Check if user can retry quiz
+   * Check if user can retry lesson quiz
    */
   async canRetry(
     userId: string,
-    quizId: string,
+    lessonId: string,
     maxAttempts: number = 3,
   ): Promise<boolean> {
-    if (!userId || !quizId) {
-      throw new BadRequestException('User ID and Quiz ID are required');
+    if (!userId || !lessonId) {
+      throw new BadRequestException('User ID and Lesson ID are required');
     }
 
-    const attempts = await this.quizAttemptRepository.findByUserAndQuiz(
+    const attempts = await this.quizAttemptRepository.findByUserAndLesson(
       userId.trim(),
-      quizId.trim(),
+      lessonId.trim(),
     );
 
     return attempts.length < maxAttempts;
   }
 
   /**
-   * Get attempt count for user in a quiz
+   * Get attempt count for user in a lesson
    */
-  async getAttemptCount(userId: string, quizId: string): Promise<number> {
-    if (!userId || !quizId) {
-      throw new BadRequestException('User ID and Quiz ID are required');
+  async getAttemptCount(userId: string, lessonId: string): Promise<number> {
+    if (!userId || !lessonId) {
+      throw new BadRequestException('User ID and Lesson ID are required');
     }
 
-    const attempts = await this.quizAttemptRepository.findByUserAndQuiz(
+    const attempts = await this.quizAttemptRepository.findByUserAndLesson(
       userId.trim(),
-      quizId.trim(),
+      lessonId.trim(),
     );
 
     return attempts.length;
@@ -309,27 +328,31 @@ export class QuizAttemptService {
   }
 
   /**
-   * Legacy method for backward compatibility
+   * Check a single answer against the question's correct answer
    */
-  async recordAttempt(
-    data: Omit<QuizAttempt, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<QuizAttempt> {
-    return this.quizAttemptRepository.create(data);
-  }
+  private checkAnswer(
+    question: Question,
+    selectedAnswer: string | string[],
+  ): boolean {
+    const selected = Array.isArray(selectedAnswer)
+      ? selectedAnswer[0]
+      : selectedAnswer;
 
-  /**
-   * Legacy method for backward compatibility
-   */
-  async findByUserAndQuestion(
-    userId: string,
-    questionId: string,
-  ): Promise<QuizAttempt[]> {
-    if (!userId || !questionId) {
-      throw new BadRequestException('User ID and Question ID are required');
+    if (!selected) return false;
+
+    switch (question.type) {
+      case QuestionType.FillInBlank:
+        // Case-insensitive, trimmed comparison
+        return (
+          selected.trim().toLowerCase() ===
+          question.correctAnswer.trim().toLowerCase()
+        );
+
+      case QuestionType.MultipleChoice:
+      case QuestionType.TrueFalse:
+      default:
+        // Exact match against stored correct answer
+        return selected === question.correctAnswer;
     }
-    return this.quizAttemptRepository.findByUserAndQuestion(
-      userId.trim(),
-      questionId.trim(),
-    );
   }
 }

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { LessonProgressService } from '../lesson-progress/lesson-progress.service';
 import { QuizAttemptService } from '../quiz-attempts/quiz-attempt.service';
 import { LessonService } from '../lessons/lesson.service';
+import { QuestionService } from '../questions/question.service';
 
 export interface VideoTrackingDto {
   lessonId: string;
@@ -37,15 +38,18 @@ export class SequentialLearningService {
     private readonly lessonProgressService: LessonProgressService,
     private readonly quizAttemptService: QuizAttemptService,
     private readonly lessonService: LessonService,
+    private readonly questionService: QuestionService,
   ) {}
 
+  /**
+   * Track video watching progress for a lesson
+   */
   async trackVideoProgress(
     userId: string,
     trackingData: VideoTrackingDto,
   ): Promise<void> {
     const { lessonId, currentTime, duration, completed } = trackingData;
 
-    // Cập nhật progress của lesson
     const progressPercent = Math.round((currentTime / duration) * 100);
 
     await this.lessonProgressService.updateProgressByUserAndLesson(
@@ -61,6 +65,9 @@ export class SequentialLearningService {
     );
   }
 
+  /**
+   * Check if user has watched the video and can access the quiz
+   */
   async canAccessQuiz(userId: string, lessonId: string): Promise<boolean> {
     const progress = await this.lessonProgressService.findByUserAndLesson(
       userId,
@@ -69,102 +76,89 @@ export class SequentialLearningService {
     return progress?.videoWatched || false;
   }
 
+  /**
+   * Submit quiz answers for a lesson.
+   * Grading is handled server-side by QuizAttemptService.
+   */
   async submitQuiz(
     userId: string,
     quizData: QuizSubmissionDto,
   ): Promise<QuizResult> {
     const { lessonId, answers } = quizData;
 
-    // Kiểm tra xem đã xem video chưa
+    // Check if user has watched the video first
     const canAccess = await this.canAccessQuiz(userId, lessonId);
     if (!canAccess) {
-      throw new Error('Bạn cần xem xong video trước khi làm bài tập');
+      throw new BadRequestException(
+        'You must watch the video before taking the quiz',
+      );
     }
 
-    // Lấy lesson để có quiz info
+    // Verify the lesson exists
     const lesson = await this.lessonService.findById(lessonId);
-    if (!lesson?.quizId) {
-      throw new Error('Bài học này không có bài tập');
+    if (!lesson) {
+      throw new BadRequestException('Lesson not found');
     }
 
-    // Chấm điểm quiz
-    const result = this.gradeQuiz(lesson.quizId, answers);
+    // Verify the lesson has questions
+    const questions = await this.questionService.findByLessonId(lessonId);
+    if (!questions || questions.length === 0) {
+      throw new BadRequestException('This lesson has no quiz questions');
+    }
 
-    // Lưu kết quả - submit the entire quiz attempt at once
-    await this.quizAttemptService.submitAttempt({
-      userId,
-      quizId: lesson.quizId,
+    // Submit the attempt — QuizAttemptService handles server-side grading
+    const attempt = await this.quizAttemptService.submitAttempt(userId, {
       lessonId,
       answers: answers.map((a) => ({
         questionId: a.questionId,
         selectedAnswer: a.selectedAnswer,
-        isCorrect:
-          result.details.find((d) => d.questionId === a.questionId)?.correct ||
-          false,
-        timeSpentMs: 0,
       })),
-      score: result.score,
-      totalQuestions: result.totalQuestions,
-      correctAnswers: result.correctAnswers,
       totalTimeSpentMs: 0,
     });
 
-    // Cập nhật lesson progress nếu đạt điểm
-    if (result.passed) {
+    // Build a QuizResult from the graded attempt
+    const passed = attempt.score >= 80;
+
+    // Build detail mappings from the graded attempt answers
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const details = attempt.answers.map((a) => {
+      const question = questionMap.get(a.questionId);
+      const selected = Array.isArray(a.selectedAnswer)
+        ? a.selectedAnswer.join(', ')
+        : a.selectedAnswer;
+      return {
+        questionId: a.questionId,
+        correct: a.isCorrect,
+        selectedAnswer: selected,
+        correctAnswer: question?.correctAnswer ?? '',
+      };
+    });
+
+    // Update lesson progress if the quiz is passed
+    if (passed) {
       await this.lessonProgressService.updateProgressByUserAndLesson(
         userId,
         lessonId,
         {
           quizCompleted: true,
-          quizScore: result.score,
-          progressPercent: 100, // Hoàn thành 100% khi pass quiz
+          quizScore: attempt.score,
+          progressPercent: 100,
         },
       );
     }
 
-    return result;
-  }
-
-  private gradeQuiz(
-    quizId: string,
-    answers: Array<{ questionId: string; selectedAnswer: string }>,
-  ): QuizResult {
-    // TODO: Implement actual quiz grading logic
-    // Tạm thời mock data để test
-    const totalQuestions = answers.length;
-    let correctAnswers = 0;
-    const details: Array<{
-      questionId: string;
-      correct: boolean;
-      selectedAnswer: string;
-      correctAnswer: string;
-    }> = [];
-
-    for (const answer of answers) {
-      // Mock logic: giả sử đáp án đúng là 'A' cho tất cả câu
-      const correct = answer.selectedAnswer === 'A';
-      if (correct) correctAnswers++;
-
-      details.push({
-        questionId: answer.questionId,
-        correct,
-        selectedAnswer: answer.selectedAnswer,
-        correctAnswer: 'A', // Mock correct answer
-      });
-    }
-
-    const score = Math.round((correctAnswers / totalQuestions) * 100);
-    const passed = score >= 80;
-
     return {
-      score,
-      totalQuestions,
-      correctAnswers,
+      score: attempt.score,
+      totalQuestions: attempt.totalQuestions,
+      correctAnswers: attempt.correctAnswers,
       passed,
       details,
     };
   }
 
+  /**
+   * Get comprehensive lesson status including video and quiz progress
+   */
   async getLessonStatus(
     userId: string,
     lessonId: string,

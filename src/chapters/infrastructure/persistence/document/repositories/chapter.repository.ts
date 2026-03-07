@@ -12,8 +12,7 @@ import {
   FilterChapterDto,
   SortChapterDto,
 } from '../../../../dto/query-chapter.dto';
-
-const NOT_DELETED = { isDeleted: { $ne: true } };
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
 export class ChapterRepository extends ChapterRepositoryAbstract {

@@ -47,17 +47,10 @@ export class QuizAttemptDto {
   userId!: string;
 
   @ApiProperty({
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
-  })
-  quizId!: string;
-
-  @ApiProperty({
-    description: 'Lesson ID (optional)',
+    description: 'Lesson ID',
     example: '507f1f77bcf86cd799439014',
-    nullable: true,
   })
-  lessonId?: string | null;
+  lessonId!: string;
 
   @ApiProperty({
     description: 'Answers submitted',

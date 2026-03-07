@@ -10,3 +10,4 @@ export * from './course-status.enum';
 export * from './approval-status.enum';
 export * from './teacher-education-level.enum';
 export * from './parent-relationship.enum';
+export * from './ai-training-status.enum';

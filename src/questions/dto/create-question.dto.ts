@@ -18,21 +18,13 @@ import { QuestionType, Difficulty } from '../../enums';
  * Only TEACHER and ADMIN can create questions
  */
 export class CreateQuestionDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Lesson ID this question belongs to',
     example: '507f1f77bcf86cd799439011',
   })
   @IsString({ message: 'Lesson ID must be a string' })
-  @IsOptional()
-  lessonId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Quiz ID this question belongs to',
-    example: '507f1f77bcf86cd799439021',
-  })
-  @IsString({ message: 'Quiz ID must be a string' })
-  @IsOptional()
-  quizId?: string;
+  @IsNotEmpty({ message: 'Lesson ID is required' })
+  lessonId!: string;
 
   @ApiProperty({
     description: 'Question content in HTML format',

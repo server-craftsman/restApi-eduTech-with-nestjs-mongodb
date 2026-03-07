@@ -89,13 +89,4 @@ export class CreateLessonDto {
   @IsBoolean({ message: 'isPreview must be a boolean' })
   @IsOptional()
   isPreview?: boolean;
-
-  @ApiProperty({
-    description: 'Associated quiz ID (optional)',
-    example: '507f1f77bcf86cd799439022',
-    required: false,
-  })
-  @IsString({ message: 'Quiz ID must be a string' })
-  @IsOptional()
-  quizId?: string;
 }

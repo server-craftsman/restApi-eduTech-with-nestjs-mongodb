@@ -7,7 +7,6 @@ export interface Lesson {
   description: string;
   orderIndex: number;
   video: IUploadFile; // includes durationSeconds for video files
-  quizId?: string; // Link to quiz
   contentMd: string;
   isPreview: boolean;
   // Soft-delete fields

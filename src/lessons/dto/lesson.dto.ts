@@ -55,13 +55,6 @@ export class LessonDto {
   isPreview!: boolean;
 
   @ApiProperty({
-    description: 'Associated quiz ID (if any)',
-    example: '507f1f77bcf86cd799439022',
-    nullable: true,
-  })
-  quizId?: string | null;
-
-  @ApiProperty({
     description: 'Soft-delete flag',
     example: false,
   })

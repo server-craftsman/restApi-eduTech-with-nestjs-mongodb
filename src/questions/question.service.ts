@@ -6,7 +6,7 @@ import {
 import { QuestionRepositoryAbstract } from './infrastructure/persistence/document/repositories/question.repository.abstract';
 import { Question } from './domain/question';
 import { CreateQuestionDto, UpdateQuestionDto } from './dto';
-import { Difficulty } from '../enums';
+import { Difficulty, QuestionType } from '../enums';
 
 /**
  * Service for managing questions
@@ -24,26 +24,16 @@ export class QuestionService {
    * @returns Created question
    */
   async createQuestion(dto: CreateQuestionDto): Promise<Question> {
-    // Validate constraints
     if (dto.contentHtml.trim().length < 5) {
       throw new BadRequestException(
         'Content must be at least 5 characters long',
       );
     }
 
-    if (!dto.options || dto.options.length < 2) {
-      throw new BadRequestException('Question must have at least 2 options');
-    }
-
-    if (!dto.options.includes(dto.correctAnswer)) {
-      throw new BadRequestException(
-        'Correct answer must be one of the provided options',
-      );
-    }
+    this.validateQuestionData(dto.type, dto.options, dto.correctAnswer);
 
     const questionData: Omit<Question, 'id' | 'createdAt' | 'updatedAt'> = {
       lessonId: dto.lessonId,
-      quizId: dto.quizId,
       contentHtml: dto.contentHtml.trim(),
       type: dto.type,
       difficulty: dto.difficulty,
@@ -51,7 +41,7 @@ export class QuestionService {
       correctAnswer: dto.correctAnswer,
       explanation: dto.explanation.trim(),
       tags: dto.tags,
-      points: dto.points || 10,
+      points: dto.points ?? 10,
       isDeleted: false,
       deletedAt: null,
     };
@@ -89,15 +79,11 @@ export class QuestionService {
     }
 
     // Validate constraints if updating answer-related fields
-    if (dto.options || dto.correctAnswer) {
-      const options = dto.options || question.options;
-      const correctAnswer = dto.correctAnswer || question.correctAnswer;
-
-      if (!options.includes(correctAnswer)) {
-        throw new BadRequestException(
-          'Correct answer must be one of the provided options',
-        );
-      }
+    if (dto.options !== undefined || dto.correctAnswer !== undefined) {
+      const type = dto.type ?? question.type;
+      const options = dto.options ?? question.options;
+      const correctAnswer = dto.correctAnswer ?? question.correctAnswer;
+      this.validateQuestionData(type, options, correctAnswer);
     }
 
     const updateData: Partial<Question> = {};
@@ -127,7 +113,7 @@ export class QuestionService {
     if (!question) {
       throw new NotFoundException(`Question with ID ${id} not found`);
     }
-    await this.questionRepository.delete(id);
+    await this.questionRepository.softDelete(id);
   }
 
   /**
@@ -145,9 +131,7 @@ export class QuestionService {
    * @returns Array of questions
    */
   async findByDifficulty(difficulty: Difficulty): Promise<Question[]> {
-    return this.questionRepository.findByDifficulty(
-      difficulty as unknown as string,
-    );
+    return this.questionRepository.findByDifficulty(difficulty);
   }
 
   /**
@@ -165,8 +149,7 @@ export class QuestionService {
    * @returns Array of questions with that tag
    */
   async findByTag(tag: string): Promise<Question[]> {
-    const allQuestions = await this.getAllQuestions();
-    return allQuestions.filter((q) => q.tags?.includes(tag));
+    return this.questionRepository.findByTag(tag);
   }
 
   /**
@@ -180,7 +163,6 @@ export class QuestionService {
     limit: number = 5,
   ): Promise<Question[]> {
     const questions = await this.findByDifficulty(difficulty);
-    // Shuffle and return limited results
     return questions.sort(() => Math.random() - 0.5).slice(0, limit);
   }
 
@@ -192,5 +174,59 @@ export class QuestionService {
   async exists(id: string): Promise<boolean> {
     const question = await this.questionRepository.findById(id);
     return !!question;
+  }
+
+  /**
+   * Validate question options and correct answer based on type
+   */
+  private validateQuestionData(
+    type: QuestionType,
+    options: string[],
+    correctAnswer: string,
+  ): void {
+    switch (type) {
+      case QuestionType.MultipleChoice:
+        if (!options || options.length < 2) {
+          throw new BadRequestException(
+            'Multiple choice questions must have at least 2 options',
+          );
+        }
+        if (!options.includes(correctAnswer)) {
+          throw new BadRequestException(
+            'Correct answer must be one of the provided options',
+          );
+        }
+        break;
+
+      case QuestionType.TrueFalse:
+        if (
+          !options ||
+          options.length !== 2 ||
+          !options.includes('True') ||
+          !options.includes('False')
+        ) {
+          throw new BadRequestException(
+            'True/False questions must have exactly ["True", "False"] options',
+          );
+        }
+        if (correctAnswer !== 'True' && correctAnswer !== 'False') {
+          throw new BadRequestException(
+            'Correct answer must be "True" or "False"',
+          );
+        }
+        break;
+
+      case QuestionType.FillInBlank:
+        // Fill-in-blank: options array can be empty; correctAnswer is the expected text
+        if (!correctAnswer || correctAnswer.trim().length === 0) {
+          throw new BadRequestException(
+            'Fill-in-blank questions must have a non-empty correct answer',
+          );
+        }
+        break;
+
+      default:
+        throw new BadRequestException(`Unknown question type: ${String(type)}`);
+    }
   }
 }

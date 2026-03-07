@@ -14,8 +14,7 @@ export class QuizAttemptMapper {
     return {
       id: doc._id.toString(),
       userId: doc.userId.toString(),
-      quizId: doc.quizId?.toString() || '',
-      lessonId: doc.lessonId?.toString(),
+      lessonId: doc.lessonId.toString(),
       answers: doc.answers ?? [],
       score: doc.score ?? 0,
       totalQuestions: doc.totalQuestions ?? 0,
@@ -37,8 +36,6 @@ export class QuizAttemptMapper {
 
   toDocument(attempt: Partial<QuizAttempt>): Partial<QuizAttemptDocument> {
     const doc: Record<string, unknown> = {};
-
-    if (attempt.quizId !== undefined) doc.quizId = attempt.quizId;
 
     if (attempt.lessonId !== undefined) doc.lessonId = attempt.lessonId;
 

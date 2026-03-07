@@ -5,9 +5,13 @@ import {
   EmailVerificationStatus,
   ApprovalStatus,
 } from '../../../../../enums';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'users' })
-export class UserDocument {
+@Schema({ timestamps: true, collection: CollectionName.Users })
+export class UserDocument extends BaseSchemaFields {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email!: string;
 
@@ -58,11 +62,6 @@ export class UserDocument {
   @Prop({ type: String, default: null })
   approvalReviewedBy?: string | null;
 
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
 }
 
 export type UserDocumentType = HydratedDocument<UserDocument> & {

@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'grade_levels' })
+@Schema({ timestamps: true, collection: CollectionName.GradeLevels })
 export class GradeLevelDocument {
   @Prop({ required: true, unique: true })
   name!: string;

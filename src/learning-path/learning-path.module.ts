@@ -5,6 +5,7 @@ import { CourseModule } from '../courses/course.module';
 import { LessonModule } from '../lessons/lesson.module';
 import { LessonProgressModule } from '../lesson-progress/lesson-progress.module';
 import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
+import { QuestionModule } from '../questions/question.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
     LessonModule,
     LessonProgressModule,
     QuizAttemptModule,
+    QuestionModule,
   ],
   controllers: [LearningPathController],
   providers: [LearningPathService],

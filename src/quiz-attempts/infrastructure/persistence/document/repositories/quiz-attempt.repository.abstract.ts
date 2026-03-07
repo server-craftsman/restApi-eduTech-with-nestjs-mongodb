@@ -7,22 +7,21 @@ export abstract class QuizAttemptRepositoryAbstract {
     data: Omit<QuizAttempt, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<QuizAttempt>;
   abstract update(id: string, data: Partial<QuizAttempt>): Promise<QuizAttempt>;
-  abstract delete(id: string): Promise<void>;
   abstract softDelete(id: string): Promise<void>;
   abstract findByUserId(userId: string): Promise<QuizAttempt[]>;
-  abstract findByQuizId(quizId: string): Promise<QuizAttempt[]>;
+  abstract findByLessonId(lessonId: string): Promise<QuizAttempt[]>;
   abstract findByQuestionId(questionId: string): Promise<QuizAttempt[]>;
   abstract findByUserAndQuestion(
     userId: string,
     questionId: string,
   ): Promise<QuizAttempt[]>;
-  abstract findByUserAndQuiz(
+  abstract findByUserAndLesson(
     userId: string,
-    quizId: string,
+    lessonId: string,
   ): Promise<QuizAttempt[]>;
-  abstract findBestAttemptByUserAndQuiz(
+  abstract findBestAttemptByUserAndLesson(
     userId: string,
-    quizId: string,
+    lessonId: string,
   ): Promise<QuizAttempt | null>;
   abstract getAttemptStats(userId: string): Promise<{
     totalAttempts: number;

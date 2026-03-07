@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ParentRelationship } from '../../../../../enums';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'parent_profiles' })
+@Schema({ timestamps: true, collection: CollectionName.ParentProfiles })
 export class ParentProfileDocument {
   @Prop({ required: true, type: Types.ObjectId, ref: 'users', unique: true })
   userId!: Types.ObjectId;

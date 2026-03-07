@@ -1,33 +1,46 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, UpdateQuery } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { LessonDocument, LessonDocumentType } from '../schemas/lesson.schema';
 import { LessonRepositoryAbstract } from './lesson.repository.abstract';
 import { LessonMapper } from '../mappers/lesson.mapper';
 import { Lesson } from '../../../../domain/lesson';
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
-export class LessonRepository implements LessonRepositoryAbstract {
+export class LessonRepository extends LessonRepositoryAbstract {
+  private readonly model: Model<LessonDocumentType>;
+  private readonly mapper: LessonMapper;
+
   constructor(
     @InjectModel(LessonDocument.name)
-    private readonly lessonModel: Model<LessonDocumentType>,
-    private readonly mapper: LessonMapper,
-  ) {}
+    model: Model<LessonDocumentType>,
+    mapper: LessonMapper,
+  ) {
+    super();
+    this.model = model;
+    this.mapper = mapper;
+  }
 
   async findById(id: string): Promise<Lesson | null> {
-    const doc = await this.lessonModel.findById(id);
+    const doc = await this.model
+      .findOne({ _id: id, ...NOT_DELETED })
+      .exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
   async findAll(): Promise<Lesson[]> {
-    const docs = await this.lessonModel.find().sort({ orderIndex: 1 });
+    const docs = await this.model
+      .find(NOT_DELETED)
+      .sort({ orderIndex: 1 })
+      .exec();
     return this.mapper.toDomainArray(docs);
   }
 
   async create(
     data: Omit<Lesson, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Lesson> {
-    const doc = await this.lessonModel.create({
+    const doc = await this.model.create({
       chapterId: new Types.ObjectId(data.chapterId),
       title: data.title,
       description: data.description,
@@ -35,72 +48,77 @@ export class LessonRepository implements LessonRepositoryAbstract {
       video: {
         url: data.video.url,
         fileSize: data.video.fileSize,
+        publicId: data.video.publicId,
         durationSeconds: data.video.durationSeconds,
       },
       contentMd: data.contentMd,
       isPreview: data.isPreview,
-      quizId: data.quizId ? new Types.ObjectId(data.quizId) : null,
+      isDeleted: false,
+      deletedAt: null,
     });
     return this.mapper.toDomain(doc);
   }
 
   async update(id: string, data: Partial<Lesson>): Promise<Lesson | null> {
     const updateData: Record<string, unknown> = {};
-    if (data.chapterId)
+    if (data.chapterId !== undefined)
       updateData.chapterId = new Types.ObjectId(data.chapterId);
-    if (data.title) updateData.title = data.title;
+    if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined)
       updateData.description = data.description;
     if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
-    if (data.video)
+    if (data.video !== undefined)
       updateData.video = {
         url: data.video.url,
         fileSize: data.video.fileSize,
+        publicId: data.video.publicId,
         durationSeconds: data.video.durationSeconds,
       };
     if (data.contentMd !== undefined) updateData.contentMd = data.contentMd;
     if (data.isPreview !== undefined) updateData.isPreview = data.isPreview;
-    if (data.quizId !== undefined)
-      updateData.quizId = data.quizId ? new Types.ObjectId(data.quizId) : null;
 
-    const doc = await this.lessonModel.findByIdAndUpdate(
-      id,
-      updateData as UpdateQuery<LessonDocumentType>,
-      {
-        new: true,
-      },
-    );
+    const doc = await this.model
+      .findOneAndUpdate(
+        { _id: id, ...NOT_DELETED },
+        { $set: updateData },
+        { new: true },
+      )
+      .exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
-  async delete(id: string): Promise<void> {
-    await this.lessonModel.findByIdAndDelete(id);
+  async softDelete(id: string): Promise<void> {
+    await this.model
+      .findOneAndUpdate(
+        { _id: id, ...NOT_DELETED },
+        { $set: { isDeleted: true, deletedAt: new Date() } },
+      )
+      .exec();
   }
 
   async findByChapterId(chapterId: string): Promise<Lesson[]> {
-    const docs = await this.lessonModel
+    const docs = await this.model
       .find({
         chapterId: new Types.ObjectId(chapterId),
+        ...NOT_DELETED,
       })
-      .sort({ orderIndex: 1 });
+      .sort({ orderIndex: 1 })
+      .exec();
     return this.mapper.toDomainArray(docs);
   }
 
   async findByChapterIdOrdered(chapterId: string): Promise<Lesson[]> {
-    const docs = await this.lessonModel
-      .find({
-        chapterId: new Types.ObjectId(chapterId),
-      })
-      .sort({ orderIndex: 1 });
-    return this.mapper.toDomainArray(docs);
+    return this.findByChapterId(chapterId);
   }
 
   async findByCourseId(courseId: string): Promise<Lesson[]> {
-    const docs = await this.lessonModel
+    const docs = await this.model
       .find({
         courseId: new Types.ObjectId(courseId),
+        ...NOT_DELETED,
       })
-      .sort({ orderIndex: 1 });
+      .sort({ orderIndex: 1 })
+      .exec();
     return this.mapper.toDomainArray(docs);
   }
 
@@ -112,16 +130,17 @@ export class LessonRepository implements LessonRepositoryAbstract {
     const regex = { $regex: keyword, $options: 'i' };
     const query = {
       $or: [{ title: regex }, { description: regex }, { contentMd: regex }],
+      ...NOT_DELETED,
     };
     const offset = (page - 1) * limit;
     const [docs, total] = await Promise.all([
-      this.lessonModel
+      this.model
         .find(query)
         .skip(offset)
         .limit(limit)
         .sort({ orderIndex: 1 })
         .exec(),
-      this.lessonModel.countDocuments(query).exec(),
+      this.model.countDocuments(query).exec(),
     ]);
     return [this.mapper.toDomainArray(docs), total];
   }
@@ -132,12 +151,14 @@ export class LessonRepository implements LessonRepositoryAbstract {
       return null;
     }
 
-    const doc = await this.lessonModel
+    const doc = await this.model
       .findOne({
         chapterId: new Types.ObjectId(currentLesson.chapterId),
         orderIndex: { $lt: currentLesson.orderIndex || 0 },
+        ...NOT_DELETED,
       })
-      .sort({ orderIndex: -1 });
+      .sort({ orderIndex: -1 })
+      .exec();
 
     return doc ? this.mapper.toDomain(doc) : null;
   }

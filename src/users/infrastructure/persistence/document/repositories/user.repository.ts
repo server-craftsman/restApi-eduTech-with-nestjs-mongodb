@@ -11,9 +11,7 @@ import {
   ApprovalStatus,
 } from '../../../../../enums';
 import { FilterUserDto, SortUserDto } from '../../../../dto/query-user.dto';
-
-/** Sentinel filter applied to every query — never return soft-deleted records unless explicitly requested. */
-const NOT_DELETED = { isDeleted: { $ne: true } };
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
 export class UserRepository extends UserRepositoryAbstract {

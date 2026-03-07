@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
   Controller,
   Get,
@@ -31,9 +30,13 @@ import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
 import { UserRole } from '../enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../users/domain/user';
 
 @ApiTags('Quiz Attempts')
 @Controller('quiz-attempts')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 @ApiResponse({
   status: 401,
   description: 'Unauthorized - Invalid or missing JWT token',
@@ -48,21 +51,18 @@ export class QuizAttemptController extends BaseController {
   }
 
   /**
-   * Submit a quiz attempt
-   * Students submit their quiz answers
+   * Submit a quiz attempt — server grades the answers automatically
    */
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Submit a quiz attempt',
+    summary: 'Submit a quiz attempt (server-side grading)',
     description:
-      'Record a student quiz submission with answers and calculated score',
+      'Submit quiz answers for a lesson. The server fetches the correct answers and grades automatically. userId is extracted from JWT token.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Quiz attempt submitted successfully',
+    description: 'Quiz attempt submitted and graded successfully',
     type: QuizAttemptDto,
   })
   @ApiResponse({
@@ -71,13 +71,14 @@ export class QuizAttemptController extends BaseController {
   })
   async submitAttempt(
     @Body() dto: CreateQuizAttemptDto,
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<Response> {
-    const attempt = await this.quizAttemptService.submitAttempt(dto);
+    const attempt = await this.quizAttemptService.submitAttempt(user.id, dto);
     return this.sendSuccess(
       res,
       attempt,
-      'Quiz attempt submitted successfully',
+      'Quiz attempt submitted and graded successfully',
       HttpStatus.CREATED,
     );
   }
@@ -86,9 +87,7 @@ export class QuizAttemptController extends BaseController {
    * Get all quiz attempts (ADMIN only)
    */
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get all quiz attempts (ADMIN only)',
     description: 'Retrieve all quiz attempts in the system',
@@ -104,17 +103,35 @@ export class QuizAttemptController extends BaseController {
   }
 
   /**
+   * Get current user's own attempts
+   */
+  @Get('my-attempts')
+  @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
+  @ApiOperation({
+    summary: "Get current user's quiz attempts",
+    description: 'Retrieve all quiz attempts for the authenticated user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Attempts retrieved successfully',
+    type: [QuizAttemptDto],
+  })
+  async getMyAttempts(
+    @CurrentUser() user: User,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const attempts = await this.quizAttemptService.getUserAttempts(user.id);
+    return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
+  }
+
+  /**
    * Get attempt by ID
-   * Student can view their own, ADMIN can view any
    */
   @Get('id/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get quiz attempt by ID',
-    description:
-      'Retrieve a specific quiz attempt. Students can only view their own attempts',
+    description: 'Retrieve a specific quiz attempt by its ID',
   })
   @ApiParam({
     name: 'id',
@@ -144,15 +161,12 @@ export class QuizAttemptController extends BaseController {
   }
 
   /**
-   * Get user's quiz attempts
-   * Student can view own, ADMIN can view any
+   * Get user's quiz attempts (ADMIN can view any user)
    */
   @Get('user/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
+  @Roles(UserRole.Admin)
   @ApiOperation({
-    summary: "Get user's quiz attempts",
+    summary: "Get a user's quiz attempts (ADMIN only)",
     description: 'Retrieve all quiz attempts for a specific user',
   })
   @ApiParam({
@@ -174,55 +188,46 @@ export class QuizAttemptController extends BaseController {
   }
 
   /**
-   * Get all attempts for a specific quiz (ADMIN/TEACHER)
+   * Get all attempts for a specific lesson (ADMIN/TEACHER)
    */
-  @Get('quiz/:quizId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('lesson/:lessonId')
   @Roles(UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get all attempts for a quiz (ADMIN/TEACHER only)',
-    description: 'Retrieve all student attempts for a specific quiz',
+    summary: 'Get all attempts for a lesson quiz (ADMIN/TEACHER only)',
+    description: 'Retrieve all student attempts for a specific lesson',
   })
   @ApiParam({
-    name: 'quizId',
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
+    name: 'lessonId',
+    description: 'Lesson ID',
+    example: '507f1f77bcf86cd799439014',
   })
   @ApiResponse({
     status: 200,
     description: 'Attempts retrieved successfully',
     type: [QuizAttemptDto],
   })
-  async getQuizAttempts(
-    @Param('quizId') quizId: string,
+  async getLessonAttempts(
+    @Param('lessonId') lessonId: string,
     @Res() res: Response,
   ): Promise<Response> {
-    const attempts = await this.quizAttemptService.getQuizAttempts(quizId);
+    const attempts = await this.quizAttemptService.getLessonAttempts(lessonId);
     return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
   }
 
   /**
-   * Get user's best attempt for a quiz
+   * Get current user's best attempt for a lesson
    */
-  @Get('best/user/:userId/quiz/:quizId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('best/lesson/:lessonId')
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: "Get user's best attempt for a quiz",
+    summary: "Get current user's best attempt for a lesson quiz",
     description:
-      'Retrieve the highest scoring attempt for a user in a specific quiz',
+      'Retrieve the highest scoring attempt for the authenticated user in a specific lesson',
   })
   @ApiParam({
-    name: 'userId',
-    description: 'User ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiParam({
-    name: 'quizId',
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
+    name: 'lessonId',
+    description: 'Lesson ID',
+    example: '507f1f77bcf86cd799439014',
   })
   @ApiResponse({
     status: 200,
@@ -231,22 +236,22 @@ export class QuizAttemptController extends BaseController {
   })
   @ApiResponse({
     status: 404,
-    description: 'No attempts found for this user and quiz',
+    description: 'No attempts found for this lesson',
   })
   async getBestAttempt(
-    @Param('userId') userId: string,
-    @Param('quizId') quizId: string,
+    @Param('lessonId') lessonId: string,
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<Response> {
     const bestAttempt = await this.quizAttemptService.getBestAttempt(
-      userId,
-      quizId,
+      user.id,
+      lessonId,
     );
     if (!bestAttempt) {
       return this.sendError(
         res,
         'No attempts found',
-        'User has not attempted this quiz',
+        'You have not attempted this lesson quiz',
         HttpStatus.NOT_FOUND,
       );
     }
@@ -258,102 +263,67 @@ export class QuizAttemptController extends BaseController {
   }
 
   /**
-   * Get user's statistics
+   * Get current user's statistics
    */
-  @Get('stats/user/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('stats/me')
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: "Get user's quiz statistics",
-    description: 'Retrieve aggregate statistics for a user',
-  })
-  @ApiParam({
-    name: 'userId',
-    description: 'User ID',
-    example: '507f1f77bcf86cd799439011',
+    summary: "Get current user's quiz statistics",
+    description: 'Retrieve aggregate statistics for the authenticated user',
   })
   @ApiResponse({
     status: 200,
     description: 'Statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        totalAttempts: { type: 'number', example: 5 },
-        completedAttempts: { type: 'number', example: 5 },
-        averageScore: { type: 'number', example: 78 },
-        bestScore: { type: 'number', example: 92 },
-        totalTimeSpentMs: { type: 'number', example: 450000 },
-      },
-    },
   })
-  async getUserStatistics(
-    @Param('userId') userId: string,
+  async getMyStatistics(
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<Response> {
-    const stats = await this.quizAttemptService.getUserStatistics(userId);
+    const stats = await this.quizAttemptService.getUserStatistics(user.id);
     return this.sendSuccess(res, stats, 'Statistics retrieved successfully');
   }
 
   /**
-   * Get quiz statistics (ADMIN/TEACHER)
+   * Get lesson quiz statistics (ADMIN/TEACHER)
    */
-  @Get('stats/quiz/:quizId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('stats/lesson/:lessonId')
   @Roles(UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get quiz statistics (ADMIN/TEACHER only)',
+    summary: 'Get lesson quiz statistics (ADMIN/TEACHER only)',
     description:
-      'Retrieve aggregate statistics for all attempts in a quiz (average score, pass rate, etc.)',
+      'Retrieve aggregate statistics for all attempts in a lesson quiz',
   })
   @ApiParam({
-    name: 'quizId',
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
+    name: 'lessonId',
+    description: 'Lesson ID',
+    example: '507f1f77bcf86cd799439014',
   })
   @ApiResponse({
     status: 200,
     description: 'Statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        totalAttempts: { type: 'number', example: 32 },
-        averageScore: { type: 'number', example: 72 },
-        highestScore: { type: 'number', example: 100 },
-        lowestScore: { type: 'number', example: 25 },
-        passRate: { type: 'number', example: 78 },
-      },
-    },
   })
-  async getQuizStatistics(
-    @Param('quizId') quizId: string,
+  async getLessonStatistics(
+    @Param('lessonId') lessonId: string,
     @Res() res: Response,
   ): Promise<Response> {
-    const stats = await this.quizAttemptService.getQuizStatistics(quizId);
+    const stats = await this.quizAttemptService.getLessonStatistics(lessonId);
     return this.sendSuccess(res, stats, 'Statistics retrieved successfully');
   }
 
   /**
-   * Check if user can retry quiz
+   * Check if current user can retry lesson quiz
    */
-  @Get('can-retry/user/:userId/quiz/:quizId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('can-retry/lesson/:lessonId')
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Check if user can retry quiz',
-    description: 'Determine if a user has remaining attempts for a quiz',
+    summary: 'Check if current user can retry lesson quiz',
+    description:
+      'Determine if the authenticated user has remaining attempts for a lesson quiz',
   })
   @ApiParam({
-    name: 'userId',
-    description: 'User ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiParam({
-    name: 'quizId',
-    description: 'Quiz ID',
-    example: '507f1f77bcf86cd799439013',
+    name: 'lessonId',
+    description: 'Lesson ID',
+    example: '507f1f77bcf86cd799439014',
   })
   @ApiQuery({
     name: 'maxAttempts',
@@ -365,35 +335,26 @@ export class QuizAttemptController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Retry eligibility checked',
-    schema: {
-      type: 'object',
-      properties: {
-        canRetry: { type: 'boolean', example: true },
-        attemptCount: { type: 'number', example: 2 },
-        maxAttempts: { type: 'number', example: 3 },
-        remainingAttempts: { type: 'number', example: 1 },
-      },
-    },
   })
   async canRetry(
-    @Param('userId') userId: string,
-    @Param('quizId') quizId: string,
-    @Query('maxAttempts') maxAttempts?: string,
-    @Res() res?: Response,
+    @Param('lessonId') lessonId: string,
+    @CurrentUser() user: User,
+    @Query('maxAttempts') maxAttempts: string | undefined,
+    @Res() res: Response,
   ): Promise<Response> {
     const max = maxAttempts ? parseInt(maxAttempts) : 3;
     const canRetry = await this.quizAttemptService.canRetry(
-      userId,
-      quizId,
+      user.id,
+      lessonId,
       max,
     );
     const attemptCount = await this.quizAttemptService.getAttemptCount(
-      userId,
-      quizId,
+      user.id,
+      lessonId,
     );
 
     return this.sendSuccess(
-      res as any,
+      res,
       {
         canRetry,
         attemptCount,
@@ -406,16 +367,12 @@ export class QuizAttemptController extends BaseController {
 
   /**
    * Update attempt (ADMIN only)
-   * Used for re-grading or correcting scores
    */
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update quiz attempt (ADMIN only)',
-    description:
-      'Update attempt score, status, or other details. Only administrators can update attempts',
+    description: 'Update attempt score, status, or other details',
   })
   @ApiParam({
     name: 'id',
@@ -426,10 +383,6 @@ export class QuizAttemptController extends BaseController {
     status: 200,
     description: 'Attempt updated successfully',
     type: QuizAttemptDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request - Invalid update data',
   })
   @ApiResponse({ status: 404, description: 'Attempt not found' })
   async updateAttempt(
@@ -445,13 +398,10 @@ export class QuizAttemptController extends BaseController {
    * Delete quiz attempt (ADMIN only)
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Admin)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Delete quiz attempt (ADMIN only)',
-    description:
-      'Soft-delete a quiz attempt. Only administrators can delete attempts',
+    description: 'Soft-delete a quiz attempt',
   })
   @ApiParam({
     name: 'id',

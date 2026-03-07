@@ -1,5 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
 /** Stored type for the iconUrl nested object */
 export interface SubjectIconType {
@@ -7,8 +11,8 @@ export interface SubjectIconType {
   url: string;
 }
 
-@Schema({ timestamps: true, collection: 'subjects' })
-export class SubjectDocument {
+@Schema({ timestamps: true, collection: CollectionName.Subjects })
+export class SubjectDocument extends BaseSchemaFields {
   @Prop({ required: true, unique: true, trim: true })
   name!: string;
 
@@ -26,12 +30,6 @@ export class SubjectDocument {
   })
   iconUrl!: SubjectIconType;
 
-  // ── Soft-delete fields ──────────────────────────────────────────
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
 }
 
 export type SubjectDocumentType = HydratedDocument<SubjectDocument> & {

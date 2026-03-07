@@ -1,9 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { CourseStatus, CourseType } from '../../../../../enums';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'courses' })
-export class CourseDocument {
+@Schema({ timestamps: true, collection: CollectionName.Courses })
+export class CourseDocument extends BaseSchemaFields {
   @Prop({ required: true, type: Types.ObjectId, ref: 'subjects' })
   subjectId!: Types.ObjectId;
 
@@ -43,12 +47,6 @@ export class CourseDocument {
   @Prop({ type: String, default: null })
   approvalNote?: string | null;
 
-  // Soft Delete Fields
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt!: Date | null;
 }
 
 export type CourseDocumentType = HydratedDocument<CourseDocument> & {

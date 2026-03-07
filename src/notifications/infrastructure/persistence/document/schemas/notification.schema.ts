@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'notifications' })
+@Schema({ timestamps: true, collection: CollectionName.Notifications })
 export class NotificationDocument {
   @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
   userId!: Types.ObjectId;

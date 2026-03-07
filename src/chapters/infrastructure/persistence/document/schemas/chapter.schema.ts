@@ -1,8 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'chapters' })
-export class ChapterDocument {
+@Schema({ timestamps: true, collection: CollectionName.Chapters })
+export class ChapterDocument extends BaseSchemaFields {
   @Prop({ required: true, type: Types.ObjectId, ref: 'courses' })
   courseId!: Types.ObjectId;
 
@@ -18,11 +22,6 @@ export class ChapterDocument {
   @Prop({ default: false })
   isPublished!: boolean;
 
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
 }
 
 export type ChapterDocumentType = HydratedDocument<ChapterDocument> & {

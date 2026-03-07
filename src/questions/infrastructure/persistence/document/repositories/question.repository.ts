@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, UpdateQuery } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   QuestionDocument,
   QuestionDocumentType,
@@ -9,97 +8,114 @@ import {
 import { QuestionRepositoryAbstract } from './question.repository.abstract';
 import { QuestionMapper } from '../mappers/question.mapper';
 import { Question } from '../../../../domain/question';
+import { Difficulty } from '../../../../../enums';
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
-export class QuestionRepository implements QuestionRepositoryAbstract {
+export class QuestionRepository extends QuestionRepositoryAbstract {
+  private readonly model: Model<QuestionDocumentType>;
+  private readonly mapper: QuestionMapper;
+
   constructor(
     @InjectModel(QuestionDocument.name)
-    private readonly questionModel: Model<QuestionDocumentType>,
-    private readonly mapper: QuestionMapper,
-  ) {}
+    model: Model<QuestionDocumentType>,
+    mapper: QuestionMapper,
+  ) {
+    super();
+    this.model = model;
+    this.mapper = mapper;
+  }
 
   async findById(id: string): Promise<Question | null> {
-    const doc = await this.questionModel.findById(id);
+    const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
   async findAll(): Promise<Question[]> {
-    const docs = await this.questionModel.find();
+    const docs = await this.model.find(NOT_DELETED).exec();
     return this.mapper.toDomainArray(docs);
   }
 
   async create(
     data: Omit<Question, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Question> {
-    const doc = await this.questionModel.create({
-      lessonId: data.lessonId ? new Types.ObjectId(data.lessonId) : undefined,
+    const doc = await this.model.create({
+      lessonId: new Types.ObjectId(data.lessonId),
       contentHtml: data.contentHtml,
       type: data.type,
       difficulty: data.difficulty,
       options: data.options,
       correctAnswer: data.correctAnswer,
       explanation: data.explanation,
+      tags: data.tags ?? [],
+      points: data.points ?? 10,
+      isDeleted: false,
+      deletedAt: null,
     });
     return this.mapper.toDomain(doc);
   }
 
   async update(id: string, data: Partial<Question>): Promise<Question | null> {
-    const updateData: Record<string, unknown> = {};
-    if (data.lessonId) updateData.lessonId = new Types.ObjectId(data.lessonId);
-    if (data.contentHtml) updateData.contentHtml = data.contentHtml;
-    if (data.type) updateData.type = data.type;
-    if (data.difficulty) updateData.difficulty = data.difficulty;
-    if (data.options) updateData.options = data.options;
-    if (data.correctAnswer) updateData.correctAnswer = data.correctAnswer;
-    if (data.explanation) updateData.explanation = data.explanation;
+    const updateData = this.mapper.toDocument(data);
 
-    const doc = await this.questionModel.findByIdAndUpdate(
-      id,
-      updateData as UpdateQuery<QuestionDocumentType>,
-      {
-        new: true,
-      },
-    );
+    // Convert lessonId string to ObjectId if provided
+    if (data.lessonId !== undefined) {
+      (updateData as Record<string, unknown>).lessonId = new Types.ObjectId(
+        data.lessonId,
+      );
+    }
+
+    const doc = await this.model
+      .findOneAndUpdate(
+        { _id: id, ...NOT_DELETED },
+        { $set: updateData },
+        { new: true },
+      )
+      .exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
-  async delete(id: string): Promise<void> {
-    await this.questionModel.findByIdAndDelete(id);
+  async softDelete(id: string): Promise<void> {
+    await this.model
+      .findOneAndUpdate(
+        { _id: id, ...NOT_DELETED },
+        { $set: { isDeleted: true, deletedAt: new Date() } },
+      )
+      .exec();
   }
 
   async findByLessonId(lessonId: string): Promise<Question[]> {
-    const docs = await this.questionModel.find({
-      lessonId: new Types.ObjectId(lessonId),
-    });
+    const docs = await this.model
+      .find({
+        lessonId: new Types.ObjectId(lessonId),
+        ...NOT_DELETED,
+      })
+      .exec();
     return this.mapper.toDomainArray(docs);
   }
 
-  async findByDifficulty(difficulty: string): Promise<Question[]> {
-    const docs = await this.questionModel.find({ difficulty });
+  async findByDifficulty(difficulty: Difficulty): Promise<Question[]> {
+    const docs = await this.model
+      .find({ difficulty, ...NOT_DELETED })
+      .exec();
+    return this.mapper.toDomainArray(docs);
+  }
+
+  async findByTag(tag: string): Promise<Question[]> {
+    const docs = await this.model
+      .find({ tags: tag, ...NOT_DELETED })
+      .exec();
     return this.mapper.toDomainArray(docs);
   }
 
   async getRandomQuestion(limit: number = 1): Promise<Question[]> {
-    const docs = await this.questionModel.aggregate([
+    const docs = await this.model.aggregate<QuestionDocumentType>([
+      { $match: { isDeleted: { $ne: true } } },
       { $sample: { size: limit } },
     ]);
 
-    return docs.map((doc: any) => ({
-      id: doc._id.toString(),
-      lessonId: doc.lessonId?.toString(),
-      quizId: doc.quizId?.toString(),
-      contentHtml: doc.contentHtml,
-      type: doc.type,
-      difficulty: doc.difficulty,
-      options: doc.options,
-      correctAnswer: doc.correctAnswer,
-      explanation: doc.explanation ?? '',
-      tags: doc.tags ?? [],
-      points: doc.points ?? 10,
-      isDeleted: doc.isDeleted ?? false,
-      deletedAt: doc.deletedAt ?? null,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-    }));
+    return docs.map((doc) =>
+      this.mapper.toDomain(doc as unknown as QuestionDocumentType),
+    );
   }
 }

@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { UserRole } from '../../../../../enums';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'roles' })
+@Schema({ timestamps: true, collection: CollectionName.Roles })
 export class RoleDocument {
   @Prop({ required: true, enum: UserRole, unique: true })
   name!: UserRole;

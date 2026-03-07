@@ -19,7 +19,6 @@ export class LessonMapper {
       },
       contentMd: doc.contentMd,
       isPreview: doc.isPreview,
-      quizId: doc.quizId?.toString() ?? undefined,
       isDeleted: doc.isDeleted ?? false,
       deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,

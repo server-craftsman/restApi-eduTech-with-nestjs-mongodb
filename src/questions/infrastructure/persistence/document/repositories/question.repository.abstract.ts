@@ -1,4 +1,5 @@
 import { Question } from '../../../../domain/question';
+import { Difficulty } from '../../../../../enums';
 
 export abstract class QuestionRepositoryAbstract {
   abstract findById(id: string): Promise<Question | null>;
@@ -10,8 +11,9 @@ export abstract class QuestionRepositoryAbstract {
     id: string,
     data: Partial<Question>,
   ): Promise<Question | null>;
-  abstract delete(id: string): Promise<void>;
+  abstract softDelete(id: string): Promise<void>;
   abstract findByLessonId(lessonId: string): Promise<Question[]>;
-  abstract findByDifficulty(difficulty: string): Promise<Question[]>;
+  abstract findByDifficulty(difficulty: Difficulty): Promise<Question[]>;
+  abstract findByTag(tag: string): Promise<Question[]>;
   abstract getRandomQuestion(limit?: number): Promise<Question[]>;
 }

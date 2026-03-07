@@ -60,10 +60,6 @@ export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
     return this.mapper.toDomain(updated);
   }
 
-  async delete(id: string): Promise<void> {
-    await this.model.findByIdAndDelete(id);
-  }
-
   async softDelete(id: string): Promise<void> {
     await this.model.findOneAndUpdate(
       { _id: id, ...this.NOT_DELETED },
@@ -84,9 +80,9 @@ export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
     return this.mapper.toDomainArray(docs);
   }
 
-  async findByQuizId(quizId: string): Promise<QuizAttempt[]> {
+  async findByLessonId(lessonId: string): Promise<QuizAttempt[]> {
     const docs = await this.model.find({
-      quizId: new Types.ObjectId(quizId),
+      lessonId: new Types.ObjectId(lessonId),
       ...this.NOT_DELETED,
     });
     return this.mapper.toDomainArray(docs);
@@ -112,13 +108,13 @@ export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
     return this.mapper.toDomainArray(docs);
   }
 
-  async findByUserAndQuiz(
+  async findByUserAndLesson(
     userId: string,
-    quizId: string,
+    lessonId: string,
   ): Promise<QuizAttempt[]> {
     const docs = await this.model.find({
       userId: new Types.ObjectId(userId),
-      quizId: new Types.ObjectId(quizId),
+      lessonId: new Types.ObjectId(lessonId),
       ...this.NOT_DELETED,
     });
     return this.mapper.toDomainArray(docs);
@@ -188,14 +184,14 @@ export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
         };
   }
 
-  async findBestAttemptByUserAndQuiz(
+  async findBestAttemptByUserAndLesson(
     userId: string,
-    quizId: string,
+    lessonId: string,
   ): Promise<QuizAttempt | null> {
     const doc = await this.model
       .findOne({
         userId: new Types.ObjectId(userId),
-        quizId: new Types.ObjectId(quizId),
+        lessonId: new Types.ObjectId(lessonId),
         ...this.NOT_DELETED,
       })
       .sort({ score: -1, createdAt: -1 });

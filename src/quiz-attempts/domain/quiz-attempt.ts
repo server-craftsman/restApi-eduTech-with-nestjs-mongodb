@@ -15,8 +15,7 @@ export interface QuestionAnswer {
 export interface QuizAttempt {
   id: string;
   userId: string;
-  quizId: string;
-  lessonId?: string;
+  lessonId: string;
   /** Array of answers for each question in the quiz */
   answers: QuestionAnswer[];
   /** Percentage score (0-100) */

@@ -4,9 +4,15 @@ import { SequentialLearningService } from './sequential-learning.service';
 import { LessonProgressModule } from '../lesson-progress/lesson-progress.module';
 import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
 import { LessonModule } from '../lessons/lesson.module';
+import { QuestionModule } from '../questions/question.module';
 
 @Module({
-  imports: [LessonProgressModule, QuizAttemptModule, LessonModule],
+  imports: [
+    LessonProgressModule,
+    QuizAttemptModule,
+    LessonModule,
+    QuestionModule,
+  ],
   controllers: [SequentialLearningController],
   providers: [SequentialLearningService],
   exports: [SequentialLearningService],

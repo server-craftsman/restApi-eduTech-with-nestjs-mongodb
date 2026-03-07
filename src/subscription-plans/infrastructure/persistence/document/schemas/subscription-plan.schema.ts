@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'subscription_plans' })
+@Schema({ timestamps: true, collection: CollectionName.SubscriptionPlans })
 export class SubscriptionPlanDocument {
   @Prop({ required: true, unique: true })
   name!: string;

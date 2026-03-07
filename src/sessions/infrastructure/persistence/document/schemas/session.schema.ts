@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'sessions' })
+@Schema({ timestamps: true, collection: CollectionName.Sessions })
 export class SessionDocument {
   @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
   userId!: Types.ObjectId;

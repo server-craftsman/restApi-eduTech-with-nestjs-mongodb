@@ -1,8 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import {
+  BaseSchemaFields,
+  CollectionName,
+} from '../../../../../core/constants';
 
-@Schema({ timestamps: true, collection: 'lessons' })
-export class LessonDocument {
+@Schema({ timestamps: true, collection: CollectionName.Lessons })
+export class LessonDocument extends BaseSchemaFields {
   @Prop({ required: true, type: Types.ObjectId, ref: 'chapters' })
   chapterId!: Types.ObjectId;
 
@@ -37,14 +41,6 @@ export class LessonDocument {
   @Prop({ default: false })
   isPreview!: boolean;
 
-  @Prop({ type: Types.ObjectId, ref: 'quizzes', default: null })
-  quizId?: Types.ObjectId | null;
-
-  @Prop({ default: false })
-  isDeleted!: boolean;
-
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
 }
 
 export type LessonDocumentType = HydratedDocument<LessonDocument> & {

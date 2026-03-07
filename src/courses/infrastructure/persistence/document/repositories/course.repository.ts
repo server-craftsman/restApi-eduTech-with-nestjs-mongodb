@@ -8,8 +8,7 @@ import { Course } from '../../../../domain/course';
 import { GradeLevel, CourseStatus } from '../../../../../enums';
 import { BaseRepositoryImpl } from '../../../../../core/base/base.repository.impl';
 import { FilterCourseDto, SortCourseDto } from '../../../../dto';
-
-const NOT_DELETED = { isDeleted: { $ne: true } };
+import { NOT_DELETED } from '../../../../../core/constants';
 
 @Injectable()
 export class CourseRepository

@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { CollectionName } from '../../../../../core/constants';
 
-@Schema({ timestamps: false, collection: 'parent_student_links' })
+@Schema({ timestamps: false, collection: CollectionName.ParentStudentLinks })
 export class ParentStudentLinkDocument {
   /** Null until the parent connects via connectByCode (Step 2). */
   @Prop({

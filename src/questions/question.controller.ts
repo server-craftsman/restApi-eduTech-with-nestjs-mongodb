@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
   Controller,
   Get,
@@ -26,8 +25,7 @@ import { CreateQuestionDto, UpdateQuestionDto, QuestionDto } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
-import { UserRole } from '../enums';
-import { Difficulty } from '../enums';
+import { UserRole, Difficulty } from '../enums';
 
 @ApiTags('Questions')
 @Controller('questions')
@@ -202,14 +200,14 @@ export class QuestionController extends BaseController {
     type: [QuestionDto],
   })
   async getRandomQuestions(
-    @Query('limit') limit?: string,
-    @Res() res?: Response,
+    @Query('limit') limit: string | undefined,
+    @Res() res: Response,
   ): Promise<Response> {
     const parsedLimit = limit ? parseInt(limit) : 5;
     const questions = await this.questionService.getRandomQuestion(parsedLimit);
 
     return this.sendSuccess(
-      res as any,
+      res,
       questions,
       'Random questions retrieved successfully',
     );
@@ -244,8 +242,8 @@ export class QuestionController extends BaseController {
   })
   async getRandomByDifficulty(
     @Param('difficulty') difficulty: Difficulty,
-    @Query('limit') limit?: string,
-    @Res() res?: Response,
+    @Query('limit') limit: string | undefined,
+    @Res() res: Response,
   ): Promise<Response> {
     const parsedLimit = limit ? parseInt(limit) : 5;
     const questions = await this.questionService.getRandomByDifficulty(
@@ -253,11 +251,7 @@ export class QuestionController extends BaseController {
       parsedLimit,
     );
 
-    return this.sendSuccess(
-      res as any,
-      questions,
-      'Questions retrieved successfully',
-    );
+    return this.sendSuccess(res, questions, 'Questions retrieved successfully');
   }
 
   /**

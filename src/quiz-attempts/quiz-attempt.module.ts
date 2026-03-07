@@ -9,12 +9,14 @@ import { QuizAttemptRepositoryAbstract } from './infrastructure/persistence/docu
 import { QuizAttemptMapper } from './infrastructure/persistence/document/mappers/quiz-attempt.mapper';
 import { QuizAttemptService } from './quiz-attempt.service';
 import { QuizAttemptController } from './quiz-attempt.controller';
+import { QuestionModule } from '../questions/question.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: QuizAttemptDocument.name, schema: QuizAttemptSchema },
     ]),
+    QuestionModule,
   ],
   controllers: [QuizAttemptController],
   providers: [
