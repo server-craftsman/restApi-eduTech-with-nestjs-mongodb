@@ -46,7 +46,6 @@ export class CourseDocument extends BaseSchemaFields {
 
   @Prop({ type: String, default: null })
   approvalNote?: string | null;
-
 }
 
 export type CourseDocumentType = HydratedDocument<CourseDocument> & {

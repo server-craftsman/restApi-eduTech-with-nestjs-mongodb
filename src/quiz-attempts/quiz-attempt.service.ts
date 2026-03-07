@@ -31,8 +31,9 @@ export class QuizAttemptService {
     }
 
     // Fetch all questions for this lesson
-    const questions =
-      await this.questionRepository.findByLessonId(dto.lessonId);
+    const questions = await this.questionRepository.findByLessonId(
+      dto.lessonId,
+    );
     if (questions.length === 0) {
       throw new NotFoundException(
         `No questions found for lesson ${dto.lessonId}`,

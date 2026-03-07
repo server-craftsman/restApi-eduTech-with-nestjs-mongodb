@@ -95,16 +95,12 @@ export class QuestionRepository extends QuestionRepositoryAbstract {
   }
 
   async findByDifficulty(difficulty: Difficulty): Promise<Question[]> {
-    const docs = await this.model
-      .find({ difficulty, ...NOT_DELETED })
-      .exec();
+    const docs = await this.model.find({ difficulty, ...NOT_DELETED }).exec();
     return this.mapper.toDomainArray(docs);
   }
 
   async findByTag(tag: string): Promise<Question[]> {
-    const docs = await this.model
-      .find({ tags: tag, ...NOT_DELETED })
-      .exec();
+    const docs = await this.model.find({ tags: tag, ...NOT_DELETED }).exec();
     return this.mapper.toDomainArray(docs);
   }
 

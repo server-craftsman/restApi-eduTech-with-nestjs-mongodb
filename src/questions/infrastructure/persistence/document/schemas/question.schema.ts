@@ -36,7 +36,6 @@ export class QuestionDocument extends BaseSchemaFields {
 
   @Prop({ default: 10 })
   points!: number;
-
 }
 
 export type QuestionDocumentType = HydratedDocument<QuestionDocument> & {

@@ -41,7 +41,6 @@ export class QuizAttemptDocument extends BaseSchemaFields {
 
   @Prop({ type: Date })
   gradedAt?: Date;
-
 }
 
 export type QuizAttemptDocumentType = HydratedDocument<QuizAttemptDocument> & {

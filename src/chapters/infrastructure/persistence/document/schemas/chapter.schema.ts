@@ -21,7 +21,6 @@ export class ChapterDocument extends BaseSchemaFields {
 
   @Prop({ default: false })
   isPublished!: boolean;
-
 }
 
 export type ChapterDocumentType = HydratedDocument<ChapterDocument> & {

@@ -35,7 +35,6 @@ export class MaterialDocument extends BaseSchemaFields {
 
   @Prop({ default: 0 })
   downloadCount!: number;
-
 }
 
 export type MaterialDocumentType = HydratedDocument<MaterialDocument> & {

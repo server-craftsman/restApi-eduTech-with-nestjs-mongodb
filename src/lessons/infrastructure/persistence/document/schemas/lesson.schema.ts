@@ -40,7 +40,6 @@ export class LessonDocument extends BaseSchemaFields {
 
   @Prop({ default: false })
   isPreview!: boolean;
-
 }
 
 export type LessonDocumentType = HydratedDocument<LessonDocument> & {

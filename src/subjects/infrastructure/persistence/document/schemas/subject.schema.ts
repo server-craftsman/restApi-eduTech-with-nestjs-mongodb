@@ -29,7 +29,6 @@ export class SubjectDocument extends BaseSchemaFields {
     _id: false,
   })
   iconUrl!: SubjectIconType;
-
 }
 
 export type SubjectDocumentType = HydratedDocument<SubjectDocument> & {

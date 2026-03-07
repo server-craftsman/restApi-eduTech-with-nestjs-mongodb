@@ -23,9 +23,7 @@ export class LessonRepository extends LessonRepositoryAbstract {
   }
 
   async findById(id: string): Promise<Lesson | null> {
-    const doc = await this.model
-      .findOne({ _id: id, ...NOT_DELETED })
-      .exec();
+    const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 

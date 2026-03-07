@@ -61,7 +61,6 @@ export class UserDocument extends BaseSchemaFields {
   /** MongoDB ObjectId string of the admin who performed the last review. */
   @Prop({ type: String, default: null })
   approvalReviewedBy?: string | null;
-
 }
 
 export type UserDocumentType = HydratedDocument<UserDocument> & {
