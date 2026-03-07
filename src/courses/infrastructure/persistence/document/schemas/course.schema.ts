@@ -40,6 +40,9 @@ export class CourseDocument {
   @Prop({ default: false })
   isPro!: boolean;
 
+  @Prop({ type: String, default: null })
+  approvalNote?: string | null;
+
   // Soft Delete Fields
   @Prop({ default: false })
   isDeleted!: boolean;

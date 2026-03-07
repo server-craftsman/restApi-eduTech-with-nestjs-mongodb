@@ -27,13 +27,11 @@ export class LessonSearchResultDto {
   description!: string;
 
   @ApiProperty({
-    description: 'Video upload information (URL and file size)',
+    description:
+      'Video upload information — includes durationSeconds for video lessons',
     type: UploadUrlDto,
   })
   video!: UploadUrlDto;
-
-  @ApiProperty({ description: 'Video duration in seconds', example: 1800 })
-  durationSeconds!: number;
 
   @ApiProperty({
     description: 'Theory content (Markdown)',

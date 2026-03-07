@@ -6,8 +6,7 @@ export interface Lesson {
   title: string;
   description: string;
   orderIndex: number;
-  durationSeconds: number;
-  video: IUploadFile;
+  video: IUploadFile; // includes durationSeconds for video files
   quizId?: string; // Link to quiz
   contentMd: string;
   isPreview: boolean;

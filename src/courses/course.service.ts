@@ -2,16 +2,27 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CourseRepositoryAbstract } from './infrastructure/persistence/document/repositories/course.repository.abstract';
+import { ChapterRepositoryAbstract } from '../chapters/infrastructure/persistence/document/repositories/chapter.repository.abstract';
+import { LessonRepositoryAbstract } from '../lessons/infrastructure/persistence/document/repositories/lesson.repository.abstract';
+import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
+import { MaterialRepositoryAbstract } from '../materials/infrastructure/persistence/document/repositories/material.repository.abstract';
 import { Course } from './domain/course';
 import { GradeLevel, CourseStatus } from '../enums';
-import { QueryCourseDto, SortOrder } from './dto';
+import { FilterCourseDto, QueryCourseDto, SortCourseDto } from './dto';
 import { BaseService } from '../core/base/base.service';
 
 @Injectable()
 export class CourseService extends BaseService {
-  constructor(private readonly courseRepository: CourseRepositoryAbstract) {
+  constructor(
+    private readonly courseRepository: CourseRepositoryAbstract,
+    private readonly chapterRepository: ChapterRepositoryAbstract,
+    private readonly lessonRepository: LessonRepositoryAbstract,
+    private readonly questionRepository: QuestionRepositoryAbstract,
+    private readonly materialRepository: MaterialRepositoryAbstract,
+  ) {
     super();
   }
 
@@ -74,97 +85,33 @@ export class CourseService extends BaseService {
     return this.courseRepository.findAllNotDeleted();
   }
 
-  async getAllCoursesWithFilter(query: QueryCourseDto): Promise<{
-    courses: Course[];
-    total: number;
-  }> {
-    const filterDto = query.filter || {};
-    const sortDto = query.sort || {};
+  /**
+   * Unified paginated, filterable, sortable course listing.
+   *
+   * `overrides` fields **always win** over caller-supplied `query.filters`
+   * so security constraints (e.g. status=Published for public, authorId from
+   * JWT for my-courses) cannot be bypassed.
+   */
+  async findAllWithFilters(
+    query: QueryCourseDto,
+    overrides: Partial<FilterCourseDto> = {},
+  ): Promise<{ courses: Course[]; total: number }> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const offset = (page - 1) * limit;
 
-    // Extract filter fields
-    const search = filterDto.search;
-    const gradeLevel = filterDto.gradeLevel;
-    const status = filterDto.status;
-    const type = filterDto.type;
-    const authorId = filterDto.authorId;
-    const subjectId = filterDto.subjectId;
-    const sortBy = sortDto.field;
-    const sortOrder = sortDto.order;
-    const page = query.page;
-    const limit = query.limit;
+    const filters: FilterCourseDto = {
+      ...query.filters,
+      ...overrides,
+    };
 
-    // Build filter object for MongoDB query
-    const filter: Record<string, unknown> = { isDeleted: false };
-
-    if (search) {
-      filter['$or'] = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    if (gradeLevel) {
-      filter['gradeLevel'] = gradeLevel;
-    }
-
-    if (status) {
-      filter['status'] = status;
-    }
-
-    if (type) {
-      filter['type'] = type;
-    }
-
-    if (authorId) {
-      filter['authorId'] = authorId;
-    }
-
-    if (subjectId) {
-      filter['subjectId'] = subjectId;
-    }
-
-    // Build sort object
-    const sort: Record<string, number> = {};
-    if (sortBy) {
-      sort[sortBy] = sortOrder === SortOrder.DESC ? -1 : 1;
-    } else {
-      sort['createdAt'] = -1; // Default sort by creation date descending
-    }
-
-    // Get total count
-    const total = await this.courseRepository.countByFilter(filter);
-
-    // Get courses with pagination
-    let courses: Course[];
-    if (page && limit) {
-      const skip = (page - 1) * limit;
-      courses = await this.courseRepository.findByFilterWithPagination(
-        filter,
-        sort,
-        skip,
-        limit,
-      );
-    } else {
-      courses = await this.courseRepository.findByFilter(filter, sort);
-    }
-
+    const [courses, total] = await this.courseRepository.findAllWithFilters(
+      limit,
+      offset,
+      filters,
+      (query.sort as SortCourseDto[]) ?? [],
+    );
     return { courses, total };
-  }
-
-  async findByAuthorIdWithFilter(
-    authorId: string,
-    query: QueryCourseDto,
-  ): Promise<{ courses: Course[]; total: number }> {
-    const updatedQuery = { ...query, authorId };
-    return this.getAllCoursesWithFilter(updatedQuery);
-  }
-
-  async findBySubjectIdWithFilter(
-    subjectId: string,
-    query: QueryCourseDto,
-  ): Promise<{ courses: Course[]; total: number }> {
-    const updatedQuery = { ...query, subjectId };
-    return this.getAllCoursesWithFilter(updatedQuery);
   }
 
   async updateCourse(
@@ -266,5 +213,134 @@ export class CourseService extends BaseService {
   // Legacy method - deprecated, use updateCourseStatus instead
   async publishCourse(id: string): Promise<Course | null> {
     return this.updateCourseStatus(id, CourseStatus.Published);
+  }
+
+  /**
+   * Teacher submits their course for Admin review.
+   * Only courses in Draft or Rejected status can be submitted.
+   *
+   * Completeness checks (all applied before the status transition):
+   *  1. Course must have at least 1 active (non-deleted) Chapter.
+   *  2. Every active Chapter must have at least 1 active (non-deleted) Lesson.
+   *  3. Every active Lesson must have at least 1 Question OR at least 1 Material.
+   */
+  async submitForReview(courseId: string, authorId: string): Promise<Course> {
+    const course = await this.courseRepository.findByIdNotDeleted(courseId);
+    if (!course) {
+      throw new NotFoundException(`Course with id ${courseId} not found`);
+    }
+    if (course.authorId !== authorId) {
+      throw new ForbiddenException(
+        'You do not have permission to submit this course for review',
+      );
+    }
+    if (
+      course.status !== CourseStatus.Draft &&
+      course.status !== CourseStatus.Rejected
+    ) {
+      throw new BadRequestException(
+        `Cannot submit for review. Only Draft or Rejected courses can be submitted. Current status: ${course.status}`,
+      );
+    }
+
+    // ── Completeness validation ────────────────────────────────────────────
+
+    // 1. At least 1 active Chapter
+    const allChapters = await this.chapterRepository.findByCourseId(courseId);
+    const activeChapters = allChapters.filter((c) => !c.isDeleted);
+    if (activeChapters.length === 0) {
+      throw new BadRequestException(
+        'Course must have at least 1 chapter before submitting for review.',
+      );
+    }
+
+    // 2. Each active Chapter must have at least 1 active Lesson
+    //    3. Each active Lesson must have at least 1 Question or Material
+    for (const chapter of activeChapters) {
+      const allLessons = await this.lessonRepository.findByChapterId(
+        chapter.id,
+      );
+      const activeLessons = allLessons.filter((l) => !l.isDeleted);
+
+      if (activeLessons.length === 0) {
+        throw new BadRequestException(
+          `Chapter "${chapter.title}" must have at least 1 lesson before submitting for review.`,
+        );
+      }
+
+      for (const lesson of activeLessons) {
+        const [questions, materials] = await Promise.all([
+          this.questionRepository.findByLessonId(lesson.id),
+          this.materialRepository.findByLessonId(lesson.id),
+        ]);
+
+        if (questions.length === 0 && materials.length === 0) {
+          throw new BadRequestException(
+            `Lesson "${lesson.title}" in chapter "${chapter.title}" must have at least 1 question or material before submitting for review.`,
+          );
+        }
+      }
+    }
+
+    // ── All checks passed — transition to Under_Review ────────────────────
+    const updated = await this.courseRepository.update(courseId, {
+      status: CourseStatus.Under_Review,
+      approvalNote: null, // Clear previous rejection note
+    });
+    if (!updated) {
+      throw new NotFoundException('Failed to submit course for review');
+    }
+    return updated;
+  }
+
+  /**
+   * Admin approves a course — status becomes Published.
+   */
+  async approveCourse(courseId: string, note?: string): Promise<Course> {
+    const course = await this.courseRepository.findByIdNotDeleted(courseId);
+    if (!course) {
+      throw new NotFoundException(`Course with id ${courseId} not found`);
+    }
+    if (course.status !== CourseStatus.Under_Review) {
+      throw new BadRequestException(
+        `Only courses Under Review can be approved. Current status: ${course.status}`,
+      );
+    }
+
+    const updated = await this.courseRepository.update(courseId, {
+      status: CourseStatus.Published,
+      approvalNote: note ?? null,
+    });
+    if (!updated) {
+      throw new NotFoundException('Failed to approve course');
+    }
+    return updated;
+  }
+
+  /**
+   * Admin rejects a course — status goes back to Rejected with a mandatory note.
+   */
+  async rejectCourse(courseId: string, note: string): Promise<Course> {
+    if (!note || note.trim().length === 0) {
+      throw new BadRequestException('Rejection reason (note) is required');
+    }
+    const course = await this.courseRepository.findByIdNotDeleted(courseId);
+    if (!course) {
+      throw new NotFoundException(`Course with id ${courseId} not found`);
+    }
+    if (course.status !== CourseStatus.Under_Review) {
+      throw new BadRequestException(
+        `Only courses Under Review can be rejected. Current status: ${course.status}`,
+      );
+    }
+
+    const updated = await this.courseRepository.update(courseId, {
+      status: CourseStatus.Rejected,
+      approvalNote: note.trim(),
+    });
+    if (!updated) {
+      throw new NotFoundException('Failed to reject course');
+    }
+    return updated;
   }
 }

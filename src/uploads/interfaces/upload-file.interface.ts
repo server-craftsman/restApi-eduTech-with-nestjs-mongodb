@@ -6,4 +6,5 @@ export interface IUploadFile {
   url: string;
   fileSize?: number;
   publicId?: string; // Cloud storage public ID (e.g., Cloudinary publicId)
+  durationSeconds?: number; // Video duration in seconds (videos only)
 }

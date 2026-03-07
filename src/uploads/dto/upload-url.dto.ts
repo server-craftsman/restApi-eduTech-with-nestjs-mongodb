@@ -6,6 +6,7 @@ import {
   IsInt,
   Min,
   IsOptional,
+  IsPositive,
 } from 'class-validator';
 
 /**
@@ -34,10 +35,23 @@ export class UploadUrlDto {
   fileSize?: number;
 
   @ApiPropertyOptional({
-    description: 'Public ID from cloud storage (e.g., Cloudinary publicId)',
-    example: 'lessons/intro_video_abc123',
+    description: 'Cloud storage public ID for asset management',
+    example: 'lessons/intro_abc123',
   })
   @IsString({ message: 'Public ID must be a string' })
   @IsOptional()
   publicId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Video duration in seconds — returned by POST /uploads for video files. ' +
+      'Copy this from the upload response; CreateLessonDto will auto-use it ' +
+      'when top-level durationSeconds is omitted.',
+    example: 382,
+    minimum: 1,
+  })
+  @IsInt({ message: 'Duration must be an integer number of seconds' })
+  @IsPositive({ message: 'Duration must be greater than 0' })
+  @IsOptional()
+  durationSeconds?: number;
 }

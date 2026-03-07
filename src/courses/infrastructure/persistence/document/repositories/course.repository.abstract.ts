@@ -1,5 +1,6 @@
 import { Course } from '../../../../domain/course';
 import { GradeLevel, CourseStatus } from '../../../../../enums';
+import { FilterCourseDto, SortCourseDto } from '../../../../dto';
 
 export abstract class CourseRepositoryAbstract {
   abstract findById(id: string): Promise<Course | null>;
@@ -12,7 +13,15 @@ export abstract class CourseRepositoryAbstract {
   abstract update(id: string, data: Partial<Course>): Promise<Course | null>;
   abstract delete(id: string): Promise<void>;
 
-  // Filter and search methods
+  // ── Unified filter/paginate method (replaces findByFilter variants) ────────
+  abstract findAllWithFilters(
+    limit: number,
+    offset: number,
+    filters?: FilterCourseDto,
+    sort?: SortCourseDto[],
+  ): Promise<[Course[], number]>;
+
+  // Filter and search methods (legacy — prefer findAllWithFilters)
   abstract findByFilter(filter: any, sort?: any): Promise<Course[]>;
   abstract findByFilterWithPagination(
     filter: any,

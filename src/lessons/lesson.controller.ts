@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Put,
-  Patch,
   Delete,
   Param,
   Body,
@@ -194,45 +193,6 @@ export class LessonController extends BaseController {
   ): Promise<Response> {
     const lesson = await this.lessonService.updateLesson(id, dto);
     return this.sendSuccess(res, lesson, 'Lesson updated successfully');
-  }
-
-  /**
-   * Update lesson duration
-   * Only TEACHER and ADMIN can update
-   */
-  @Patch(':id/duration')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Update lesson duration (TEACHER/ADMIN only)',
-    description: 'Update the duration of a lesson in seconds',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Lesson ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Duration updated successfully',
-    type: LessonDto,
-  })
-  @ApiResponse({ status: 404, description: 'Lesson not found' })
-  async updateDuration(
-    @Param('id') id: string,
-    @Body() body: { durationSeconds: number },
-    @Res() res: Response,
-  ): Promise<Response> {
-    const lesson = await this.lessonService.updateDuration(
-      id,
-      body.durationSeconds,
-    );
-    return this.sendSuccess(
-      res,
-      lesson,
-      'Lesson duration updated successfully',
-    );
   }
 
   /**

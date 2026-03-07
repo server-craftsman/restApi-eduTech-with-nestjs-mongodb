@@ -11,11 +11,11 @@ export class LessonMapper {
       title: doc.title,
       description: doc.description,
       orderIndex: doc.orderIndex,
-      durationSeconds: doc.durationSeconds,
       video: {
         url: doc.video.url,
         fileSize: doc.video.fileSize ?? undefined,
         publicId: doc.video.publicId ?? undefined,
+        durationSeconds: doc.video.durationSeconds ?? undefined,
       },
       contentMd: doc.contentMd,
       isPreview: doc.isPreview,

@@ -19,6 +19,7 @@ export class CourseMapper extends BaseMapper<Course, CourseDocumentType> {
       },
       status: doc.status,
       type: doc.type,
+      approvalNote: doc.approvalNote ?? null,
       isDeleted: doc.isDeleted,
       deletedAt: doc.deletedAt,
       createdAt: doc.createdAt,

@@ -7,6 +7,9 @@ import { CourseMapper } from '../mappers/course.mapper';
 import { Course } from '../../../../domain/course';
 import { GradeLevel, CourseStatus } from '../../../../../enums';
 import { BaseRepositoryImpl } from '../../../../../core/base/base.repository.impl';
+import { FilterCourseDto, SortCourseDto } from '../../../../dto';
+
+const NOT_DELETED = { isDeleted: { $ne: true } };
 
 @Injectable()
 export class CourseRepository
@@ -24,9 +27,50 @@ export class CourseRepository
   async findByIdNotDeleted(id: string): Promise<Course | null> {
     const doc = await this.model.findOne({
       _id: id,
-      isDeleted: { $ne: true },
+      ...NOT_DELETED,
     });
     return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  // ── Unified filter/paginate method ────────────────────────────────────────
+  async findAllWithFilters(
+    limit = 10,
+    offset = 0,
+    filters?: FilterCourseDto,
+    sort?: SortCourseDto[],
+  ): Promise<[Course[], number]> {
+    const query: Record<string, any> = {};
+
+    // Soft-delete gate: show deleted only when caller explicitly passes isDeleted=true
+    query.isDeleted = filters?.isDeleted === true ? true : { $ne: true };
+
+    if (filters?.subjectId)
+      query.subjectId = new Types.ObjectId(filters.subjectId);
+    if (filters?.gradeLevelId)
+      query.gradeLevelId = new Types.ObjectId(filters.gradeLevelId);
+    if (filters?.authorId)
+      query.authorId = new Types.ObjectId(filters.authorId);
+    if (filters?.status) query.status = filters.status;
+    if (filters?.type) query.type = filters.type;
+    if (filters?.search)
+      query.$or = [
+        { title: { $regex: filters.search, $options: 'i' } },
+        { description: { $regex: filters.search, $options: 'i' } },
+      ];
+
+    const sortObj: Record<string, 1 | -1> = {};
+    if (sort?.length) {
+      for (const s of sort)
+        sortObj[s.orderBy as string] = s.order === 'asc' ? 1 : -1;
+    } else {
+      sortObj.createdAt = -1;
+    }
+
+    const [docs, total] = await Promise.all([
+      this.model.find(query).sort(sortObj).skip(offset).limit(limit).exec(),
+      this.model.countDocuments(query).exec(),
+    ]);
+    return [this.mapper.toDomainArray(docs), total];
   }
 
   async findAllCourses(): Promise<Course[]> {
@@ -76,6 +120,8 @@ export class CourseRepository
     // Handle new fields
     if (data.status) updateData.status = data.status;
     if (data.type) updateData.type = data.type;
+    if (data.approvalNote !== undefined)
+      updateData.approvalNote = data.approvalNote;
     if (data.isDeleted !== undefined) updateData.isDeleted = data.isDeleted;
     if (data.deletedAt !== undefined) updateData.deletedAt = data.deletedAt;
 

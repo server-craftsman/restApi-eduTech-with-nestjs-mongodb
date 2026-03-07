@@ -3,6 +3,7 @@ export enum CourseStatus {
   Published = 'Published',
   Archived = 'Archived',
   Under_Review = 'Under_Review',
+  Rejected = 'Rejected',
 }
 
 export enum CourseType {

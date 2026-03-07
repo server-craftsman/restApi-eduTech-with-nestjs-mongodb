@@ -22,14 +22,17 @@ export class LessonService {
    * @throws BadRequestException if validation fails
    */
   async createLesson(dto: CreateLessonDto): Promise<Lesson> {
-    // Validate basic constraints
-    if (dto.durationSeconds < 1) {
-      throw new BadRequestException('Duration must be at least 1 second');
-    }
-
     if (!dto.video || !dto.video.url || dto.video.url.trim().length === 0) {
       throw new BadRequestException(
         'Video URL is required and cannot be empty',
+      );
+    }
+
+    if (!dto.video.durationSeconds || dto.video.durationSeconds < 1) {
+      throw new BadRequestException(
+        'video.durationSeconds is required. ' +
+          'Upload the video via POST /uploads first — the response includes ' +
+          'durationSeconds which you should copy into the video object.',
       );
     }
 
@@ -42,11 +45,11 @@ export class LessonService {
       title: dto.title.trim(),
       description: dto.description.trim(),
       orderIndex: dto.orderIndex,
-      durationSeconds: dto.durationSeconds,
       video: {
         url: dto.video.url,
         fileSize: dto.video.fileSize,
         publicId: dto.video.publicId,
+        durationSeconds: dto.video.durationSeconds,
       },
       contentMd: dto.contentMd,
       isPreview: dto.isPreview ?? false,
@@ -97,10 +100,6 @@ export class LessonService {
     }
 
     // Validate update constraints
-    if (dto.durationSeconds !== undefined && dto.durationSeconds < 1) {
-      throw new BadRequestException('Duration must be at least 1 second');
-    }
-
     if (dto.title !== undefined && dto.title.trim().length < 3) {
       throw new BadRequestException('Title must be at least 3 characters long');
     }
@@ -117,13 +116,12 @@ export class LessonService {
     if (dto.description !== undefined)
       updateData.description = dto.description.trim();
     if (dto.orderIndex !== undefined) updateData.orderIndex = dto.orderIndex;
-    if (dto.durationSeconds !== undefined)
-      updateData.durationSeconds = dto.durationSeconds;
     if (dto.video !== undefined)
       updateData.video = {
         url: dto.video.url,
         fileSize: dto.video.fileSize,
         publicId: dto.video.publicId,
+        durationSeconds: dto.video.durationSeconds,
       };
     if (dto.contentMd !== undefined) updateData.contentMd = dto.contentMd;
     if (dto.isPreview !== undefined) updateData.isPreview = dto.isPreview;
@@ -205,26 +203,6 @@ export class LessonService {
     }
 
     return lessonsInChapter[currentIndex + 1];
-  }
-
-  /**
-   * Update lesson duration
-   * @param id - Lesson ID
-   * @param durationSeconds - Duration in seconds
-   * @returns Updated lesson
-   */
-  async updateDuration(id: string, durationSeconds: number): Promise<Lesson> {
-    if (durationSeconds < 1) {
-      throw new BadRequestException('Duration must be at least 1 second');
-    }
-
-    const updated = await this.lessonRepository.update(id, {
-      durationSeconds,
-    } as Partial<Lesson>);
-    if (!updated) {
-      throw new NotFoundException(`Lesson with ID ${id} not found`);
-    }
-    return updated;
   }
 
   /**

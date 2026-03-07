@@ -32,10 +32,10 @@ export class LessonRepository implements LessonRepositoryAbstract {
       title: data.title,
       description: data.description,
       orderIndex: data.orderIndex,
-      durationSeconds: data.durationSeconds,
       video: {
         url: data.video.url,
         fileSize: data.video.fileSize,
+        durationSeconds: data.video.durationSeconds,
       },
       contentMd: data.contentMd,
       isPreview: data.isPreview,
@@ -52,12 +52,11 @@ export class LessonRepository implements LessonRepositoryAbstract {
     if (data.description !== undefined)
       updateData.description = data.description;
     if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
-    if (data.durationSeconds !== undefined)
-      updateData.durationSeconds = data.durationSeconds;
     if (data.video)
       updateData.video = {
         url: data.video.url,
         fileSize: data.video.fileSize,
+        durationSeconds: data.video.durationSeconds,
       };
     if (data.contentMd !== undefined) updateData.contentMd = data.contentMd;
     if (data.isPreview !== undefined) updateData.isPreview = data.isPreview;

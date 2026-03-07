@@ -53,17 +53,8 @@ export class UpdateLessonDto {
   orderIndex?: number;
 
   @ApiPropertyOptional({
-    description: 'Duration in seconds',
-    example: 800,
-    minimum: 1,
-  })
-  @IsInt({ message: 'Duration must be an integer' })
-  @Min(1, { message: 'Duration must be at least 1 second' })
-  @IsOptional()
-  durationSeconds?: number;
-
-  @ApiPropertyOptional({
-    description: 'Video upload information (URL and optional file size)',
+    description:
+      'Video upload information. Copy the full object returned by POST /uploads — it already includes durationSeconds for video files.',
     type: UploadUrlDto,
   })
   @ValidateNested()

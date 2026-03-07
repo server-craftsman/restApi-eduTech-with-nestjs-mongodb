@@ -49,7 +49,6 @@ export class SearchService {
       title: l.title,
       description: l.description,
       video: l.video,
-      durationSeconds: l.durationSeconds,
       contentMd: l.contentMd,
       isPreview: l.isPreview,
       orderIndex: l.orderIndex,

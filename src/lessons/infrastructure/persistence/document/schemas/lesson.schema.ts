@@ -15,21 +15,20 @@ export class LessonDocument {
   @Prop({ required: true, default: 0 })
   orderIndex!: number;
 
-  @Prop({ required: true, default: 0 })
-  durationSeconds!: number;
-
   @Prop({
     required: true,
     type: {
       url: { type: String, required: true },
       fileSize: { type: Number, default: null },
       publicId: { type: String, default: null },
+      durationSeconds: { type: Number, default: null },
     },
   })
   video!: {
     url: string;
     fileSize?: number | null;
     publicId?: string | null;
+    durationSeconds?: number | null;
   };
 
   @Prop({ required: true, default: '' })

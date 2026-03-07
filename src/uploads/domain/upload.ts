@@ -18,4 +18,6 @@ export interface UploadResult {
   width?: number;
   /** Image height in pixels (images only) */
   height?: number;
+  /** Video duration in seconds — only present for video resource_type */
+  durationSeconds?: number;
 }

@@ -36,13 +36,8 @@ export class LessonDto {
   orderIndex!: number;
 
   @ApiProperty({
-    description: 'Duration in seconds',
-    example: 600,
-  })
-  durationSeconds!: number;
-
-  @ApiProperty({
-    description: 'Video upload information (URL and file size)',
+    description:
+      'Video upload information — includes durationSeconds for video files',
     type: UploadUrlDto,
   })
   video!: UploadUrlDto;

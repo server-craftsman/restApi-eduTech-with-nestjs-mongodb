@@ -49,6 +49,10 @@ export class UploadsService {
             reject(new BadRequestException('Upload returned no result'));
             return;
           }
+
+          const duration =
+            typeof result.duration === 'number' ? result.duration : undefined;
+
           resolve({
             publicId: result.public_id,
             url: result.secure_url,
@@ -58,6 +62,11 @@ export class UploadsService {
             folder: String(result['folder'] ?? folder),
             width: result.width,
             height: result.height,
+            // duration is a float (e.g. 30.06) — only present for video
+            durationSeconds:
+              result.resource_type === 'video' && duration !== undefined
+                ? Math.round(duration)
+                : undefined,
           });
         },
       );

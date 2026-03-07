@@ -52,4 +52,13 @@ export class UploadResponseDto {
     example: 512,
   })
   height?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Video duration in seconds (videos only). ' +
+      'Pass this value as video.durationSeconds when creating a lesson — ' +
+      'durationSeconds will be auto-filled from it.',
+    example: 382,
+  })
+  durationSeconds?: number;
 }
