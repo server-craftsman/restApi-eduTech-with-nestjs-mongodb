@@ -41,6 +41,9 @@ export class AiTrainingDataDocument extends BaseSchemaFields {
 
   @Prop({ type: String, default: null })
   reviewNote?: string | null;
+
+  @Prop({ type: [Number], default: null })
+  questionEmbedding?: number[] | null;
 }
 
 export type AiTrainingDataDocumentType =

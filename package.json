@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@ffprobe-installer/ffprobe": "^1.4.1",
+    "@google/genai": "^1.44.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",

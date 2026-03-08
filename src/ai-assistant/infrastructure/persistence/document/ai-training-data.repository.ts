@@ -102,6 +102,29 @@ export class AiTrainingDataRepository extends AiTrainingDataRepositoryAbstract {
     return this.mapper.toDomainArray(docs);
   }
 
+  async findAllWithEmbeddings(
+    subject?: string | null,
+  ): Promise<AiTrainingData[]> {
+    const query: Record<string, unknown> = {
+      status: AiTrainingStatus.Approved,
+      questionEmbedding: { $ne: null },
+      ...NOT_DELETED,
+    };
+    if (subject) query.subject = { $regex: subject, $options: 'i' };
+
+    const docs = await this.model.find(query).exec();
+    return this.mapper.toDomainArray(docs);
+  }
+
+  async updateEmbedding(id: string, embedding: number[]): Promise<void> {
+    await this.model
+      .findOneAndUpdate(
+        { _id: id, ...NOT_DELETED },
+        { $set: { questionEmbedding: embedding } },
+      )
+      .exec();
+  }
+
   async getStatistics(): Promise<{
     total: number;
     byStatus: Record<string, number>;

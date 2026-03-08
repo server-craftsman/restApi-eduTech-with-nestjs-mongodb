@@ -48,3 +48,11 @@ export interface GeminiErrorResponse {
     status: string;
   };
 }
+
+// ── Gemini Embedding ─────────────────────────────────────────────────────────
+
+export interface GeminiEmbeddingResponse {
+  embedding: {
+    values: number[];
+  };
+}

@@ -6,3 +6,4 @@ export { CreateTrainingDataDto } from './create-training-data.dto';
 export { ReviewTrainingDataDto } from './review-training-data.dto';
 export { QueryTrainingDataDto } from './query-training-data.dto';
 export { TrainingDataDto } from './training-data.dto';
+export { TrainModelResponseDto } from './train-model-response.dto';

@@ -35,13 +35,14 @@ import { CreateTrainingDataDto } from './dto/create-training-data.dto';
 import { ReviewTrainingDataDto } from './dto/review-training-data.dto';
 import { QueryTrainingDataDto } from './dto/query-training-data.dto';
 import { TrainingDataDto } from './dto/training-data.dto';
+import { TrainModelResponseDto } from './dto/train-model-response.dto';
 import { AiTrainingStatus } from '../enums';
 
 @ApiTags('AI Assistant')
 @Controller('ai-assistant')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
-@ApiExtraModels(AiMessageDto, TrainingDataDto)
+@ApiExtraModels(AiMessageDto, TrainingDataDto, TrainModelResponseDto)
 export class AiAssistantController extends BaseController {
   constructor(private readonly aiAssistantService: AiAssistantService) {
     super();
@@ -362,6 +363,54 @@ The AI chatbot will now use your custom-trained model!
       res,
       result,
       `Training data ${dto.status === AiTrainingStatus.Approved ? 'approved' : 'rejected'}`,
+    );
+  }
+
+  /**
+   * POST /ai-assistant/training/train
+   * Generate embedding vectors for all approved training data
+   * using Gemini's text-embedding-004 API.
+   */
+  @Post('training/train')
+  @Roles(UserRole.Admin)
+  @ApiOperation({
+    summary:
+      'Train AI model — vectorise all approved training data (Gemini Embedding API)',
+    description: `
+## AI Training Workflow (Gemini Embedding API)
+
+### Prerequisites
+1. Set \`GEMINI_API_KEY\` in \`.env\`
+2. Create training data (\`POST /ai-assistant/training\`)
+3. Approve entries (\`PATCH /ai-assistant/training/:id/review\`)
+
+### What happens
+- Calls Gemini \`text-embedding-004\` API for each approved Q&A question
+- Generates a 768-dimension embedding vector per entry
+- Stores the vector in MongoDB alongside the training entry
+- Entries that already have an embedding are skipped (idempotent)
+- Includes retry logic with exponential backoff for rate limits (HTTP 429)
+
+### After training
+The vector database can be used for semantic similarity search
+to augment AI responses with relevant training data.
+    `,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: TrainModelResponseDto,
+    description: 'Training summary with counts and timing',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden — requires Admin role',
+  })
+  async trainModel(@Res() res: Response): Promise<Response> {
+    const result = await this.aiAssistantService.trainModel();
+    return this.sendSuccess(
+      res,
+      result,
+      `Training complete: ${result.embedded} entries embedded in ${result.processingTimeMs}ms`,
     );
   }
 

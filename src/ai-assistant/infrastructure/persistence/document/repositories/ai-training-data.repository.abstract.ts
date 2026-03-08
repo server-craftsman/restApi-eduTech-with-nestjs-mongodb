@@ -20,6 +20,21 @@ export abstract class AiTrainingDataRepositoryAbstract {
   abstract softDelete(id: string): Promise<void>;
   /** Return all approved & non-deleted training entries for fine-tuning export. */
   abstract findAllApproved(): Promise<AiTrainingData[]>;
+
+  /**
+   * Return all approved entries that already have an embedding vector.
+   * Optionally filter by subject (case-insensitive partial match).
+   */
+  abstract findAllWithEmbeddings(
+    subject?: string | null,
+  ): Promise<AiTrainingData[]>;
+
+  /**
+   * Store a pre-computed embedding vector on a training entry.
+   * Used by the `trainModel()` bulk-vectorisation flow.
+   */
+  abstract updateEmbedding(id: string, embedding: number[]): Promise<void>;
+
   abstract getStatistics(): Promise<{
     total: number;
     byStatus: Record<string, number>;

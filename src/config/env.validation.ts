@@ -23,6 +23,10 @@ export const envValidationSchema = Joi.object({
     .optional()
     .default('gemini'),
   AI_MAX_OUTPUT_TOKENS: Joi.number().optional().default(2000),
+  AI_EMBEDDING_MODEL: Joi.string()
+    .optional()
+    .default('text-embedding-004'),
+  AI_SIMILARITY_THRESHOLD: Joi.number().optional().default(0.65),
 
   // Google Gemini — FREE tier (gemini-2.0-flash: 15 RPM, 1M tokens/day)
   // Get key: https://aistudio.google.com/apikey

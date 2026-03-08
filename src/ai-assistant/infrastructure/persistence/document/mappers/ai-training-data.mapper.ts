@@ -21,6 +21,7 @@ export class AiTrainingDataMapper {
       reviewedBy: doc.reviewedBy?.toString() ?? null,
       reviewedAt: doc.reviewedAt ?? null,
       reviewNote: doc.reviewNote ?? null,
+      questionEmbedding: doc.questionEmbedding ?? null,
       isDeleted: doc.isDeleted ?? false,
       deletedAt: doc.deletedAt ?? null,
       createdAt: doc.createdAt,
@@ -44,6 +45,8 @@ export class AiTrainingDataMapper {
     if (data.reviewedBy !== undefined) doc.reviewedBy = data.reviewedBy;
     if (data.reviewedAt !== undefined) doc.reviewedAt = data.reviewedAt;
     if (data.reviewNote !== undefined) doc.reviewNote = data.reviewNote;
+    if (data.questionEmbedding !== undefined)
+      doc.questionEmbedding = data.questionEmbedding;
     if (data.isDeleted !== undefined) doc.isDeleted = data.isDeleted;
     if (data.deletedAt !== undefined) doc.deletedAt = data.deletedAt;
     return doc as Partial<AiTrainingDataDocument>;
