@@ -116,7 +116,9 @@ export class ChapterService {
 
     if (dto.courseId !== undefined) {
       if (!Types.ObjectId.isValid(dto.courseId)) {
-        throw new BadRequestException('Course ID must be a valid MongoDB ObjectId');
+        throw new BadRequestException(
+          'Course ID must be a valid MongoDB ObjectId',
+        );
       }
     }
 

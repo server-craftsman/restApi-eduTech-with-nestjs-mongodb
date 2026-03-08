@@ -357,9 +357,7 @@ export class QuizAttemptService {
     switch (question.type) {
       case QuestionType.FillInBlank:
         // Case-insensitive, trimmed comparison for fill-in-blank
-        return (
-          selectedTrimmed.toLowerCase() === correctTrimmed.toLowerCase()
-        );
+        return selectedTrimmed.toLowerCase() === correctTrimmed.toLowerCase();
 
       case QuestionType.MultipleChoice:
       case QuestionType.TrueFalse:
@@ -395,9 +393,15 @@ export class QuizAttemptService {
     const enrichedAnswers: QuizAttemptAnswerDetailDto[] = attempt.answers.map(
       (answer) => {
         const question = questionMap.get(answer.questionId);
+        if (!question) {
+          throw new NotFoundException(
+            `Question ${answer.questionId} not found for attempt ${attempt.id}`,
+          );
+        }
+
         return {
           ...answer,
-          question: question || ({} as any), // Fallback if question not found
+          question,
         };
       },
     );

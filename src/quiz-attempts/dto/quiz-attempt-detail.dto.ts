@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { QuizAttemptAnswerDto, QuizAttemptDto } from './quiz-attempt.dto';
+import { QuizAttemptAnswerDto } from './quiz-attempt.dto';
 import { LessonDto } from '../../lessons/dto/lesson.dto';
 import { QuestionDto } from '../../questions/dto/question.dto';
 
