@@ -84,8 +84,6 @@ export default () => ({
     maxOutputTokens: parseInt(getEnv('AI_MAX_OUTPUT_TOKENS', '2000'), 10),
     // Gemini embedding model (used by POST /training/train)
     embeddingModel: getEnv('AI_EMBEDDING_MODEL', 'text-embedding-004'),
-    similarityThreshold: parseFloat(
-      getEnv('AI_SIMILARITY_THRESHOLD', '0.65'),
-    ),
+    similarityThreshold: parseFloat(getEnv('AI_SIMILARITY_THRESHOLD', '0.65')),
   },
 });
