@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { QuizAttempt } from '../../../../domain/quiz-attempt';
 import {
   QuizAttemptDocumentType,
@@ -37,7 +38,15 @@ export class QuizAttemptMapper {
   toDocument(attempt: Partial<QuizAttempt>): Partial<QuizAttemptDocument> {
     const doc: Record<string, unknown> = {};
 
-    if (attempt.lessonId !== undefined) doc.lessonId = attempt.lessonId;
+    if (attempt.userId !== undefined) {
+      // Always convert string userId to ObjectId for Mongoose
+      doc.userId = new Types.ObjectId(attempt.userId);
+    }
+
+    if (attempt.lessonId !== undefined) {
+      // Always convert string lessonId to ObjectId for Mongoose
+      doc.lessonId = new Types.ObjectId(attempt.lessonId);
+    }
 
     if (attempt.answers !== undefined) doc.answers = attempt.answers;
 

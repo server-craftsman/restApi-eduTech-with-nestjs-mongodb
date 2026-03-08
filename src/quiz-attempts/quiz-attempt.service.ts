@@ -5,8 +5,15 @@ import {
 } from '@nestjs/common';
 import { QuizAttemptRepositoryAbstract } from './infrastructure/persistence/document/repositories/quiz-attempt.repository.abstract';
 import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
+import { LessonService } from '../lessons/lesson.service';
+import { QuestionService } from '../questions/question.service';
 import { QuizAttempt, QuestionAnswer } from './domain/quiz-attempt';
-import { CreateQuizAttemptDto, UpdateQuizAttemptDto } from './dto';
+import {
+  CreateQuizAttemptDto,
+  UpdateQuizAttemptDto,
+  QuizAttemptDetailDto,
+  QuizAttemptAnswerDetailDto,
+} from './dto';
 import { Question } from '../questions/domain/question';
 import { QuestionType } from '../enums';
 
@@ -15,6 +22,8 @@ export class QuizAttemptService {
   constructor(
     private readonly quizAttemptRepository: QuizAttemptRepositoryAbstract,
     private readonly questionRepository: QuestionRepositoryAbstract,
+    private readonly lessonService: LessonService,
+    private readonly questionService: QuestionService,
   ) {}
 
   /**
@@ -335,25 +344,79 @@ export class QuizAttemptService {
     question: Question,
     selectedAnswer: string | string[],
   ): boolean {
+    // Handle array of answers (take first for comparison)
     const selected = Array.isArray(selectedAnswer)
       ? selectedAnswer[0]
       : selectedAnswer;
 
     if (!selected) return false;
 
+    const selectedTrimmed = selected.trim();
+    const correctTrimmed = question.correctAnswer.trim();
+
     switch (question.type) {
       case QuestionType.FillInBlank:
-        // Case-insensitive, trimmed comparison
+        // Case-insensitive, trimmed comparison for fill-in-blank
         return (
-          selected.trim().toLowerCase() ===
-          question.correctAnswer.trim().toLowerCase()
+          selectedTrimmed.toLowerCase() === correctTrimmed.toLowerCase()
         );
 
       case QuestionType.MultipleChoice:
       case QuestionType.TrueFalse:
       default:
-        // Exact match against stored correct answer
-        return selected === question.correctAnswer;
+        // For multiple choice and true/false: case-insensitive trimmed match
+        // This handles both exact matches and minor whitespace/case differences
+        return selectedTrimmed.toLowerCase() === correctTrimmed.toLowerCase();
     }
+  }
+
+  /**
+   * Enrich a single attempt with lesson and question details
+   */
+  async enrichAttemptWithDetails(
+    attempt: QuizAttempt,
+  ): Promise<QuizAttemptDetailDto> {
+    // Fetch lesson and questions in parallel
+    const [lesson, questions] = await Promise.all([
+      this.lessonService.findById(attempt.lessonId),
+      this.questionService.findByLessonId(attempt.lessonId),
+    ]);
+
+    if (!lesson) {
+      throw new NotFoundException(
+        `Lesson ${attempt.lessonId} not found for attempt ${attempt.id}`,
+      );
+    }
+
+    // Build question map for lookup
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+
+    // Enrich answers with question details
+    const enrichedAnswers: QuizAttemptAnswerDetailDto[] = attempt.answers.map(
+      (answer) => {
+        const question = questionMap.get(answer.questionId);
+        return {
+          ...answer,
+          question: question || ({} as any), // Fallback if question not found
+        };
+      },
+    );
+
+    return {
+      ...attempt,
+      lesson,
+      answers: enrichedAnswers,
+    };
+  }
+
+  /**
+   * Enrich multiple attempts with lesson and question details
+   */
+  async enrichAttemptsWithDetails(
+    attempts: QuizAttempt[],
+  ): Promise<QuizAttemptDetailDto[]> {
+    return Promise.all(
+      attempts.map((attempt) => this.enrichAttemptWithDetails(attempt)),
+    );
   }
 }

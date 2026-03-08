@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { QuizAttemptService } from './quiz-attempt.service';
@@ -25,6 +26,7 @@ import {
   CreateQuizAttemptDto,
   UpdateQuizAttemptDto,
   QuizAttemptDto,
+  QuizAttemptDetailDto,
 } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,6 +39,7 @@ import { User } from '../users/domain/user';
 @Controller('quiz-attempts')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
+@ApiExtraModels(QuizAttemptDetailDto)
 @ApiResponse({
   status: 401,
   description: 'Unauthorized - Invalid or missing JWT token',
@@ -90,16 +93,19 @@ export class QuizAttemptController extends BaseController {
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: 'Get all quiz attempts (ADMIN only)',
-    description: 'Retrieve all quiz attempts in the system',
+    description: 'Retrieve all quiz attempts in the system with lesson and question details',
   })
   @ApiResponse({
     status: 200,
     description: 'Attempts retrieved successfully',
-    type: [QuizAttemptDto],
+    type: [QuizAttemptDetailDto],
   })
   async getAllAttempts(@Res() res: Response): Promise<Response> {
     const attempts = await this.quizAttemptService.getAllAttempts();
-    return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
+    const enriched = await this.quizAttemptService.enrichAttemptsWithDetails(
+      attempts,
+    );
+    return this.sendSuccess(res, enriched, 'Attempts retrieved successfully');
   }
 
   /**
@@ -109,19 +115,22 @@ export class QuizAttemptController extends BaseController {
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
   @ApiOperation({
     summary: "Get current user's quiz attempts",
-    description: 'Retrieve all quiz attempts for the authenticated user',
+    description: "Retrieve all quiz attempts for the authenticated user with lesson and question details",
   })
   @ApiResponse({
     status: 200,
     description: 'Attempts retrieved successfully',
-    type: [QuizAttemptDto],
+    type: [QuizAttemptDetailDto],
   })
   async getMyAttempts(
     @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<Response> {
     const attempts = await this.quizAttemptService.getUserAttempts(user.id);
-    return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
+    const enriched = await this.quizAttemptService.enrichAttemptsWithDetails(
+      attempts,
+    );
+    return this.sendSuccess(res, enriched, 'Attempts retrieved successfully');
   }
 
   /**
@@ -131,7 +140,7 @@ export class QuizAttemptController extends BaseController {
   @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
   @ApiOperation({
     summary: 'Get quiz attempt by ID',
-    description: 'Retrieve a specific quiz attempt by its ID',
+    description: 'Retrieve a specific quiz attempt by its ID with lesson and question details',
   })
   @ApiParam({
     name: 'id',
@@ -141,7 +150,7 @@ export class QuizAttemptController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Attempt retrieved successfully',
-    type: QuizAttemptDto,
+    type: QuizAttemptDetailDto,
   })
   @ApiResponse({ status: 404, description: 'Attempt not found' })
   async getAttemptById(
@@ -157,7 +166,10 @@ export class QuizAttemptController extends BaseController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return this.sendSuccess(res, attempt, 'Attempt retrieved successfully');
+    const enriched = await this.quizAttemptService.enrichAttemptWithDetails(
+      attempt,
+    );
+    return this.sendSuccess(res, enriched, 'Attempt retrieved successfully');
   }
 
   /**
@@ -167,7 +179,7 @@ export class QuizAttemptController extends BaseController {
   @Roles(UserRole.Admin)
   @ApiOperation({
     summary: "Get a user's quiz attempts (ADMIN only)",
-    description: 'Retrieve all quiz attempts for a specific user',
+    description: 'Retrieve all quiz attempts for a specific user with lesson and question details',
   })
   @ApiParam({
     name: 'userId',
@@ -177,14 +189,17 @@ export class QuizAttemptController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Attempts retrieved successfully',
-    type: [QuizAttemptDto],
+    type: [QuizAttemptDetailDto],
   })
-  async getUserAttempts(
+  async getUserAttemptsAdmin(
     @Param('userId') userId: string,
     @Res() res: Response,
   ): Promise<Response> {
     const attempts = await this.quizAttemptService.getUserAttempts(userId);
-    return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
+    const enriched = await this.quizAttemptService.enrichAttemptsWithDetails(
+      attempts,
+    );
+    return this.sendSuccess(res, enriched, 'Attempts retrieved successfully');
   }
 
   /**
@@ -194,7 +209,7 @@ export class QuizAttemptController extends BaseController {
   @Roles(UserRole.Teacher, UserRole.Admin)
   @ApiOperation({
     summary: 'Get all attempts for a lesson quiz (ADMIN/TEACHER only)',
-    description: 'Retrieve all student attempts for a specific lesson',
+    description: 'Retrieve all student attempts for a specific lesson with lesson and question details',
   })
   @ApiParam({
     name: 'lessonId',
@@ -204,14 +219,17 @@ export class QuizAttemptController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Attempts retrieved successfully',
-    type: [QuizAttemptDto],
+    type: [QuizAttemptDetailDto],
   })
   async getLessonAttempts(
     @Param('lessonId') lessonId: string,
     @Res() res: Response,
   ): Promise<Response> {
     const attempts = await this.quizAttemptService.getLessonAttempts(lessonId);
-    return this.sendSuccess(res, attempts, 'Attempts retrieved successfully');
+    const enriched = await this.quizAttemptService.enrichAttemptsWithDetails(
+      attempts,
+    );
+    return this.sendSuccess(res, enriched, 'Attempts retrieved successfully');
   }
 
   /**
@@ -222,7 +240,7 @@ export class QuizAttemptController extends BaseController {
   @ApiOperation({
     summary: "Get current user's best attempt for a lesson quiz",
     description:
-      'Retrieve the highest scoring attempt for the authenticated user in a specific lesson',
+      'Retrieve the highest scoring attempt for the authenticated user in a specific lesson with lesson and question details',
   })
   @ApiParam({
     name: 'lessonId',
@@ -232,7 +250,7 @@ export class QuizAttemptController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Best attempt retrieved successfully',
-    type: QuizAttemptDto,
+    type: QuizAttemptDetailDto,
   })
   @ApiResponse({
     status: 404,
@@ -255,11 +273,10 @@ export class QuizAttemptController extends BaseController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return this.sendSuccess(
-      res,
+    const enriched = await this.quizAttemptService.enrichAttemptWithDetails(
       bestAttempt,
-      'Best attempt retrieved successfully',
     );
+    return this.sendSuccess(res, enriched, 'Best attempt retrieved successfully');
   }
 
   /**

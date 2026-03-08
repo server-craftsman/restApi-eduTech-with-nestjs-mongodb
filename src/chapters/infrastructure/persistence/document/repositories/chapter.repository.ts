@@ -83,14 +83,16 @@ export class ChapterRepository extends ChapterRepositoryAbstract {
   }
 
   async update(id: string, chapter: Partial<Chapter>): Promise<Chapter | null> {
-    const updated = await this.model
-      .findOneAndUpdate(
-        { _id: id, ...NOT_DELETED },
-        { $set: this.mapper.toDocument(chapter) },
-        { new: true },
-      )
+    const existing = await this.model
+      .findOne({ _id: id, ...NOT_DELETED })
       .exec();
-    return updated ? this.mapper.toDomain(updated) : null;
+    if (!existing) return null;
+
+    const updateData = this.mapper.toDocument(chapter);
+    Object.assign(existing, updateData);
+
+    const saved = await existing.save();
+    return this.mapper.toDomain(saved);
   }
 
   async softDelete(id: string): Promise<void> {

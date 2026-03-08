@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { Chapter } from '../../../../domain/chapter';
 import { ChapterDocumentType } from '../schemas/chapter.schema';
 
@@ -25,7 +26,9 @@ export class ChapterMapper {
 
   toDocument(chapter: Partial<Chapter>): Partial<ChapterDocumentType> {
     const doc: Record<string, unknown> = {};
-    if (chapter.courseId !== undefined) doc.courseId = chapter.courseId;
+    if (chapter.courseId !== undefined) {
+      doc.courseId = new Types.ObjectId(chapter.courseId);
+    }
     if (chapter.title !== undefined) doc.title = chapter.title;
     if (chapter.description !== undefined)
       doc.description = chapter.description;

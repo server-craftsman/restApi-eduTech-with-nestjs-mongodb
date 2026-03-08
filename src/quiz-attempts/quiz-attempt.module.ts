@@ -10,6 +10,7 @@ import { QuizAttemptMapper } from './infrastructure/persistence/document/mappers
 import { QuizAttemptService } from './quiz-attempt.service';
 import { QuizAttemptController } from './quiz-attempt.controller';
 import { QuestionModule } from '../questions/question.module';
+import { LessonModule } from '../lessons/lesson.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { QuestionModule } from '../questions/question.module';
       { name: QuizAttemptDocument.name, schema: QuizAttemptSchema },
     ]),
     QuestionModule,
+    LessonModule,
   ],
   controllers: [QuizAttemptController],
   providers: [

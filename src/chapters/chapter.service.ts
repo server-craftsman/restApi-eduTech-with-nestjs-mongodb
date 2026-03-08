@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { ChapterRepositoryAbstract } from './infrastructure/persistence/document/repositories/chapter.repository.abstract';
 import { Chapter } from './domain/chapter';
 import { CreateChapterDto, UpdateChapterDto } from './dto';
@@ -113,7 +114,14 @@ export class ChapterService {
       }
     }
 
+    if (dto.courseId !== undefined) {
+      if (!Types.ObjectId.isValid(dto.courseId)) {
+        throw new BadRequestException('Course ID must be a valid MongoDB ObjectId');
+      }
+    }
+
     const updateData: Partial<Chapter> = {};
+    if (dto.courseId !== undefined) updateData.courseId = dto.courseId;
     if (dto.title !== undefined) updateData.title = dto.title.trim();
     if (dto.description !== undefined)
       updateData.description = dto.description ? dto.description.trim() : null;
