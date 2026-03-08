@@ -11,6 +11,7 @@ import { QuizAttemptService } from './quiz-attempt.service';
 import { QuizAttemptController } from './quiz-attempt.controller';
 import { QuestionModule } from '../questions/question.module';
 import { LessonModule } from '../lessons/lesson.module';
+import { WrongAnswerModule } from '../wrong-answers/wrong-answer.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { LessonModule } from '../lessons/lesson.module';
     ]),
     QuestionModule,
     LessonModule,
+    WrongAnswerModule,
   ],
   controllers: [QuizAttemptController],
   providers: [

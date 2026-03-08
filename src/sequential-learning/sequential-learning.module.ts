@@ -5,6 +5,7 @@ import { LessonProgressModule } from '../lesson-progress/lesson-progress.module'
 import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
 import { LessonModule } from '../lessons/lesson.module';
 import { QuestionModule } from '../questions/question.module';
+import { ChapterModule } from '../chapters/chapter.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { QuestionModule } from '../questions/question.module';
     QuizAttemptModule,
     LessonModule,
     QuestionModule,
+    ChapterModule,
   ],
   controllers: [SequentialLearningController],
   providers: [SequentialLearningService],

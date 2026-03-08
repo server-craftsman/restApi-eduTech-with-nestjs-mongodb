@@ -35,6 +35,13 @@ export class LessonProgressRepository implements LessonProgressRepositoryAbstrac
       lessonId: new Types.ObjectId(data.lessonId),
       isCompleted: data.isCompleted,
       lastWatchedSec: data.lastWatchedSec,
+      progressPercent: data.progressPercent,
+      videoWatched: data.videoWatched,
+      videoCurrentTime: data.videoCurrentTime,
+      videoDuration: data.videoDuration,
+      quizCompleted: data.quizCompleted,
+      quizScore: data.quizScore,
+      lastWatchedAt: data.lastWatchedAt,
     });
     return this.mapper.toDomain(doc);
   }
@@ -50,6 +57,19 @@ export class LessonProgressRepository implements LessonProgressRepositoryAbstrac
       updateData.isCompleted = data.isCompleted;
     if (data.lastWatchedSec !== undefined)
       updateData.lastWatchedSec = data.lastWatchedSec;
+    if (data.progressPercent !== undefined)
+      updateData.progressPercent = data.progressPercent;
+    if (data.videoWatched !== undefined)
+      updateData.videoWatched = data.videoWatched;
+    if (data.videoCurrentTime !== undefined)
+      updateData.videoCurrentTime = data.videoCurrentTime;
+    if (data.videoDuration !== undefined)
+      updateData.videoDuration = data.videoDuration;
+    if (data.quizCompleted !== undefined)
+      updateData.quizCompleted = data.quizCompleted;
+    if (data.quizScore !== undefined) updateData.quizScore = data.quizScore;
+    if (data.lastWatchedAt !== undefined)
+      updateData.lastWatchedAt = data.lastWatchedAt;
 
     const doc = await this.lessonProgressModel.findByIdAndUpdate(
       id,

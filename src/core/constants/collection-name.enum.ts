@@ -29,4 +29,6 @@ export enum CollectionName {
   // ── AI Chatbot ──
   AiConversations = 'ai_conversations',
   AiTrainingData = 'ai_training_data',
+  // ── Review / Wrong-Answer Bank ──
+  WrongAnswers = 'wrong_answers',
 }

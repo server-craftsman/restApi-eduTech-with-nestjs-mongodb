@@ -7,6 +7,7 @@ import { QuizAttemptRepositoryAbstract } from './infrastructure/persistence/docu
 import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
 import { LessonService } from '../lessons/lesson.service';
 import { QuestionService } from '../questions/question.service';
+import { WrongAnswerService } from '../wrong-answers/wrong-answer.service';
 import { QuizAttempt, QuestionAnswer } from './domain/quiz-attempt';
 import {
   CreateQuizAttemptDto,
@@ -24,6 +25,7 @@ export class QuizAttemptService {
     private readonly questionRepository: QuestionRepositoryAbstract,
     private readonly lessonService: LessonService,
     private readonly questionService: QuestionService,
+    private readonly wrongAnswerService: WrongAnswerService,
   ) {}
 
   /**
@@ -101,7 +103,32 @@ export class QuizAttemptService {
       deletedAt: null,
     };
 
-    return this.quizAttemptRepository.create(attemptData);
+    const saved = await this.quizAttemptRepository.create(attemptData);
+
+    // Push wrong/correct answers to the wrong-answer bank (fire-and-forget)
+    void this.pushToWrongAnswerBank(userId, dto.lessonId, gradedAnswers);
+
+    return saved;
+  }
+
+  /**
+   * After saving the attempt, asynchronously push wrong answers to the bank.
+   * Errors are silently caught so the main quiz flow is never blocked.
+   */
+  private async pushToWrongAnswerBank(
+    userId: string,
+    lessonId: string,
+    gradedAnswers: QuestionAnswer[],
+  ): Promise<void> {
+    try {
+      await this.wrongAnswerService.recordFromAttempt(
+        userId,
+        lessonId,
+        gradedAnswers,
+      );
+    } catch {
+      // Bank update failure must never break the quiz submission
+    }
   }
 
   /**

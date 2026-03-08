@@ -26,6 +26,7 @@ import { MaterialModule } from './materials';
 import { QuestionModule } from './questions';
 import { LessonProgressModule } from './lesson-progress';
 import { QuizAttemptModule } from './quiz-attempts';
+import { WrongAnswerModule } from './wrong-answers/wrong-answer.module';
 import { SubscriptionPlanModule } from './subscription-plans';
 import { UserSubscriptionModule } from './user-subscriptions';
 import { TransactionModule } from './transactions';
@@ -69,6 +70,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
     QuestionModule,
     LessonProgressModule,
     QuizAttemptModule,
+    WrongAnswerModule,
     SubscriptionPlanModule,
     UserSubscriptionModule,
     TransactionModule,

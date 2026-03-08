@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Put,
   Delete,
   Param,
@@ -23,7 +22,6 @@ import {
 import { Response } from 'express';
 import { QuizAttemptService } from './quiz-attempt.service';
 import {
-  CreateQuizAttemptDto,
   UpdateQuizAttemptDto,
   QuizAttemptDto,
   QuizAttemptDetailDto,
@@ -56,35 +54,35 @@ export class QuizAttemptController extends BaseController {
   /**
    * Submit a quiz attempt — server grades the answers automatically
    */
-  @Post()
-  @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
-  @ApiOperation({
-    summary: 'Submit a quiz attempt (server-side grading)',
-    description:
-      'Submit quiz answers for a lesson. The server fetches the correct answers and grades automatically. userId is extracted from JWT token.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Quiz attempt submitted and graded successfully',
-    type: QuizAttemptDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request - Invalid submission data',
-  })
-  async submitAttempt(
-    @Body() dto: CreateQuizAttemptDto,
-    @CurrentUser() user: User,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const attempt = await this.quizAttemptService.submitAttempt(user.id, dto);
-    return this.sendSuccess(
-      res,
-      attempt,
-      'Quiz attempt submitted and graded successfully',
-      HttpStatus.CREATED,
-    );
-  }
+  // @Post()
+  // @Roles(UserRole.Student, UserRole.Teacher, UserRole.Admin)
+  // @ApiOperation({
+  //   summary: 'Submit a quiz attempt (server-side grading)',
+  //   description:
+  //     'Submit quiz answers for a lesson. The server fetches the correct answers and grades automatically. userId is extracted from JWT token.',
+  // })
+  // @ApiResponse({
+  //   status: 201,
+  //   description: 'Quiz attempt submitted and graded successfully',
+  //   type: QuizAttemptDto,
+  // })
+  // @ApiResponse({
+  //   status: 400,
+  //   description: 'Bad request - Invalid submission data',
+  // })
+  // async submitAttempt(
+  //   @Body() dto: CreateQuizAttemptDto,
+  //   @CurrentUser() user: User,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const attempt = await this.quizAttemptService.submitAttempt(user.id, dto);
+  //   return this.sendSuccess(
+  //     res,
+  //     attempt,
+  //     'Quiz attempt submitted and graded successfully',
+  //     HttpStatus.CREATED,
+  //   );
+  // }
 
   /**
    * Get all quiz attempts (ADMIN only)

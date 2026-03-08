@@ -1,17 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsString, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 /**
  * DTO for tracking video playback progress.
  * Called periodically while student watches the lesson video.
  */
 export class VideoProgressRequestDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Lesson ID being watched',
     example: '64f1a2b3c4d5e6f7a8b9c0d1',
   })
+  @IsOptional()
   @IsString()
-  lessonId!: string;
+  lessonId?: string;
 
   @ApiProperty({
     description: 'Current playback position in seconds',
