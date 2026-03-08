@@ -3,6 +3,7 @@ import { Difficulty } from '../../../../../enums';
 
 export abstract class QuestionRepositoryAbstract {
   abstract findById(id: string): Promise<Question | null>;
+  abstract findByIds(ids: string[]): Promise<Question[]>;
   abstract findAll(): Promise<Question[]>;
   abstract create(
     data: Omit<Question, 'id' | 'createdAt' | 'updatedAt'>,

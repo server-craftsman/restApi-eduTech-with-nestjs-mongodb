@@ -31,4 +31,7 @@ export enum CollectionName {
   AiTrainingData = 'ai_training_data',
   // ── Review / Wrong-Answer Bank ──
   WrongAnswers = 'wrong_answers',
+  // ── Exam Flow ──
+  Exams = 'exams',
+  ExamAttempts = 'exam_attempts',
 }

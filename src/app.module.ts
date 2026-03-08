@@ -37,6 +37,7 @@ import { DashboardModule } from './dashboard';
 import { UploadsModule } from './uploads';
 import { SearchModule } from './search/search.module';
 import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
+import { ExamModule } from './exams/exam.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
     UploadsModule,
     SearchModule,
     AiAssistantModule,
+    ExamModule,
   ],
 })
 export class AppModule {}

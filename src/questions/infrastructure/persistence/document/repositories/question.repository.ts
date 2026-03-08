@@ -84,6 +84,14 @@ export class QuestionRepository extends QuestionRepositoryAbstract {
       .exec();
   }
 
+  async findByIds(ids: string[]): Promise<Question[]> {
+    const objectIds = ids.map((id) => new Types.ObjectId(id));
+    const docs = await this.model
+      .find({ _id: { $in: objectIds }, ...NOT_DELETED })
+      .exec();
+    return this.mapper.toDomainArray(docs);
+  }
+
   async findByLessonId(lessonId: string): Promise<Question[]> {
     const docs = await this.model
       .find({
