@@ -6,6 +6,8 @@ import { ChapterModule } from '../chapters/chapter.module';
 import { LessonModule } from '../lessons/lesson.module';
 import { QuestionModule } from '../questions/question.module';
 import { MaterialModule } from '../materials/material.module';
+import { StudentProfileModule } from '../student-profiles/student-profile.module';
+import { GradeLevelModule } from '../grade-levels/grade-level.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { MaterialModule } from '../materials/material.module';
     LessonModule,
     QuestionModule,
     MaterialModule,
+    StudentProfileModule,
+    GradeLevelModule,
   ],
   controllers: [CourseController],
   providers: [CourseService],

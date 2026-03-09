@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { StudentProfileRepositoryAbstract } from './infrastructure/persistence/document/repositories/student-profile.repository.abstract';
 import { StudentProfile } from './domain/student-profile';
+import { CompleteOnboardingDto } from './dto';
 
 @Injectable()
 export class StudentProfileService {
@@ -65,5 +66,36 @@ export class StudentProfileService {
     const profile = await this.getProfileById(id);
     if (!profile) return null;
     return this.updateProfile(id, { ...profile, currentStreak: streak });
+  }
+
+  // ─── Onboarding ───────────────────────────────────────────────────────────
+
+  /**
+   * Called once after registration to record the student's grade level and
+   * subject preferences.  Flips `onboardingCompleted` to `true`, which
+   * unlocks the full personalised Dashboard.
+   *
+   * @throws NotFoundException when the student profile does not exist yet.
+   */
+  async completeOnboarding(
+    userId: string,
+    dto: CompleteOnboardingDto,
+  ): Promise<StudentProfile> {
+    const profile = await this.getProfileByUserId(userId);
+    if (!profile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    const updated = await this.updateProfile(profile.id, {
+      gradeLevel: dto.gradeLevel,
+      ...(dto.fullName ? { fullName: dto.fullName } : {}),
+      ...(dto.schoolName !== undefined ? { schoolName: dto.schoolName } : {}),
+      preferredSubjectIds:
+        dto.preferredSubjectIds ?? profile.preferredSubjectIds,
+      onboardingCompleted: true,
+    });
+
+    // updated is guaranteed non-null because we just confirmed the profile exists
+    return updated!;
   }
 }

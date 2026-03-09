@@ -13,6 +13,8 @@ export class StudentProfileMapper {
       dateOfBirth: doc.dateOfBirth ?? null,
       schoolName: doc.schoolName ?? null,
       gradeLevel: doc.gradeLevel ?? null,
+      preferredSubjectIds: doc.preferredSubjectIds ?? [],
+      onboardingCompleted: doc.onboardingCompleted ?? false,
       diamondBalance: doc.diamondBalance,
       xpTotal: doc.xpTotal,
       currentStreak: doc.currentStreak,

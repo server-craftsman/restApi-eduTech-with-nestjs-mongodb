@@ -23,6 +23,12 @@ export class StudentProfileDocument {
   @Prop({ type: String, enum: Object.values(GradeLevel), default: null })
   gradeLevel?: GradeLevel | null;
 
+  @Prop({ type: [String], default: [] })
+  preferredSubjectIds!: string[];
+
+  @Prop({ default: false })
+  onboardingCompleted!: boolean;
+
   @Prop({ default: 0 })
   diamondBalance!: number;
 

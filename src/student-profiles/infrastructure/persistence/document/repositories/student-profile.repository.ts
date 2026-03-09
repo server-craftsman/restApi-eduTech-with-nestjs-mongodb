@@ -37,6 +37,8 @@ export class StudentProfileRepository implements StudentProfileRepositoryAbstrac
       dateOfBirth: data.dateOfBirth ?? null,
       schoolName: data.schoolName ?? null,
       gradeLevel: data.gradeLevel ?? null,
+      preferredSubjectIds: data.preferredSubjectIds ?? [],
+      onboardingCompleted: data.onboardingCompleted ?? false,
       diamondBalance: data.diamondBalance,
       xpTotal: data.xpTotal,
       currentStreak: data.currentStreak,
@@ -55,6 +57,10 @@ export class StudentProfileRepository implements StudentProfileRepositoryAbstrac
     if (data.dateOfBirth) updateData.dateOfBirth = data.dateOfBirth;
     if (data.schoolName !== undefined) updateData.schoolName = data.schoolName;
     if (data.gradeLevel !== undefined) updateData.gradeLevel = data.gradeLevel;
+    if (data.preferredSubjectIds !== undefined)
+      updateData.preferredSubjectIds = data.preferredSubjectIds;
+    if (data.onboardingCompleted !== undefined)
+      updateData.onboardingCompleted = data.onboardingCompleted;
     if (data.diamondBalance !== undefined)
       updateData.diamondBalance = data.diamondBalance;
     if (data.xpTotal !== undefined) updateData.xpTotal = data.xpTotal;

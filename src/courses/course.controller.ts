@@ -37,18 +37,121 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { User } from '../users/domain/user';
+import { StudentProfileService } from '../student-profiles/student-profile.service';
+import { GradeLevelService } from '../grade-levels/grade-level.service';
 
 @ApiTags('Courses')
 @Controller('courses')
 @ApiExtraModels(FilterCourseDto, SortCourseDto)
 export class CourseController extends BaseController {
-  constructor(private readonly courseService: CourseService) {
+  constructor(
+    private readonly courseService: CourseService,
+    private readonly studentProfileService: StudentProfileService,
+    private readonly gradeLevelService: GradeLevelService,
+  ) {
     super();
   }
 
   // ─────────────────────────────────────────────────────────────
   // GET endpoints
   // ─────────────────────────────────────────────────────────────
+
+  // ─── Personalized ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /courses/personalized
+   *
+   * Returns published courses filtered to the authenticated student's grade
+   * level (and optionally boosted by their preferred subjects).
+   *
+   * Students who haven't completed onboarding yet receive a 200 with a
+   * `needsOnboarding` hint instead of an empty list.
+   *
+   * Non-Student roles (Teacher, Admin) receive all published courses with no
+   * grade-level restriction.
+   */
+  @Get('personalized')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get grade-filtered published courses for the logged-in student',
+    description:
+      'Reads the student profile to extract gradeLevel and preferredSubjectIds, ' +
+      "then returns only published courses that match the student's grade. " +
+      'Teachers and Admins see all published courses.',
+  })
+  @ApiResponse({ status: 200, description: 'Personalised courses retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getPersonalizedCourses(
+    @CurrentUser() user: User,
+    @Query() query: QueryCourseDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    try {
+      // 1. Resolve student profile & preferred grade level
+      const profile = await this.studentProfileService.getProfileByUserId(
+        user.id,
+      );
+
+      if (profile && !profile.onboardingCompleted) {
+        return this.sendSuccess(
+          res,
+          {
+            needsOnboarding: true,
+            onboardingUrl: '/student-profiles/onboarding',
+            courses: [],
+            total: 0,
+          },
+          'Complete onboarding to receive personalised content',
+        );
+      }
+
+      // 2. Convert GradeLevel enum value → GradeLevel document ID
+      let gradeLevelId: string | undefined;
+      const gradeEnumValue = profile?.gradeLevel;
+      if (gradeEnumValue) {
+        const gradeLevelDoc = await this.gradeLevelService.findByValue(
+          parseInt(gradeEnumValue, 10),
+        );
+        gradeLevelId = gradeLevelDoc?.id;
+      }
+
+      // 3. Build forced overrides: always Published, always grade-filtered (if known)
+      const overrides: Partial<FilterCourseDto> = {
+        status: CourseStatus.Published,
+        ...(gradeLevelId ? { gradeLevelId } : {}),
+      };
+
+      // 4. Optionally pre-filter by first preferred subject when caller hasn't
+      //    already specified one and the profile has preferences set.
+      const callerSubjectId = query.filters?.subjectId;
+      const preferredSubjectId = profile?.preferredSubjectIds?.[0];
+      if (!callerSubjectId && preferredSubjectId) {
+        overrides.subjectId = preferredSubjectId;
+      }
+
+      const result = await this.courseService.findAllWithFilters(
+        query,
+        overrides,
+      );
+
+      return this.sendPaginated(
+        res,
+        result.courses,
+        result.total,
+        query.page ?? 1,
+        query.limit ?? 10,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return this.sendError(
+        res,
+        message,
+        'Failed to retrieve personalised courses',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Get()
   @ApiOperation({

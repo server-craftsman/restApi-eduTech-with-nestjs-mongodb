@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
   Param,
   Body,
@@ -20,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { StudentProfileService } from './student-profile.service';
-import { UpdateStudentProfileDto } from './dto';
+import { UpdateStudentProfileDto, CompleteOnboardingDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../roles/roles.decorator';
 import { RolesGuard } from '../roles/roles.guard';
@@ -136,6 +137,56 @@ export class StudentProfileController extends BaseController {
   //   );
   //   return this.sendSuccess(res, updated, 'Diamonds added', HttpStatus.OK);
   // }
+
+  // ─── Onboarding ───────────────────────────────────────────────────────────
+
+  /**
+   * POST /student-profiles/onboarding
+   *
+   * Must be called once after registration to unlock the full Dashboard.
+   * Sets the student's grade level and subject preferences, then flips
+   * `onboardingCompleted` to `true`.  Subsequent calls simply update the
+   * same fields (idempotent).
+   */
+  @Post('onboarding')
+  @Roles(UserRole.Student)
+  @ApiOperation({
+    summary: 'Complete onboarding questionnaire (Student only)',
+    description:
+      'Sets gradeLevel + preferredSubjectIds and marks the profile as ' +
+      'onboarding-complete.  Call this once after registration before ' +
+      'accessing the Dashboard.',
+  })
+  @ApiBody({ type: CompleteOnboardingDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Onboarding completed — proceed to /dashboard',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Student profile not found' })
+  async completeOnboarding(
+    @Req() req: Request & { user: User },
+    @Body() dto: CompleteOnboardingDto,
+    @Res() res: Response,
+  ) {
+    const profile = await this.studentProfileService.completeOnboarding(
+      req.user.id,
+      dto,
+    );
+    return this.sendSuccess(
+      res,
+      {
+        profile,
+        nextStep: '/dashboard',
+        message:
+          `Onboarding complete! ` +
+          `Content has been personalised for Grade ${profile.gradeLevel}.`,
+      },
+      'Onboarding completed successfully',
+      HttpStatus.OK,
+    );
+  }
 
   // ─── Admin endpoints ──────────────────────────────────────────────────────
 

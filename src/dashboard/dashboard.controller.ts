@@ -10,6 +10,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/domain/user';
 import { LearningPathService } from '../learning-path/learning-path.service';
 import { LessonProgressService } from '../lesson-progress/lesson-progress.service';
+import { StudentProfileService } from '../student-profiles/student-profile.service';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -19,6 +20,7 @@ export class DashboardController {
   constructor(
     private readonly learningPathService: LearningPathService,
     private readonly lessonProgressService: LessonProgressService,
+    private readonly studentProfileService: StudentProfileService,
   ) {}
 
   @Get()
@@ -30,8 +32,26 @@ export class DashboardController {
     description: 'Dashboard data retrieved successfully',
   })
   async getDashboard(@CurrentUser() user: User) {
+    // ─── Onboarding gate ────────────────────────────────────────────────────────
+    // Students must complete the onboarding questionnaire first.
+    // Other roles (Teacher, Admin, Parent) skip onboarding entirely.
+    const studentProfile = await this.studentProfileService.getProfileByUserId(
+      user.id,
+    );
+
+    if (studentProfile && !studentProfile.onboardingCompleted) {
+      return {
+        needsOnboarding: true,
+        onboardingUrl: '/student-profiles/onboarding',
+        message:
+          'Please complete your onboarding to personalise your learning experience.',
+      };
+    }
+
+    // ─── Grade level personalisation gate ─────────────────────────────
     // Get user's grade level from student profile
-    const gradeLevel = user.studentProfile?.gradeLevel;
+    const gradeLevel =
+      studentProfile?.gradeLevel ?? user.studentProfile?.gradeLevel;
     if (!gradeLevel) {
       return {
         error: 'User does not have a grade level set',
@@ -74,8 +94,24 @@ export class DashboardController {
       userInfo: {
         email: user.email,
         gradeLevel,
-        currentStreak: user.studentProfile?.currentStreak || 0,
-        diamondBalance: user.studentProfile?.diamondBalance || 0,
+        currentStreak:
+          studentProfile?.currentStreak ??
+          user.studentProfile?.currentStreak ??
+          0,
+        diamondBalance:
+          studentProfile?.diamondBalance ??
+          user.studentProfile?.diamondBalance ??
+          0,
+      },
+      // Personalisation hints: the frontend uses these to pre-populate filters
+      // when calling GET /courses so that only grade-appropriate content is shown.
+      personalization: {
+        gradeLevel,
+        preferredSubjectIds: studentProfile?.preferredSubjectIds ?? [],
+        contentFilterHint: gradeLevel
+          ? `Use GET /courses?filters={"gradeLevelId":"<id for grade ${gradeLevel}>"} ` +
+            `to see only grade-${gradeLevel} courses.`
+          : null,
       },
     };
   }
