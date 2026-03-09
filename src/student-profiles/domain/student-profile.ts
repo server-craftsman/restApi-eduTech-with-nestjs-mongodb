@@ -1,4 +1,4 @@
-import { GradeLevel } from '../../enums';
+import { BadgeType, GradeLevel } from '../../enums';
 
 export interface StudentProfile {
   id: string;
@@ -15,6 +15,10 @@ export interface StudentProfile {
   diamondBalance: number;
   xpTotal: number;
   currentStreak: number;
+  /** Accumulated reward points (lesson completions + perfect quiz scores) */
+  totalPoints: number;
+  /** Badges unlocked by crossing point thresholds (never removed once earned) */
+  badges: BadgeType[];
   createdAt: Date;
   updatedAt: Date;
 }

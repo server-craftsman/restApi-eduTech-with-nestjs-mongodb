@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { GradeLevel } from '../../../../../enums';
+import { BadgeType, GradeLevel } from '../../../../../enums';
 import { CollectionName } from '../../../../../core/constants';
 
 @Schema({ timestamps: true, collection: CollectionName.StudentProfiles })
@@ -37,6 +37,14 @@ export class StudentProfileDocument {
 
   @Prop({ default: 0 })
   currentStreak!: number;
+
+  /** Accumulated reward points awarded by the Simple Reward system */
+  @Prop({ default: 0 })
+  totalPoints!: number;
+
+  /** Badges unlocked by crossing point thresholds — stored as $addToSet, never removed */
+  @Prop({ type: [String], enum: Object.values(BadgeType), default: [] })
+  badges!: BadgeType[];
 }
 
 export type StudentProfileDocumentType =

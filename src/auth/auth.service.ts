@@ -91,6 +91,8 @@ export class AuthService {
           diamondBalance: 0,
           xpTotal: 0,
           currentStreak: 0,
+          totalPoints: 0,
+          badges: [],
         });
       } catch (error) {
         this.logger.warn(
@@ -921,6 +923,8 @@ export class AuthService {
         diamondBalance: 0,
         xpTotal: 0,
         currentStreak: 0,
+        totalPoints: 0,
+        badges: [],
       });
     } catch (err) {
       this.logger.warn(

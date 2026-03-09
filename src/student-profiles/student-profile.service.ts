@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { StudentProfileRepositoryAbstract } from './infrastructure/persistence/document/repositories/student-profile.repository.abstract';
 import { StudentProfile } from './domain/student-profile';
 import { CompleteOnboardingDto } from './dto';
+import { BadgeType } from '../enums';
 
 @Injectable()
 export class StudentProfileService {
@@ -68,8 +69,28 @@ export class StudentProfileService {
     return this.updateProfile(id, { ...profile, currentStreak: streak });
   }
 
-  // ─── Onboarding ───────────────────────────────────────────────────────────
+  // ─── Reward helpers (called by RewardService) ─────────────────────────────
 
+  /**
+   * Atomically increment the student's totalPoints and return the updated profile.
+   * Uses MongoDB $inc — safe under concurrent requests.
+   * Returns null if no profile exists for that userId.
+   */
+  async incrementPoints(
+    userId: string,
+    points: number,
+  ): Promise<StudentProfile | null> {
+    return this.studentProfileRepository.incrementPoints(userId, points);
+  }
+
+  /**
+   * Append a badge to the student's badges array using $addToSet (idempotent).
+   */
+  async addBadge(userId: string, badge: BadgeType): Promise<void> {
+    return this.studentProfileRepository.addBadge(userId, badge);
+  }
+
+  // ─── Onboarding ───────────────────────────────────────────────────────────
   /**
    * Called once after registration to record the student's grade level and
    * subject preferences.  Flips `onboardingCompleted` to `true`, which

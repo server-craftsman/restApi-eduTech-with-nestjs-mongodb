@@ -8,10 +8,12 @@ import { BaseService } from '../core/base/base.service';
 import { ExamRepositoryAbstract } from './infrastructure/persistence/document/repositories/exam.repository.abstract';
 import { ExamAttemptRepositoryAbstract } from './infrastructure/persistence/document/repositories/exam-attempt.repository.abstract';
 import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
+import { CourseRepositoryAbstract } from '../courses/infrastructure/persistence/document/repositories/course.repository.abstract';
+import { ChapterRepositoryAbstract } from '../chapters/infrastructure/persistence/document/repositories/chapter.repository.abstract';
 import { Exam } from './domain/exam';
 import { ExamAttempt, ExamQuestionAnswer } from './domain/exam-attempt';
 import { Question } from '../questions/domain/question';
-import { Difficulty, QuestionType } from '../enums';
+import { Difficulty, ExamScope, QuestionType } from '../enums';
 import {
   CreateExamDto,
   UpdateExamDto,
@@ -30,6 +32,8 @@ export class ExamService extends BaseService {
     private readonly examRepository: ExamRepositoryAbstract,
     private readonly examAttemptRepository: ExamAttemptRepositoryAbstract,
     private readonly questionRepository: QuestionRepositoryAbstract,
+    private readonly courseRepository: CourseRepositoryAbstract,
+    private readonly chapterRepository: ChapterRepositoryAbstract,
   ) {
     super();
   }
@@ -40,8 +44,14 @@ export class ExamService extends BaseService {
 
   /**
    * Create a new exam.
-   * Validates that all questionIds exist before persisting.
-   * @param dto   - Exam creation payload
+   *
+   * Validates:
+   * 1. At least one questionId provided
+   * 2. All questionIds exist
+   * 3. courseId references an existing, non-deleted Course
+   * 4. When scope = 'chapter': chapterId is required and must belong to courseId
+   *
+   * @param dto    - Exam creation payload
    * @param userId - Teacher / Admin userId (from JWT)
    */
   async createExam(dto: CreateExamDto, userId: string): Promise<Exam> {
@@ -49,7 +59,35 @@ export class ExamService extends BaseService {
       throw new BadRequestException('An exam must have at least one question.');
     }
 
-    // Verify all question IDs exist
+    // ── Validate courseId ─────────────────────────────────────────────────────
+    const course = await this.courseRepository.findByIdNotDeleted(dto.courseId);
+    if (!course) {
+      throw new BadRequestException(
+        `Course with id "${dto.courseId}" not found.`,
+      );
+    }
+
+    // ── Validate chapterId when scope = 'chapter' ────────────────────────────
+    if (dto.scope === ExamScope.Chapter) {
+      if (!dto.chapterId) {
+        throw new BadRequestException(
+          'chapterId is required when scope is "chapter".',
+        );
+      }
+      const chapter = await this.chapterRepository.findById(dto.chapterId);
+      if (!chapter) {
+        throw new BadRequestException(
+          `Chapter with id "${dto.chapterId}" not found.`,
+        );
+      }
+      if (chapter.courseId !== dto.courseId) {
+        throw new BadRequestException(
+          `Chapter "${dto.chapterId}" does not belong to course "${dto.courseId}".`,
+        );
+      }
+    }
+
+    // ── Verify all question IDs exist ───────────────────────────────────────
     const questions = await this.questionRepository.findByIds(dto.questionIds);
     if (questions.length !== dto.questionIds.length) {
       const foundIds = new Set(questions.map((q) => q.id));
@@ -62,6 +100,10 @@ export class ExamService extends BaseService {
     return this.examRepository.create({
       title: dto.title,
       description: dto.description ?? null,
+      scope: dto.scope,
+      courseId: dto.courseId,
+      chapterId:
+        dto.scope === ExamScope.Chapter ? (dto.chapterId ?? null) : null,
       questionIds: dto.questionIds,
       totalQuestions: dto.questionIds.length,
       timeLimitSeconds: dto.timeLimitSeconds,
@@ -188,6 +230,9 @@ export class ExamService extends BaseService {
       examId: exam.id,
       title: exam.title,
       description: exam.description,
+      scope: exam.scope,
+      courseId: exam.courseId,
+      chapterId: exam.chapterId ?? null,
       timeLimitSeconds: exam.timeLimitSeconds,
       totalQuestions: sanitised.length,
       passingScore: exam.passingScore,
@@ -282,6 +327,9 @@ export class ExamService extends BaseService {
       attemptId: attempt.id,
       examId: exam.id,
       examTitle: exam.title,
+      scope: exam.scope,
+      courseId: exam.courseId,
+      chapterId: exam.chapterId ?? null,
       userId,
       score,
       totalQuestions,
@@ -343,6 +391,9 @@ export class ExamService extends BaseService {
       attemptId: attempt.id,
       examId: exam.id,
       examTitle: exam.title,
+      scope: exam.scope,
+      courseId: exam.courseId,
+      chapterId: exam.chapterId ?? null,
       userId: attempt.userId,
       score: attempt.score,
       totalQuestions: attempt.totalQuestions,
@@ -369,7 +420,7 @@ export class ExamService extends BaseService {
       userId,
       examId,
     );
-    return attempts.map((a) => this.toSummaryDto(a));
+    return attempts.map((a) => this.toSummaryDto(a, exam));
   }
 
   /**
@@ -380,7 +431,7 @@ export class ExamService extends BaseService {
     if (!exam) throw new NotFoundException(`Exam ${examId} not found.`);
 
     const attempts = await this.examAttemptRepository.findByExamId(examId);
-    return attempts.map((a) => this.toSummaryDto(a));
+    return attempts.map((a) => this.toSummaryDto(a, exam));
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -430,11 +481,16 @@ export class ExamService extends BaseService {
 
   /**
    * Convert an ExamAttempt domain object to a summary DTO.
+   * Pass the related `exam` so context fields (scope, courseId, chapterId, title) are included.
    */
-  private toSummaryDto(a: ExamAttempt): ExamAttemptSummaryDto {
+  private toSummaryDto(a: ExamAttempt, exam: Exam): ExamAttemptSummaryDto {
     return {
       attemptId: a.id,
       examId: a.examId,
+      examTitle: exam.title,
+      scope: exam.scope,
+      courseId: exam.courseId,
+      chapterId: exam.chapterId ?? null,
       userId: a.userId,
       score: a.score,
       totalQuestions: a.totalQuestions,

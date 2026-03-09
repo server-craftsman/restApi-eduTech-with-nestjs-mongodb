@@ -8,6 +8,7 @@ import { QuestionRepositoryAbstract } from '../questions/infrastructure/persiste
 import { LessonService } from '../lessons/lesson.service';
 import { QuestionService } from '../questions/question.service';
 import { WrongAnswerService } from '../wrong-answers/wrong-answer.service';
+import { RewardService } from '../rewards/reward.service';
 import { QuizAttempt, QuestionAnswer } from './domain/quiz-attempt';
 import {
   CreateQuizAttemptDto,
@@ -26,6 +27,7 @@ export class QuizAttemptService {
     private readonly lessonService: LessonService,
     private readonly questionService: QuestionService,
     private readonly wrongAnswerService: WrongAnswerService,
+    private readonly rewardService: RewardService,
   ) {}
 
   /**
@@ -108,6 +110,11 @@ export class QuizAttemptService {
     // Push wrong/correct answers to the wrong-answer bank (fire-and-forget)
     void this.pushToWrongAnswerBank(userId, dto.lessonId, gradedAnswers);
 
+    // Award +50 points for a perfect score (fire-and-forget)
+    if (score === 100) {
+      void this.tryAwardPerfectQuiz(userId);
+    }
+
     return saved;
   }
 
@@ -128,6 +135,18 @@ export class QuizAttemptService {
       );
     } catch {
       // Bank update failure must never break the quiz submission
+    }
+  }
+
+  /**
+   * Award +50 reward points for a perfect quiz score.
+   * Fire-and-forget — errors never block quiz submission.
+   */
+  private async tryAwardPerfectQuiz(userId: string): Promise<void> {
+    try {
+      await this.rewardService.awardPerfectQuiz(userId);
+    } catch {
+      // Reward failure must never break the quiz submission
     }
   }
 

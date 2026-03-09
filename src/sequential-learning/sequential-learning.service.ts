@@ -202,6 +202,12 @@ export class SequentialLearningService {
     const lesson = await this.lessonService.findById(lessonId);
     if (!lesson) throw new NotFoundException(`Lesson ${lessonId} not found`);
 
+    // Determine whether a quiz exists for this lesson.
+    // Video-only lessons are considered fully "completed" once the video is watched;
+    // lessons with a quiz require the quiz to be passed for full completion.
+    const questions = await this.questionService.findByLessonId(lessonId);
+    const hasQuiz = questions.length > 0;
+
     await this.lessonProgressService.updateProgressByUserAndLesson(
       userId,
       lessonId,
@@ -212,6 +218,9 @@ export class SequentialLearningService {
         videoCurrentTime: lesson.video?.durationSeconds ?? 0,
         videoDuration: lesson.video?.durationSeconds ?? 0,
         lastWatchedAt: new Date(),
+        // Only mark the lesson as completed here when there is no quiz;
+        // the reward guard in LessonProgressService ensures +10 is awarded once.
+        ...(!hasQuiz ? { isCompleted: true } : {}),
       },
     );
 
@@ -499,6 +508,7 @@ export class SequentialLearningService {
           quizCompleted: true,
           quizScore: attempt.score,
           progressPercent: 100,
+          isCompleted: true,
         },
       );
     }

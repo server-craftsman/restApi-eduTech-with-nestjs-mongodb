@@ -4,6 +4,7 @@ import {
   BaseSchemaFields,
   CollectionName,
 } from '../../../../../core/constants';
+import { ExamScope } from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: CollectionName.Exams })
 export class ExamDocument extends BaseSchemaFields {
@@ -12,6 +13,26 @@ export class ExamDocument extends BaseSchemaFields {
 
   @Prop({ type: String, default: null })
   description?: string | null;
+
+  // ── Ownership / Context ────────────────────────────────────────────────
+
+  /** Phạm vi đề thi: 'course' (cuối khoá) | 'chapter' (cuối chương) */
+  @Prop({ required: true, enum: Object.values(ExamScope) })
+  scope!: ExamScope;
+
+  /** Khoá học mà đề thi thuộc về */
+  @Prop({ required: true, type: Types.ObjectId, ref: 'courses' })
+  courseId!: Types.ObjectId;
+
+  /** Chương cụ thể (chỉ có khi scope = 'chapter') */
+  @Prop({ type: Types.ObjectId, ref: 'chapters', default: null })
+  chapterId?: Types.ObjectId | null;
+
+  /** Giáo viên / Admin tạo đề thi */
+  @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
+  createdBy!: Types.ObjectId;
+
+  // ── Content ────────────────────────────────────────────────────────────
 
   /** Ordered array of question ObjectIds */
   @Prop({ type: [Types.ObjectId], default: [] })
@@ -28,9 +49,6 @@ export class ExamDocument extends BaseSchemaFields {
 
   @Prop({ default: false })
   isPublished!: boolean;
-
-  @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
-  createdBy!: Types.ObjectId;
 }
 
 export type ExamDocumentType = HydratedDocument<ExamDocument> & {
@@ -39,3 +57,9 @@ export type ExamDocumentType = HydratedDocument<ExamDocument> & {
 };
 
 export const ExamSchema = SchemaFactory.createForClass(ExamDocument);
+
+// ── Indexes ────────────────────────────────────────────────────────────────
+ExamSchema.index({ courseId: 1 });
+ExamSchema.index({ chapterId: 1 });
+ExamSchema.index({ courseId: 1, scope: 1 });
+ExamSchema.index({ createdBy: 1 });

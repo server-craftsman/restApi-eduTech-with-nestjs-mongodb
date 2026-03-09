@@ -1,36 +1,59 @@
+import { ExamScope } from '../../enums';
+
 /**
  * Exam domain interface — represents a curated set of questions with a time limit.
- * Used for the "Luồng Thi Thử" (Practice Exam Flow).
  *
- * NOTE: `questionIds` stores the ordered list of question IDs assigned to this exam.
- * `totalQuestions` is a denormalized count derived from `questionIds.length`.
+ * Mỗi đề thi phải thuộc về một khoá học (`courseId`) và có thể được gắn với
+ * một chương cụ thể (`chapterId`) nếu `scope = 'chapter'`.
+ *
+ * ─── Ownership ────────────────────────────────────────────────────────────
+ * - `createdBy` : userId của giáo viên / admin tạo đề.
+ * - `courseId`  : ID khoá học mà đề thi này thuộc về.
+ * - `chapterId` : ID chương (chỉ có khi scope = 'chapter').
+ *
+ * ─── Scope ─────────────────────────────────────────────────────────────────
+ * - ExamScope.Course  → Đề thi cuối khoá (toàn bộ nội dung khoá học).
+ * - ExamScope.Chapter → Đề thi cuối chương (chỉ nội dung một chương).
  */
 export interface Exam {
   id: string;
 
-  /** Display title shown to students */
+  /** Tiêu đề hiển thị cho học sinh */
   title: string;
 
-  /** Optional rich-text description / instructions */
+  /** Hướng dẫn hoặc mô tả tuỳ chọn */
   description?: string | null;
 
-  /** Ordered list of question IDs included in this exam */
+  // ── Ownership / Context ───────────────────────────────────────────────────
+
+  /** Phạm vi đề thi: cuối khoá học hay cuối chương */
+  scope: ExamScope;
+
+  /** ID khoá học mà đề thi này thuộc về (bắt buộc) */
+  courseId: string;
+
+  /** ID chương — bắt buộc khi scope = 'chapter', null khi scope = 'course' */
+  chapterId?: string | null;
+
+  /** userId của giáo viên / admin đã tạo đề thi */
+  createdBy: string;
+
+  // ── Content ───────────────────────────────────────────────────────────────
+
+  /** Danh sách ID câu hỏi theo đúng thứ tự trong đề */
   questionIds: string[];
 
-  /** Denormalized count — kept in sync with questionIds.length */
+  /** Số câu hỏi (đồng bộ với questionIds.length) */
   totalQuestions: number;
 
-  /** Duration of the exam in seconds (frontend countdown) */
+  /** Thời gian làm bài tính bằng giây (frontend dùng để đếm ngược) */
   timeLimitSeconds: number;
 
-  /** Minimum score (0-100) required to pass. Default 50. */
+  /** Điểm tối thiểu (0–100) để qua môn. Mặc định 50. */
   passingScore: number;
 
-  /** Whether the exam is visible to students */
+  /** Đề thi có hiển thị với học sinh không */
   isPublished: boolean;
-
-  /** userId of the teacher / admin who created the exam */
-  createdBy: string;
 
   isDeleted: boolean;
   deletedAt?: Date | null;

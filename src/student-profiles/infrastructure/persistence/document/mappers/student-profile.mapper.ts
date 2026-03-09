@@ -18,6 +18,8 @@ export class StudentProfileMapper {
       diamondBalance: doc.diamondBalance,
       xpTotal: doc.xpTotal,
       currentStreak: doc.currentStreak,
+      totalPoints: doc.totalPoints ?? 0,
+      badges: doc.badges ?? [],
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };

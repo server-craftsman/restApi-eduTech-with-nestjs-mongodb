@@ -1,5 +1,6 @@
 export * from './email-verification-status.enum';
 export * from './user-role.enum';
+export * from './badge.enum';
 export * from './gender.enum';
 export * from './grade-level.enum';
 export * from './subscription-status.enum';
@@ -11,3 +12,4 @@ export * from './approval-status.enum';
 export * from './teacher-education-level.enum';
 export * from './parent-relationship.enum';
 export * from './ai-training-status.enum';
+export * from './exam-scope.enum';

@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { LessonProgressRepositoryAbstract } from './infrastructure/persistence/document/repositories/lesson-progress.repository.abstract';
 import { LessonProgress } from './domain/lesson-progress';
+import { RewardService } from '../rewards/reward.service';
 
 @Injectable()
 export class LessonProgressService {
   constructor(
     private readonly lessonProgressRepository: LessonProgressRepositoryAbstract,
+    private readonly rewardService: RewardService,
   ) {}
 
   async createProgress(
@@ -54,12 +56,15 @@ export class LessonProgressService {
     data: Partial<LessonProgress>,
   ): Promise<LessonProgress | null> {
     const existing = await this.findByUserAndLesson(userId, lessonId);
+    const isFirstCompletion =
+      data.isCompleted === true && !existing?.isCompleted;
 
+    let result: LessonProgress | null;
     if (existing) {
-      return this.lessonProgressRepository.update(existing.id, data);
+      result = await this.lessonProgressRepository.update(existing.id, data);
     } else {
       // Tạo mới với default values
-      return this.lessonProgressRepository.create({
+      result = await this.lessonProgressRepository.create({
         userId,
         lessonId,
         isCompleted: false,
@@ -72,6 +77,11 @@ export class LessonProgressService {
         ...data,
       });
     }
+
+    if (isFirstCompletion) {
+      void this.tryAwardLessonCompletion(userId);
+    }
+    return result;
   }
 
   // Overloaded updateProgress method - support both old and new signatures
@@ -117,11 +127,17 @@ export class LessonProgressService {
       lessonId,
     );
     if (progress) {
-      return this.lessonProgressRepository.update(progress.id, {
+      if (progress.isCompleted) {
+        // Already completed — no points awarded again
+        return progress;
+      }
+      const result = await this.lessonProgressRepository.update(progress.id, {
         isCompleted: true,
       });
+      void this.tryAwardLessonCompletion(userId);
+      return result;
     }
-    return this.lessonProgressRepository.create({
+    const result = await this.lessonProgressRepository.create({
       userId,
       lessonId,
       isCompleted: true,
@@ -132,5 +148,18 @@ export class LessonProgressService {
       videoDuration: 0,
       quizCompleted: false,
     });
+    void this.tryAwardLessonCompletion(userId);
+    return result;
+  }
+
+  /**
+   * Fire-and-forget wrapper — reward failure never breaks lesson tracking.
+   */
+  private async tryAwardLessonCompletion(userId: string): Promise<void> {
+    try {
+      await this.rewardService.awardLessonCompletion(userId);
+    } catch {
+      // silently swallow — never break lesson progress updates
+    }
   }
 }

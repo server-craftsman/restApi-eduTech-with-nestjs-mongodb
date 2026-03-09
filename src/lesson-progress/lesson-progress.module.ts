@@ -9,12 +9,14 @@ import { LessonProgressRepositoryAbstract } from './infrastructure/persistence/d
 import { LessonProgressMapper } from './infrastructure/persistence/document/mappers/lesson-progress.mapper';
 import { LessonProgressService } from './lesson-progress.service';
 import { LessonProgressController } from './lesson-progress.controller';
+import { RewardModule } from '../rewards/reward.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: LessonProgressDocument.name, schema: LessonProgressSchema },
     ]),
+    RewardModule,
   ],
   controllers: [LessonProgressController],
   providers: [

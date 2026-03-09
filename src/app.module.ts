@@ -27,6 +27,7 @@ import { QuestionModule } from './questions';
 import { LessonProgressModule } from './lesson-progress';
 import { QuizAttemptModule } from './quiz-attempts';
 import { WrongAnswerModule } from './wrong-answers/wrong-answer.module';
+import { RewardModule } from './rewards/reward.module';
 import { SubscriptionPlanModule } from './subscription-plans';
 import { UserSubscriptionModule } from './user-subscriptions';
 import { TransactionModule } from './transactions';
@@ -72,6 +73,7 @@ import { ExamModule } from './exams/exam.module';
     LessonProgressModule,
     QuizAttemptModule,
     WrongAnswerModule,
+    RewardModule,
     SubscriptionPlanModule,
     UserSubscriptionModule,
     TransactionModule,

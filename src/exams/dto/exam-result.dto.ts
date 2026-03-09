@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { QuestionType, Difficulty } from '../../enums';
+import { QuestionType, Difficulty, ExamScope } from '../../enums';
 
 /**
  * Per-question breakdown in the exam result.
@@ -69,6 +69,29 @@ export class ExamResultDto {
   @ApiProperty({ example: 'Đề thi thử Toán học – Chương 3' })
   examTitle!: string;
 
+  // ── Context ────────────────────────────────────────────────────────────
+
+  @ApiProperty({
+    enum: ExamScope,
+    enumName: 'ExamScope',
+    description: '"course" = cuối khoá | "chapter" = cuối chương',
+    example: ExamScope.Chapter,
+  })
+  scope!: ExamScope;
+
+  @ApiProperty({
+    description: 'ID khoá học chứa đề thi này',
+    example: '665f1f77bcf86cd799439020',
+  })
+  courseId!: string;
+
+  @ApiPropertyOptional({
+    description: 'ID chương — chỉ có khi scope = "chapter"',
+    example: '665f1f77bcf86cd799439021',
+    nullable: true,
+  })
+  chapterId?: string | null;
+
   @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   userId!: string;
 
@@ -106,6 +129,24 @@ export class ExamAttemptSummaryDto {
 
   @ApiProperty({ example: '665f1f77bcf86cd799439001' })
   examId!: string;
+
+  @ApiProperty({ example: 'Đề thi thử Toán học – Chương 3' })
+  examTitle!: string;
+
+  // ── Context (để hiển thị trong danh sách lịch sử thi) ──────────────────
+
+  @ApiProperty({
+    enum: ExamScope,
+    enumName: 'ExamScope',
+    example: ExamScope.Chapter,
+  })
+  scope!: ExamScope;
+
+  @ApiProperty({ example: '665f1f77bcf86cd799439020' })
+  courseId!: string;
+
+  @ApiPropertyOptional({ nullable: true, example: '665f1f77bcf86cd799439021' })
+  chapterId?: string | null;
 
   @ApiProperty({ example: '507f1f77bcf86cd799439011' })
   userId!: string;

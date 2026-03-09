@@ -42,6 +42,11 @@ export class ExamRepository extends ExamRepositoryAbstract {
     if (filters?.createdBy)
       query.createdBy = new Types.ObjectId(filters.createdBy);
     if (filters?.isPublished != null) query.isPublished = filters.isPublished;
+    if (filters?.scope) query.scope = filters.scope;
+    if (filters?.courseId)
+      query.courseId = new Types.ObjectId(filters.courseId);
+    if (filters?.chapterId)
+      query.chapterId = new Types.ObjectId(filters.chapterId);
 
     const sortObj: Record<string, 1 | -1> = {};
     if (sort?.length) {
@@ -62,12 +67,15 @@ export class ExamRepository extends ExamRepositoryAbstract {
     const doc = await this.model.create({
       title: data.title,
       description: data.description ?? null,
+      scope: data.scope,
+      courseId: new Types.ObjectId(data.courseId!),
+      chapterId: data.chapterId ? new Types.ObjectId(data.chapterId) : null,
+      createdBy: new Types.ObjectId(data.createdBy!),
       questionIds: (data.questionIds ?? []).map((id) => new Types.ObjectId(id)),
       totalQuestions: data.totalQuestions ?? 0,
       timeLimitSeconds: data.timeLimitSeconds ?? 1800,
       passingScore: data.passingScore ?? 50,
       isPublished: data.isPublished ?? false,
-      createdBy: new Types.ObjectId(data.createdBy!),
       isDeleted: false,
       deletedAt: null,
     });

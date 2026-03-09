@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { QuestionType, Difficulty } from '../../enums';
+import { QuestionType, Difficulty, ExamScope } from '../../enums';
 
 /**
  * A question stripped of the correct answer and explanation.
@@ -52,6 +52,31 @@ export class StartExamResponseDto {
 
   @ApiPropertyOptional({ example: 'Hãy đọc kỹ câu hỏi trước khi chọn đáp án.' })
   description?: string | null;
+
+  // ── Context (ai tạo đề, đề thuộc về đâu) ────────────────────────────────
+
+  @ApiProperty({
+    enum: ExamScope,
+    enumName: 'ExamScope',
+    description: '"course" = đề cuối khoá | "chapter" = đề cuối chương',
+    example: ExamScope.Chapter,
+  })
+  scope!: ExamScope;
+
+  @ApiProperty({
+    description: 'ID khoá học chứa đề thi này',
+    example: '665f1f77bcf86cd799439020',
+  })
+  courseId!: string;
+
+  @ApiPropertyOptional({
+    description: 'ID chương — chỉ có khi scope = "chapter"',
+    example: '665f1f77bcf86cd799439021',
+    nullable: true,
+  })
+  chapterId?: string | null;
+
+  // ── Exam config ──────────────────────────────────────────────────────────
 
   @ApiProperty({
     example: 1800,

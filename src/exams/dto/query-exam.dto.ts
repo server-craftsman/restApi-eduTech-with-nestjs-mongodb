@@ -1,6 +1,7 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,6 +9,7 @@ import {
 } from 'class-validator';
 import { Transform, Type, plainToInstance } from 'class-transformer';
 import { Exam } from '../domain/exam';
+import { ExamScope } from '../../enums';
 
 const coerceOptionalBoolean = (value: unknown): boolean | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -39,6 +41,34 @@ export class FilterExamDto {
   createdBy?: string | null;
 
   @ApiPropertyOptional({
+    enum: ExamScope,
+    enumName: 'ExamScope',
+    description: 'Filter by exam scope (course-level or chapter-level)',
+  })
+  @IsOptional()
+  @IsEnum(ExamScope)
+  scope?: ExamScope | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    description:
+      'Filter by courseId — returns all exams belonging to this course',
+    example: '665f1f77bcf86cd799439020',
+  })
+  @IsOptional()
+  @IsString()
+  courseId?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'Filter by chapterId — returns exams scoped to this chapter',
+    example: '665f1f77bcf86cd799439021',
+  })
+  @IsOptional()
+  @IsString()
+  chapterId?: string | null;
+
+  @ApiPropertyOptional({
     type: Boolean,
     description: 'Filter by publish state',
   })
@@ -58,12 +88,14 @@ export class FilterExamDto {
 }
 
 export class SortExamDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: String,
     example: 'createdAt',
     enum: [
       'id',
       'title',
+      'scope',
+      'courseId',
       'timeLimitSeconds',
       'passingScore',
       'isPublished',
@@ -74,7 +106,7 @@ export class SortExamDto {
   @IsString()
   orderBy!: keyof Exam;
 
-  @ApiPropertyOptional({ enum: ['asc', 'desc'], example: 'desc' })
+  @ApiProperty({ enum: ['asc', 'desc'], example: 'desc' })
   @IsString()
   order!: 'asc' | 'desc';
 }

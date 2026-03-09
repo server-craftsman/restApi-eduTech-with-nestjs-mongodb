@@ -6,14 +6,21 @@ import {
   IsInt,
   IsBoolean,
   IsOptional,
+  IsEnum,
   Min,
   Max,
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { ExamScope } from '../../enums';
 
 /**
  * Payload for creating a new exam (Teacher / Admin only).
+ *
+ * Business rules:
+ * - `courseId` must reference an existing, non-deleted Course.
+ * - When `scope = 'chapter'`, `chapterId` is required and must belong to `courseId`.
+ * - When `scope = 'course'`, `chapterId` must be omitted or null.
  */
 export class CreateExamDto {
   @ApiProperty({
@@ -35,6 +42,36 @@ export class CreateExamDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  // ── Scope / Ownership ───────────────────────────────────────────────────
+
+  @ApiProperty({
+    enum: ExamScope,
+    enumName: 'ExamScope',
+    description: '"course" = đề thi cuối khoá, "chapter" = đề thi cuối chương',
+    example: ExamScope.Chapter,
+  })
+  @IsEnum(ExamScope)
+  scope!: ExamScope;
+
+  @ApiProperty({
+    description: 'ID của khoá học mà đề thi này thuộc về (bắt buộc)',
+    example: '665f1f77bcf86cd799439020',
+  })
+  @IsString()
+  @IsNotEmpty()
+  courseId!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'ID của chương — bắt buộc khi scope = "chapter", bỏ qua khi scope = "course"',
+    example: '665f1f77bcf86cd799439021',
+  })
+  @IsOptional()
+  @IsString()
+  chapterId?: string;
+
+  // ── Content ─────────────────────────────────────────────────────────────
 
   @ApiProperty({
     description: 'Ordered array of Question IDs to include in this exam',

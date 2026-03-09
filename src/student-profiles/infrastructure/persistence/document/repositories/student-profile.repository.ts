@@ -8,6 +8,7 @@ import {
 import { StudentProfileRepositoryAbstract } from './student-profile.repository.abstract';
 import { StudentProfileMapper } from '../mappers/student-profile.mapper';
 import { StudentProfile } from '../../../../domain/student-profile';
+import { BadgeType } from '../../../../../enums';
 
 @Injectable()
 export class StudentProfileRepository implements StudentProfileRepositoryAbstract {
@@ -42,6 +43,8 @@ export class StudentProfileRepository implements StudentProfileRepositoryAbstrac
       diamondBalance: data.diamondBalance,
       xpTotal: data.xpTotal,
       currentStreak: data.currentStreak,
+      totalPoints: data.totalPoints ?? 0,
+      badges: data.badges ?? [],
     });
     return this.mapper.toDomain(doc);
   }
@@ -66,13 +69,14 @@ export class StudentProfileRepository implements StudentProfileRepositoryAbstrac
     if (data.xpTotal !== undefined) updateData.xpTotal = data.xpTotal;
     if (data.currentStreak !== undefined)
       updateData.currentStreak = data.currentStreak;
+    if (data.totalPoints !== undefined)
+      updateData.totalPoints = data.totalPoints;
+    if (data.badges !== undefined) updateData.badges = data.badges;
 
     const doc = await this.studentProfileModel.findByIdAndUpdate(
       id,
       updateData as UpdateQuery<StudentProfileDocumentType>,
-      {
-        new: true,
-      },
+      { new: true },
     );
     return doc ? this.mapper.toDomain(doc) : null;
   }
@@ -86,5 +90,35 @@ export class StudentProfileRepository implements StudentProfileRepositoryAbstrac
       userId: new Types.ObjectId(userId),
     });
     return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  /**
+   * Atomically increment totalPoints using $inc so concurrent requests
+   * never overwrite each other. Returns the updated profile.
+   */
+  async incrementPoints(
+    userId: string,
+    points: number,
+  ): Promise<StudentProfile | null> {
+    const doc = await this.studentProfileModel
+      .findOneAndUpdate(
+        { userId: new Types.ObjectId(userId) },
+        { $inc: { totalPoints: points } },
+        { new: true },
+      )
+      .exec();
+    return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  /**
+   * Append a badge using $addToSet — idempotent, no duplicates.
+   */
+  async addBadge(userId: string, badge: BadgeType): Promise<void> {
+    await this.studentProfileModel
+      .findOneAndUpdate(
+        { userId: new Types.ObjectId(userId) },
+        { $addToSet: { badges: badge } },
+      )
+      .exec();
   }
 }
