@@ -8,7 +8,6 @@ import { SubscriptionPlanRepository } from './infrastructure/persistence/documen
 import { SubscriptionPlanRepositoryAbstract } from './infrastructure/persistence/document/repositories/subscription-plan.repository.abstract';
 import { SubscriptionPlanMapper } from './infrastructure/persistence/document/mappers/subscription-plan.mapper';
 import { SubscriptionPlanService } from './subscription-plan.service';
-import { SubscriptionPlanController } from './subscription-plan.controller';
 
 @Module({
   imports: [
@@ -16,7 +15,6 @@ import { SubscriptionPlanController } from './subscription-plan.controller';
       { name: SubscriptionPlanDocument.name, schema: SubscriptionPlanSchema },
     ]),
   ],
-  controllers: [SubscriptionPlanController],
   providers: [
     SubscriptionPlanService,
     {

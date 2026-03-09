@@ -11,6 +11,7 @@ import { User } from '../users/domain/user';
 import { LearningPathService } from '../learning-path/learning-path.service';
 import { LessonProgressService } from '../lesson-progress/lesson-progress.service';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
+import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class DashboardController {
     private readonly learningPathService: LearningPathService,
     private readonly lessonProgressService: LessonProgressService,
     private readonly studentProfileService: StudentProfileService,
+    private readonly userSubscriptionService: UserSubscriptionService,
   ) {}
 
   @Get()
@@ -64,6 +66,12 @@ export class DashboardController {
         },
       };
     }
+
+    // ─── Subscription tier ─────────────────────────────────────────────
+    const isPro = await this.userSubscriptionService.isSubscriptionValid(
+      user.id,
+    );
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Get learning path
     const learningPath = await this.learningPathService.getLearningPath(
@@ -113,6 +121,19 @@ export class DashboardController {
             `to see only grade-${gradeLevel} courses.`
           : null,
       },
+      // ── Plan-tier metadata ───────────────────────────────────────────────
+      plan: {
+        isPro,
+        showAds: !isPro,
+        /** Daily limits — frontend should display usage counters for Free users */
+        dailyLimits: isPro
+          ? null
+          : {
+              lessons: { limit: 5, description: 'Bài học tối đa mỗi ngày' },
+              exams: { limit: 2, description: 'Lượt thi tối đa mỗi ngày' },
+            },
+        upgradeUrl: isPro ? null : '/payments/plans/compare',
+      },
     };
   }
 
@@ -123,7 +144,10 @@ export class DashboardController {
     description: 'Learning statistics retrieved successfully',
   })
   async getLearningStats(@CurrentUser() user: User) {
-    const userProgress = await this.lessonProgressService.findByUserId(user.id);
+    const [userProgress, isPro] = await Promise.all([
+      this.lessonProgressService.findByUserId(user.id),
+      this.userSubscriptionService.isSubscriptionValid(user.id),
+    ]);
 
     // Group progress by completion status
     const completed = userProgress.filter((p) => p.isCompleted);
@@ -132,13 +156,15 @@ export class DashboardController {
     );
     const notStarted = userProgress.filter((p) => p.progressPercent === 0);
 
-    // Calculate weekly progress (mock data for now)
-    const weeklyProgress = [
-      { week: 'Week 1', completed: 5 },
-      { week: 'Week 2', completed: 8 },
-      { week: 'Week 3', completed: 6 },
-      { week: 'Week 4', completed: 10 },
-    ];
+    // Weekly progress chart — Pro feature only
+    const weeklyProgress = isPro
+      ? [
+          { week: 'Week 1', completed: 5 },
+          { week: 'Week 2', completed: 8 },
+          { week: 'Week 3', completed: 6 },
+          { week: 'Week 4', completed: 10 },
+        ]
+      : null;
 
     return {
       lessonStats: {
@@ -147,6 +173,7 @@ export class DashboardController {
         notStarted: notStarted.length,
         total: userProgress.length,
       },
+      /** `null` for Free users — upgrade to Pro to unlock detailed charts */
       weeklyProgress,
       achievements: [
         {
@@ -165,6 +192,13 @@ export class DashboardController {
           earned: false,
         },
       ],
+      // ── Plan-tier metadata ─────────────────────────────────────────────────
+      plan: {
+        isPro,
+        showAds: !isPro,
+        weeklyProgressLocked: !isPro,
+        upgradeUrl: isPro ? null : '/payments/plans/compare',
+      },
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Param, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -8,38 +8,37 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   LearningPathService,
-  LearningPathNode,
   LessonUnlockResult,
 } from './learning-path.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/domain/user';
 
-@ApiTags('learning-path')
+@ApiTags('Learning Path')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('learning-path')
+@Controller('Learning Path')
 export class LearningPathController {
   constructor(private readonly learningPathService: LearningPathService) {}
 
-  @Get()
-  @ApiOperation({
-    summary: 'Get personalized learning path based on user grade level',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Learning path retrieved successfully',
-  })
-  async getLearningPath(
-    @CurrentUser() user: User,
-  ): Promise<LearningPathNode[]> {
-    // Lấy grade level từ student profile
-    const gradeLevel = user.studentProfile?.gradeLevel;
-    if (!gradeLevel) {
-      throw new Error('User does not have a grade level set');
-    }
+  // @Get()
+  // @ApiOperation({
+  //   summary: 'Get personalized learning path based on user grade level',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Learning path retrieved successfully',
+  // })
+  // async getLearningPath(
+  //   @CurrentUser() user: User,
+  // ): Promise<LearningPathNode[]> {
+  //   // Lấy grade level từ student profile
+  //   const gradeLevel = user.studentProfile?.gradeLevel;
+  //   if (!gradeLevel) {
+  //     throw new Error('User does not have a grade level set');
+  //   }
 
-    return this.learningPathService.getLearningPath(user.id, gradeLevel);
-  }
+  //   return this.learningPathService.getLearningPath(user.id, gradeLevel);
+  // }
 
   @Post('unlock-lesson/:lessonId')
   @ApiOperation({

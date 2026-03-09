@@ -20,4 +20,11 @@ export abstract class UserSubscriptionRepositoryAbstract {
     status: string,
   ): Promise<UserSubscription[]>;
   abstract expireSubscription(id: string): Promise<UserSubscription | null>;
+  /**
+   * Find an ACTIVE subscription for the user ignoring endDate.
+   * Used to detect subscriptions that have ACTIVE status in DB but are past their endDate.
+   */
+  abstract findActiveIgnoreExpiry(
+    userId: string,
+  ): Promise<UserSubscription | null>;
 }

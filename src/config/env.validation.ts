@@ -114,6 +114,10 @@ export const envValidationSchema = Joi.object({
     .positive()
     .default(24 * 60),
 
+  SEPAY_API_KEY: Joi.string().allow('').optional().default(''),
+  SEPAY_BANK_ACCOUNT: Joi.string().allow('').optional().default(''),
+  SEPAY_BANK_NAME: Joi.string().allow('').optional().default('MBBank'),
+  SEPAY_WEBHOOK_SECRET: Joi.string().allow('').optional().default(''),
   CORS_ORIGIN: Joi.string().default('http://localhost:3000'),
   UPLOAD_FREE_MINUTES: Joi.number().positive().default(180),
   UPLOAD_PRO_MINUTES: Joi.number().min(0).default(0),

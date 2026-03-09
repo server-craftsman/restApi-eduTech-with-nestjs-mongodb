@@ -41,7 +41,11 @@ export class TransactionController {
 
   @Post()
   async recordTransaction(@Body() data: CreateTransactionDto) {
-    return this.transactionService.recordTransaction(data);
+    return this.transactionService.recordTransaction({
+      ...data,
+      currency: data.currency ?? 'VND',
+      paidAt: null,
+    });
   }
 
   @Put(':id')

@@ -1,6 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsNumber, Min, IsEnum } from 'class-validator';
-import { TransactionStatus } from '../../enums';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  IsEnum,
+  IsOptional,
+} from 'class-validator';
+import {
+  TransactionStatus,
+  PaymentProvider,
+  SubscriptionPeriod,
+} from '../../enums';
 
 export class CreateTransactionDto {
   @ApiProperty({
@@ -12,32 +23,53 @@ export class CreateTransactionDto {
   userId!: string;
 
   @ApiProperty({
-    description: 'Transaction amount',
-    example: 9.99,
+    description: 'Subscription plan ID',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @IsString()
+  @IsNotEmpty()
+  planId!: string;
+
+  @ApiProperty({
+    description: 'Subscription period',
+    enum: SubscriptionPeriod,
+    enumName: 'SubscriptionPeriod',
+    example: SubscriptionPeriod.Monthly,
+  })
+  @IsEnum(SubscriptionPeriod)
+  @IsNotEmpty()
+  subscriptionPeriod!: SubscriptionPeriod;
+
+  @ApiProperty({
+    description: 'Transaction amount (VND)',
+    example: 99000,
   })
   @IsNumber()
   @Min(0)
   amount!: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Currency code',
-    example: 'USD',
+    example: 'VND',
+    default: 'VND',
   })
   @IsString()
-  @IsNotEmpty()
-  currency!: string;
+  @IsOptional()
+  currency?: string;
 
   @ApiProperty({
     description: 'Payment provider',
-    example: 'MOMO',
+    enum: PaymentProvider,
+    enumName: 'PaymentProvider',
+    example: PaymentProvider.SePay,
   })
-  @IsString()
+  @IsEnum(PaymentProvider)
   @IsNotEmpty()
-  provider!: string;
+  provider!: PaymentProvider;
 
   @ApiProperty({
-    description: 'Provider reference ID',
-    example: 'TXN123456789',
+    description: 'Provider reference ID (unique order code)',
+    example: 'EDUTECH1234567890',
   })
   @IsString()
   @IsNotEmpty()
@@ -51,5 +83,13 @@ export class CreateTransactionDto {
   })
   @IsEnum(TransactionStatus)
   @IsNotEmpty()
-  status!: string;
+  status!: TransactionStatus;
+
+  @ApiPropertyOptional({
+    description: 'Transfer description / content',
+    example: 'Nang cap Pro Monthly',
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }

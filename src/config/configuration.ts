@@ -71,6 +71,12 @@ export default () => ({
       'http://localhost:3000',
     ],
   },
+  sepay: {
+    apiKey: getEnv('SEPAY_API_KEY', ''),
+    bankAccount: getEnv('SEPAY_BANK_ACCOUNT', ''),
+    bankName: getEnv('SEPAY_BANK_NAME', 'MBBank'),
+    webhookSecret: getEnv('SEPAY_WEBHOOK_SECRET', ''),
+  },
   ai: {
     provider: getEnv('AI_PROVIDER', 'gemini') as 'gemini' | 'openai',
     // Gemini (free tier)

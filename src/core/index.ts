@@ -2,4 +2,7 @@ export * from './base';
 export * from './constants';
 export * from './dto';
 export * from './interfaces';
+export * from './filters/http-exception.filter';
+export * from './pipes/sanitize-params.pipe';
+export * from './security/security.config';
 export * from './core.module';

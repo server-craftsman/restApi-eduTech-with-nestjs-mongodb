@@ -22,4 +22,10 @@ export abstract class LessonProgressRepositoryAbstract {
     lessonId: string,
     seconds: number,
   ): Promise<LessonProgress | null>;
+  /**
+   * Count the number of NEW lesson progress records (first-time lesson access)
+   * created today for the given user. Used to enforce the Free-tier daily
+   * lesson access limit (5 unique lessons per day).
+   */
+  abstract countNewLessonsToday(userId: string): Promise<number>;
 }

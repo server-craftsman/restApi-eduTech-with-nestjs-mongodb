@@ -125,4 +125,13 @@ export class LessonProgressRepository implements LessonProgressRepositoryAbstrac
     );
     return doc ? this.mapper.toDomain(doc) : null;
   }
+
+  async countNewLessonsToday(userId: string): Promise<number> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return this.lessonProgressModel.countDocuments({
+      userId: new Types.ObjectId(userId),
+      createdAt: { $gte: startOfToday },
+    });
+  }
 }

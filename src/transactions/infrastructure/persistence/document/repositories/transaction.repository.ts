@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, UpdateQuery } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   TransactionDocument,
   TransactionDocumentType,
@@ -32,11 +32,15 @@ export class TransactionRepository implements TransactionRepositoryAbstract {
   ): Promise<Transaction> {
     const doc = await this.transactionModel.create({
       userId: new Types.ObjectId(data.userId),
+      planId: new Types.ObjectId(data.planId),
+      subscriptionPeriod: data.subscriptionPeriod,
       amount: data.amount,
-      currency: data.currency,
+      currency: data.currency ?? 'VND',
       provider: data.provider,
       providerRefId: data.providerRefId,
       status: data.status,
+      description: data.description ?? null,
+      paidAt: data.paidAt ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -45,20 +49,11 @@ export class TransactionRepository implements TransactionRepositoryAbstract {
     id: string,
     data: Partial<Transaction>,
   ): Promise<Transaction | null> {
-    const updateData: Record<string, unknown> = {};
-    if (data.userId) updateData.userId = new Types.ObjectId(data.userId);
-    if (data.amount !== undefined) updateData.amount = data.amount;
-    if (data.currency) updateData.currency = data.currency;
-    if (data.provider) updateData.provider = data.provider;
-    if (data.providerRefId) updateData.providerRefId = data.providerRefId;
-    if (data.status) updateData.status = data.status;
-
+    const updateData = this.mapper.toDocument(data);
     const doc = await this.transactionModel.findByIdAndUpdate(
       id,
-      updateData as UpdateQuery<TransactionDocumentType>,
-      {
-        new: true,
-      },
+      { $set: updateData },
+      { new: true },
     );
     return doc ? this.mapper.toDomain(doc) : null;
   }
@@ -68,9 +63,9 @@ export class TransactionRepository implements TransactionRepositoryAbstract {
   }
 
   async findByUserId(userId: string): Promise<Transaction[]> {
-    const docs = await this.transactionModel.find({
-      userId: new Types.ObjectId(userId),
-    });
+    const docs = await this.transactionModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 });
     return this.mapper.toDomainArray(docs);
   }
 

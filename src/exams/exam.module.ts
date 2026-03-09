@@ -5,6 +5,7 @@ import { ExamService } from './exam.service';
 import { QuestionModule } from '../questions/question.module';
 import { CourseModule } from '../courses/course.module';
 import { ChapterModule } from '../chapters/chapter.module';
+import { UserSubscriptionModule } from '../user-subscriptions/user-subscription.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ChapterModule } from '../chapters/chapter.module';
     QuestionModule, // provides QuestionRepositoryAbstract
     CourseModule, // provides CourseRepositoryAbstract (for courseId validation)
     ChapterModule, // provides ChapterRepositoryAbstract (for chapterId validation)
+    UserSubscriptionModule, // provides UserSubscriptionService for plan-gating
   ],
   controllers: [ExamController],
   providers: [ExamService],

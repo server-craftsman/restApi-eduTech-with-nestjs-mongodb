@@ -3,6 +3,8 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { BaseService } from '../core/base/base.service';
 import { ExamRepositoryAbstract } from './infrastructure/persistence/document/repositories/exam.repository.abstract';
@@ -10,6 +12,7 @@ import { ExamAttemptRepositoryAbstract } from './infrastructure/persistence/docu
 import { QuestionRepositoryAbstract } from '../questions/infrastructure/persistence/document/repositories/question.repository.abstract';
 import { CourseRepositoryAbstract } from '../courses/infrastructure/persistence/document/repositories/course.repository.abstract';
 import { ChapterRepositoryAbstract } from '../chapters/infrastructure/persistence/document/repositories/chapter.repository.abstract';
+import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
 import { Exam } from './domain/exam';
 import { ExamAttempt, ExamQuestionAnswer } from './domain/exam-attempt';
 import { Question } from '../questions/domain/question';
@@ -26,6 +29,9 @@ import {
   ExamAttemptSummaryDto,
 } from './dto';
 
+/** Maximum number of exam submissions a Free-tier user may make per day. */
+const FREE_DAILY_EXAM_LIMIT = 2;
+
 @Injectable()
 export class ExamService extends BaseService {
   constructor(
@@ -34,6 +40,7 @@ export class ExamService extends BaseService {
     private readonly questionRepository: QuestionRepositoryAbstract,
     private readonly courseRepository: CourseRepositoryAbstract,
     private readonly chapterRepository: ChapterRepositoryAbstract,
+    private readonly userSubscriptionService: UserSubscriptionService,
   ) {
     super();
   }
@@ -260,6 +267,41 @@ export class ExamService extends BaseService {
     if (!dto.answers.length) {
       throw new BadRequestException('You must submit at least one answer.');
     }
+
+    // ── Free-tier daily exam attempt gate ────────────────────────────────────
+    const subStatus =
+      await this.userSubscriptionService.checkSubscriptionStatus(userId);
+    if (!subStatus.isPro) {
+      // Subscription has lapsed — tell user to renew, not upgrade
+      if (subStatus.hasExpired) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            requiresRenewal: true,
+            message:
+              'Gói Pro của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục thi không giới hạn.',
+            upgradeUrl: '/payments/plans/compare',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+
+      const todayCount =
+        await this.examAttemptRepository.countTodayByUser(userId);
+      if (todayCount >= FREE_DAILY_EXAM_LIMIT) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            requiresUpgrade: true,
+            message: `Bạn đã hết lượt thi hôm nay (${FREE_DAILY_EXAM_LIMIT} lần/ngày). Nâng cấp Pro để thi không giới hạn.`,
+            upgradeUrl: '/payments/plans/compare',
+            remaining: 0,
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Fetch all questions in a single query
     const questions = await this.questionRepository.findByIds(exam.questionIds);

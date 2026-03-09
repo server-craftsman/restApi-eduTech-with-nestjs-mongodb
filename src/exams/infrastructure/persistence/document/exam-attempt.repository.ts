@@ -103,4 +103,14 @@ export class ExamAttemptRepository extends ExamAttemptRepositoryAbstract {
       )
       .exec();
   }
+
+  async countTodayByUser(userId: string): Promise<number> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return this.model.countDocuments({
+      userId: new Types.ObjectId(userId),
+      createdAt: { $gte: startOfToday },
+      ...NOT_DELETED,
+    });
+  }
 }

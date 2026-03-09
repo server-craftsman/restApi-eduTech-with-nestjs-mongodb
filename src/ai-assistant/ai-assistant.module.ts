@@ -4,9 +4,10 @@ import { DocumentAiPersistenceModule } from './infrastructure/persistence/docume
 import { AiAssistantService } from './ai-assistant.service';
 import { AiAssistantController } from './ai-assistant.controller';
 import { EmbeddingService } from './services/embedding.service';
+import { UserSubscriptionModule } from '../user-subscriptions/user-subscription.module';
 
 @Module({
-  imports: [ConfigModule, DocumentAiPersistenceModule],
+  imports: [ConfigModule, DocumentAiPersistenceModule, UserSubscriptionModule],
   controllers: [AiAssistantController],
   providers: [AiAssistantService, EmbeddingService],
   exports: [AiAssistantService],

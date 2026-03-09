@@ -1,6 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNumber, Min, IsEnum, IsOptional } from 'class-validator';
-import { TransactionStatus } from '../../enums';
+import {
+  TransactionStatus,
+  PaymentProvider,
+  SubscriptionPeriod,
+} from '../../enums';
 
 export class UpdateTransactionDto {
   @ApiPropertyOptional({
@@ -12,8 +16,25 @@ export class UpdateTransactionDto {
   userId?: string;
 
   @ApiPropertyOptional({
-    description: 'Transaction amount',
-    example: 19.99,
+    description: 'Subscription plan ID',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @IsString()
+  @IsOptional()
+  planId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Subscription period',
+    enum: SubscriptionPeriod,
+    enumName: 'SubscriptionPeriod',
+  })
+  @IsEnum(SubscriptionPeriod)
+  @IsOptional()
+  subscriptionPeriod?: SubscriptionPeriod;
+
+  @ApiPropertyOptional({
+    description: 'Transaction amount (VND)',
+    example: 99000,
   })
   @IsNumber()
   @Min(0)
@@ -22,7 +43,7 @@ export class UpdateTransactionDto {
 
   @ApiPropertyOptional({
     description: 'Currency code',
-    example: 'EUR',
+    example: 'VND',
   })
   @IsString()
   @IsOptional()
@@ -30,15 +51,16 @@ export class UpdateTransactionDto {
 
   @ApiPropertyOptional({
     description: 'Payment provider',
-    example: 'VNPAY',
+    enum: PaymentProvider,
+    enumName: 'PaymentProvider',
   })
-  @IsString()
+  @IsEnum(PaymentProvider)
   @IsOptional()
-  provider?: string;
+  provider?: PaymentProvider;
 
   @ApiPropertyOptional({
     description: 'Provider reference ID',
-    example: 'TXN987654321',
+    example: 'EDUTECH1718000000123',
   })
   @IsString()
   @IsOptional()
@@ -51,5 +73,12 @@ export class UpdateTransactionDto {
   })
   @IsEnum(TransactionStatus)
   @IsOptional()
-  status?: string;
+  status?: TransactionStatus;
+
+  @ApiPropertyOptional({
+    description: 'Transfer description',
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }

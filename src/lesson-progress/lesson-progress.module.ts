@@ -10,6 +10,7 @@ import { LessonProgressMapper } from './infrastructure/persistence/document/mapp
 import { LessonProgressService } from './lesson-progress.service';
 import { LessonProgressController } from './lesson-progress.controller';
 import { RewardModule } from '../rewards/reward.module';
+import { UserSubscriptionModule } from '../user-subscriptions/user-subscription.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RewardModule } from '../rewards/reward.module';
       { name: LessonProgressDocument.name, schema: LessonProgressSchema },
     ]),
     RewardModule,
+    UserSubscriptionModule,
   ],
   controllers: [LessonProgressController],
   providers: [

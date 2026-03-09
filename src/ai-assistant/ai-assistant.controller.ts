@@ -103,9 +103,10 @@ Student struggles with a problem → Copies the problem text → Pastes into \`q
   })
   async askQuestion(
     @Body() dto: AskQuestionDto,
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<Response> {
-    const result = await this.aiAssistantService.askQuestion(dto);
+    const result = await this.aiAssistantService.askQuestion(dto, user.id);
     return this.sendSuccess(
       res,
       result,

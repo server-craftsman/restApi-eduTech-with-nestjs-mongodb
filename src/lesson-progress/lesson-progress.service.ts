@@ -1,13 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { LessonProgressRepositoryAbstract } from './infrastructure/persistence/document/repositories/lesson-progress.repository.abstract';
 import { LessonProgress } from './domain/lesson-progress';
 import { RewardService } from '../rewards/reward.service';
+import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
+
+/** Maximum number of unique lessons a Free-tier user may access per day. */
+const FREE_DAILY_LESSON_LIMIT = 5;
 
 @Injectable()
 export class LessonProgressService {
   constructor(
     private readonly lessonProgressRepository: LessonProgressRepositoryAbstract,
     private readonly rewardService: RewardService,
+    private readonly userSubscriptionService: UserSubscriptionService,
   ) {}
 
   async createProgress(
@@ -58,6 +63,46 @@ export class LessonProgressService {
     const existing = await this.findByUserAndLesson(userId, lessonId);
     const isFirstCompletion =
       data.isCompleted === true && !existing?.isCompleted;
+
+    // ── Free-tier daily lesson access gate ──────────────────────────────────
+    // If this is the user's FIRST access to this lesson today (no existing
+    // progress record), enforce the Free daily limit before creating one.
+    if (!existing) {
+      const subStatus =
+        await this.userSubscriptionService.checkSubscriptionStatus(userId);
+
+      if (!subStatus.isPro) {
+        // Subscription has lapsed — tell user to renew, not upgrade
+        if (subStatus.hasExpired) {
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.PAYMENT_REQUIRED,
+              requiresRenewal: true,
+              message:
+                'Gói Pro của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục học không giới hạn.',
+              upgradeUrl: '/payments/plans/compare',
+            },
+            HttpStatus.PAYMENT_REQUIRED,
+          );
+        }
+
+        const todayCount =
+          await this.lessonProgressRepository.countNewLessonsToday(userId);
+        if (todayCount >= FREE_DAILY_LESSON_LIMIT) {
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.PAYMENT_REQUIRED,
+              requiresUpgrade: true,
+              message: `Bạn đã truy cập ${FREE_DAILY_LESSON_LIMIT} bài học hôm nay. Nâng cấp Pro để học không giới hạn.`,
+              upgradeUrl: '/payments/plans/compare',
+              remaining: 0,
+            },
+            HttpStatus.PAYMENT_REQUIRED,
+          );
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     let result: LessonProgress | null;
     if (existing) {

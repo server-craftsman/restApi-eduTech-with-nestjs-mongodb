@@ -102,4 +102,17 @@ export class UserSubscriptionRepository implements UserSubscriptionRepositoryAbs
     );
     return doc ? this.mapper.toDomain(doc) : null;
   }
+
+  async findActiveIgnoreExpiry(
+    userId: string,
+  ): Promise<UserSubscription | null> {
+    // Find any ACTIVE subscription regardless of endDate.
+    // This lets the service detect subscriptions that are ACTIVE in DB
+    // but have already passed their endDate, so they can be auto-expired.
+    const doc = await this.userSubscriptionModel.findOne({
+      userId: new Types.ObjectId(userId),
+      status: 'ACTIVE',
+    });
+    return doc ? this.mapper.toDomain(doc) : null;
+  }
 }

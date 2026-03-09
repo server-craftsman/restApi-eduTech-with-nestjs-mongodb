@@ -14,4 +14,9 @@ export abstract class ExamAttemptRepositoryAbstract {
     examId: string,
   ): Promise<ExamAttempt | null>;
   abstract softDelete(id: string): Promise<void>;
+  /**
+   * Count the number of exam attempts created today for the given user.
+   * Used to enforce the Free-tier daily exam attempt limit (2 per day).
+   */
+  abstract countTodayByUser(userId: string): Promise<number>;
 }

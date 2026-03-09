@@ -30,6 +30,7 @@ import {
   SIMILARITY_THRESHOLD,
   TOP_K,
 } from './services/embedding.service';
+import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
 
 type AiProvider = 'gemini' | 'openai';
 
@@ -53,6 +54,7 @@ export class AiAssistantService {
     private readonly conversationRepo: AiConversationRepositoryAbstract,
     private readonly trainingDataRepo: AiTrainingDataRepositoryAbstract,
     private readonly embeddingService: EmbeddingService,
+    private readonly userSubscriptionService: UserSubscriptionService,
   ) {}
 
   /**
@@ -63,15 +65,31 @@ export class AiAssistantService {
    * Fallback provider: OpenAI (requires billing).
    *
    * Configure via env: AI_PROVIDER=gemini | openai
+   *
+   * **Plan tier enforcement:**
+   * - Free users: always receive a concise (brief) answer (max 600 tokens).
+   * - Pro users: receive full detailed step-by-step explanation (up to 2000 tokens).
    */
-  async askQuestion(dto: AskQuestionDto): Promise<AiResponseDto> {
+  async askQuestion(
+    dto: AskQuestionDto,
+    userId: string,
+  ): Promise<AiResponseDto> {
+    // ── Subscription tier gate ────────────────────────────────────────────────
+    const isPro =
+      await this.userSubscriptionService.isSubscriptionValid(userId);
+    // Free users are always forced into 'brief' mode (concise, max 600 tokens)
+    const tieredDto: AskQuestionDto = isPro
+      ? dto
+      : { ...dto, explanationLevel: 'brief' };
+    // ─────────────────────────────────────────────────────────────────────────
+
     const provider =
       this.configService.get<AiProvider>('ai.provider') ?? 'gemini';
 
     if (provider === 'openai') {
-      return this.askWithOpenAi(dto);
+      return this.askWithOpenAi(tieredDto);
     }
-    return this.askWithGemini(dto);
+    return this.askWithGemini(tieredDto);
   }
 
   // ── Gemini (Free tier) ─────────────────────────────────────────────────────
@@ -354,10 +372,21 @@ export class AiAssistantService {
     const provider =
       this.configService.get<AiProvider>('ai.provider') ?? 'gemini';
 
+    // ── Subscription tier gate ────────────────────────────────────────────────
+    const isPro =
+      await this.userSubscriptionService.isSubscriptionValid(userId);
+    // Free users are always forced into 'brief' mode for chat too
+    const tieredDto: ChatMessageDto = isPro
+      ? dto
+      : { ...dto, explanationLevel: 'brief' };
+    // ─────────────────────────────────────────────────────────────────────────
+
     let conversation: AiConversation;
 
-    if (dto.conversationId) {
-      const existing = await this.conversationRepo.findById(dto.conversationId);
+    if (tieredDto.conversationId) {
+      const existing = await this.conversationRepo.findById(
+        tieredDto.conversationId,
+      );
       if (!existing || existing.userId !== userId) {
         throw new NotFoundException('Conversation not found');
       }
@@ -366,8 +395,8 @@ export class AiAssistantService {
       // Create new conversation
       conversation = await this.conversationRepo.create({
         userId,
-        title: dto.message.substring(0, 80),
-        subject: dto.subject ?? null,
+        title: tieredDto.message.substring(0, 80),
+        subject: tieredDto.subject ?? null,
         messages: [],
         totalTokensUsed: 0,
       });
@@ -377,12 +406,12 @@ export class AiAssistantService {
     const contextMessages = conversation.messages.slice(-MAX_CONTEXT_MESSAGES);
 
     // Fetch approved training data for few-shot examples
-    const trainingExamples = await this.getTrainingExamples(dto.subject);
+    const trainingExamples = await this.getTrainingExamples(tieredDto.subject);
 
     const isDetailed =
-      !dto.explanationLevel || dto.explanationLevel === 'detailed';
+      !tieredDto.explanationLevel || tieredDto.explanationLevel === 'detailed';
     const systemPrompt = this.buildChatSystemPrompt(
-      dto.subject ?? conversation.subject,
+      tieredDto.subject ?? conversation.subject,
       isDetailed,
       trainingExamples,
     );
@@ -396,7 +425,7 @@ export class AiAssistantService {
       const result = await this.chatWithOpenAi(
         systemPrompt,
         contextMessages,
-        dto.message,
+        tieredDto.message,
         isDetailed,
       );
       reply = result.reply;
@@ -406,7 +435,7 @@ export class AiAssistantService {
       const result = await this.chatWithGemini(
         systemPrompt,
         contextMessages,
-        dto.message,
+        tieredDto.message,
         isDetailed,
       );
       reply = result.reply;
@@ -419,7 +448,7 @@ export class AiAssistantService {
     // Save user message
     const userMessage: AiMessage = {
       role: AiMessageRole.User,
-      content: dto.message,
+      content: tieredDto.message,
       timestamp: new Date(),
     };
     await this.conversationRepo.pushMessage(
