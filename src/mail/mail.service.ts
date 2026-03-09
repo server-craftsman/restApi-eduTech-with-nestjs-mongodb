@@ -134,7 +134,7 @@ export class MailService {
     verificationToken: string,
   ): Promise<void> {
     const subject = '✓ Xác nhận Email - EduTech';
-    const verifyUrl = `${this.appUrl}/api/v1/auth/email/verify?token=${verificationToken}`;
+    const verifyUrl = `${this.appUrl}/api/v1/email/verify?token=${verificationToken}`;
     const html = `
       <!DOCTYPE html>
       <html dir="ltr" lang="vi">

@@ -27,7 +27,7 @@ export class EmailVerificationService {
     token: string,
     firstName: string,
   ): Promise<void> {
-    const verificationLink = `${this.appUrl}/auth/email/verify?token=${token}`;
+    const verificationLink = `${this.appUrl}/api/v1/auth/email/verify?token=${token}`;
 
     const subject = '✓ Xác nhận Email - EduTech';
     const html = this.generateVerificationEmailHtml(
@@ -206,7 +206,7 @@ export class EmailVerificationService {
    */
   async sendApprovalEmail(email: string, firstName: string): Promise<void> {
     const subject = '✅ Account Approved — EduTech';
-    const loginUrl = `${this.appUrl}/auth/email/login`;
+    const loginUrl = `${this.appUrl}/api/v1/auth/email/login`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -246,7 +246,7 @@ export class EmailVerificationService {
     reason: string,
   ): Promise<void> {
     const subject = '❌ Account Not Approved — EduTech';
-    const resubmitUrl = `${this.appUrl}/auth/resubmit-approval`;
+    const resubmitUrl = `${this.appUrl}/api/v1/auth/resubmit-approval`;
     const html = `
       <!DOCTYPE html>
       <html>
