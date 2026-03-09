@@ -103,14 +103,7 @@ async function bootstrap() {
     .setVersion('1.0.0')
     .addServer(`http://localhost:${port}`, 'Local Development')
     .addServer(`${configService.get<string>('APP_URL')}`, 'Production Server')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-      },
-      'access-token',
-    )
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
