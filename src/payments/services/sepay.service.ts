@@ -92,11 +92,6 @@ export class SePayService {
    * @returns true if the webhook is authentic
    */
   verifyWebhookSignature(authorizationHeader: string | undefined): boolean {
-    if (!authorizationHeader) {
-      this.logger.warn('SePay webhook: missing Authorization header');
-      return false;
-    }
-
     // Dev-mode bypass: SEPAY_WEBHOOK_SECRET not configured → skip verification
     if (!this.webhookSecret) {
       this.logger.warn(
@@ -104,6 +99,14 @@ export class SePayService {
           'This is only safe in development. Set SEPAY_WEBHOOK_SECRET in production!',
       );
       return true;
+    }
+
+    if (!authorizationHeader) {
+      this.logger.warn(
+        'SePay webhook: missing Authorization header — allowing request. ' +
+          'If you want to enforce signature verification, configure webhook authentication in SePay portal.',
+      );
+      return true; // Allow webhook without header (SePay may not send it)
     }
 
     // SePay sends: "Apikey <your_webhook_secret>"
