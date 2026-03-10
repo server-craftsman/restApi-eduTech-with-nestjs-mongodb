@@ -110,7 +110,7 @@ export class SePayService {
     }
 
     // SePay sends: "Apikey <your_webhook_secret>"
-    const expectedHeader = `Apikey ${this.webhookSecret}`;
+    const expectedHeader = `Apikey ${this.apiKey}`;
     const a = Buffer.from(authorizationHeader);
     const b = Buffer.from(expectedHeader);
 
