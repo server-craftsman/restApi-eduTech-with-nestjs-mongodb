@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 /**
  * Webhook payload sent by SePay when a bank transfer is detected.
@@ -11,7 +12,8 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
  * the order code in our PENDING transaction.
  */
 export class SePayWebhookDto {
-  @ApiProperty({ description: 'SePay internal reference ID' })
+  @ApiProperty({ description: 'SePay internal reference ID', example: 44824031 })
+  @Transform(({ value }) => String(value))
   @IsString()
   id!: string;
 
@@ -35,9 +37,10 @@ export class SePayWebhookDto {
   @IsOptional()
   subAccount?: string;
 
-  @ApiProperty({ description: 'Transfer code from SePay' })
+  @ApiPropertyOptional({ description: 'Transfer code from SePay', nullable: true })
   @IsString()
-  code!: string;
+  @IsOptional()
+  code?: string | null;
 
   @ApiProperty({
     description:
@@ -63,10 +66,10 @@ export class SePayWebhookDto {
   @IsOptional()
   accumulated?: number;
 
-  @ApiPropertyOptional({ description: 'Reference number from bank' })
+  @ApiPropertyOptional({ description: 'Reference code from bank', example: 'FT26069157988559' })
   @IsString()
   @IsOptional()
-  referenceNumber?: string;
+  referenceCode?: string;
 
   @ApiPropertyOptional({ description: 'Description / note from bank' })
   @IsString()
