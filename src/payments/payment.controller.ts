@@ -80,32 +80,32 @@ export class PaymentController extends BaseController {
   // POST /payments/admin/simulate-payment/:orderCode — Dev test only
   // ─────────────────────────────────────────────────────────────────
 
-  @Post('admin/simulate-payment/:orderCode')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: '[DEV] Simulate SePay webhook — confirm payment by order code',
-    description:
-      'Manually confirms a PENDING transaction and activates the subscription. ' +
-      'Use this in development when SePay cannot reach localhost. ' +
-      'Equivalent to what the real SePay webhook does after a bank transfer.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Payment simulated and subscription activated',
-  })
-  @ApiResponse({ status: 400, description: 'Transaction already processed' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden — Admin only' })
-  @ApiResponse({ status: 404, description: 'Order code not found' })
-  async simulatePayment(
-    @Param('orderCode') orderCode: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const result = await this.paymentService.simulatePayment(orderCode);
-    return this.sendSuccess(res, result, result.message);
-  }
+  //   @Post('admin/simulate-payment/:orderCode')
+  //   @UseGuards(JwtAuthGuard, RolesGuard)
+  //   @Roles(UserRole.Admin)
+  //   @ApiBearerAuth()
+  //   @ApiOperation({
+  //     summary: '[DEV] Simulate SePay webhook — confirm payment by order code',
+  //     description:
+  //       'Manually confirms a PENDING transaction and activates the subscription. ' +
+  //       'Use this in development when SePay cannot reach localhost. ' +
+  //       'Equivalent to what the real SePay webhook does after a bank transfer.',
+  //   })
+  //   @ApiResponse({
+  //     status: 200,
+  //     description: 'Payment simulated and subscription activated',
+  //   })
+  //   @ApiResponse({ status: 400, description: 'Transaction already processed' })
+  //   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  //   @ApiResponse({ status: 403, description: 'Forbidden — Admin only' })
+  //   @ApiResponse({ status: 404, description: 'Order code not found' })
+  //   async simulatePayment(
+  //     @Param('orderCode') orderCode: string,
+  //     @Res() res: Response,
+  //   ): Promise<Response> {
+  //     const result = await this.paymentService.simulatePayment(orderCode);
+  //     return this.sendSuccess(res, result, result.message);
+  //   }
 
   // ─────────────────────────────────────────────────────────────────
   // POST /payments/initiate — Start a payment (authenticated)

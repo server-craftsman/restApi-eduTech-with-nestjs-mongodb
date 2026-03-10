@@ -12,7 +12,10 @@ import { Transform } from 'class-transformer';
  * the order code in our PENDING transaction.
  */
 export class SePayWebhookDto {
-  @ApiProperty({ description: 'SePay internal reference ID', example: 44824031 })
+  @ApiProperty({
+    description: 'SePay internal reference ID',
+    example: 44824031,
+  })
   @Transform(({ value }) => String(value))
   @IsString()
   id!: string;
@@ -37,7 +40,10 @@ export class SePayWebhookDto {
   @IsOptional()
   subAccount?: string;
 
-  @ApiPropertyOptional({ description: 'Transfer code from SePay', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Transfer code from SePay',
+    nullable: true,
+  })
   @IsString()
   @IsOptional()
   code?: string | null;
@@ -66,7 +72,10 @@ export class SePayWebhookDto {
   @IsOptional()
   accumulated?: number;
 
-  @ApiPropertyOptional({ description: 'Reference code from bank', example: 'FT26069157988559' })
+  @ApiPropertyOptional({
+    description: 'Reference code from bank',
+    example: 'FT26069157988559',
+  })
   @IsString()
   @IsOptional()
   referenceCode?: string;

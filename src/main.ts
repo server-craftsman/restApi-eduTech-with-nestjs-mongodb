@@ -116,7 +116,7 @@ async function bootstrap() {
       showRequestHeaders: true,
       defaultModelsExpandDepth: 2,
     },
-    customSiteTitle: 'EduTech API Docs',    
+    customSiteTitle: 'EduTech API Docs',
   });
 
   await app.listen(port, '0.0.0.0');
