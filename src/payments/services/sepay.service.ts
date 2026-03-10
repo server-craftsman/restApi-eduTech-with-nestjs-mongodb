@@ -97,17 +97,17 @@ export class SePayService {
       return false;
     }
 
-    // Dev-mode bypass: SEPAY_API_KEY not configured → skip verification
-    if (!this.apiKey) {
+    // Dev-mode bypass: SEPAY_WEBHOOK_SECRET not configured → skip verification
+    if (!this.webhookSecret) {
       this.logger.warn(
-        'SEPAY_API_KEY is not set — skipping signature verification. ' +
-          'This is only safe in development. Set SEPAY_API_KEY in production!',
+        'SEPAY_WEBHOOK_SECRET is not set — skipping signature verification. ' +
+          'This is only safe in development. Set SEPAY_WEBHOOK_SECRET in production!',
       );
       return true;
     }
 
-    // SePay sends: "Apikey <your_api_key>"
-    const expectedHeader = `Apikey ${this.apiKey}`;
+    // SePay sends: "Apikey <your_webhook_secret>"
+    const expectedHeader = `Apikey ${this.webhookSecret}`;
     const a = Buffer.from(authorizationHeader);
     const b = Buffer.from(expectedHeader);
 
