@@ -13,6 +13,8 @@ import { Course } from './domain/course';
 import { GradeLevel, CourseStatus } from '../enums';
 import { FilterCourseDto, QueryCourseDto, SortCourseDto } from './dto';
 import { BaseService } from '../core/base/base.service';
+import { UsersService } from '../users/users.service';
+import { NotificationTriggersService } from '../notifications/services';
 
 @Injectable()
 export class CourseService extends BaseService {
@@ -22,6 +24,8 @@ export class CourseService extends BaseService {
     private readonly lessonRepository: LessonRepositoryAbstract,
     private readonly questionRepository: QuestionRepositoryAbstract,
     private readonly materialRepository: MaterialRepositoryAbstract,
+    private readonly usersService: UsersService,
+    private readonly notificationTriggers: NotificationTriggersService,
   ) {
     super();
   }
@@ -314,6 +318,14 @@ export class CourseService extends BaseService {
     if (!updated) {
       throw new NotFoundException('Failed to approve course');
     }
+
+    void this.tryPushCourseApprovalNotification(
+      updated.authorId,
+      updated.title,
+      updated.id,
+      'approved',
+    );
+
     return updated;
   }
 
@@ -341,6 +353,40 @@ export class CourseService extends BaseService {
     if (!updated) {
       throw new NotFoundException('Failed to reject course');
     }
+
+    void this.tryPushCourseApprovalNotification(
+      updated.authorId,
+      updated.title,
+      updated.id,
+      'rejected',
+      note.trim(),
+    );
+
     return updated;
+  }
+
+  private async tryPushCourseApprovalNotification(
+    authorUserId: string,
+    courseName: string,
+    courseId: string,
+    status: 'approved' | 'rejected',
+    reason?: string,
+  ): Promise<void> {
+    try {
+      const author = await this.usersService.findById(authorUserId);
+      if (!author?.email) return;
+
+      await this.notificationTriggers.onCourseApproval(
+        author.id,
+        author.email,
+        courseName,
+        courseId,
+        status,
+        reason,
+        author.email.split('@')[0],
+      );
+    } catch {
+      // Notification failures must never block course moderation flow
+    }
   }
 }

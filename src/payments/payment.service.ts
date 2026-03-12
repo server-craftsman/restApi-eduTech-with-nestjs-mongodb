@@ -21,6 +21,8 @@ import {
   PlanPricingDto,
   PlanComparisonResponseDto,
 } from './dto/plan-comparison.dto';
+import { UsersService } from '../users/users.service';
+import { NotificationTriggersService } from '../notifications/services';
 
 /**
  * Payment orchestration service.
@@ -48,6 +50,8 @@ export class PaymentService {
     private readonly subscriptionPlanService: SubscriptionPlanService,
     private readonly userSubscriptionService: UserSubscriptionService,
     private readonly sePayService: SePayService,
+    private readonly usersService: UsersService,
+    private readonly notificationTriggers: NotificationTriggersService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -460,10 +464,42 @@ export class PaymentService {
       status: 'ACTIVE',
     });
 
+    void this.tryPushPaymentNotifications(transaction, plan.name, endDate);
+
     this.logger.log(
       `Subscription activated: user=${transaction.userId}, ` +
         `plan=${plan.name}, until=${endDate.toISOString()}`,
     );
+  }
+
+  private async tryPushPaymentNotifications(
+    transaction: Transaction,
+    planName: string,
+    endDate: Date,
+  ): Promise<void> {
+    try {
+      const user = await this.usersService.findById(transaction.userId);
+      if (!user?.email) return;
+
+      await this.notificationTriggers.onPaymentConfirmed(
+        user.id,
+        user.email,
+        transaction.amount,
+        planName,
+        user.email.split('@')[0],
+      );
+
+      await this.notificationTriggers.onSubscriptionUpdate(
+        user.id,
+        user.email,
+        planName,
+        'activated',
+        endDate,
+        user.email.split('@')[0],
+      );
+    } catch {
+      // Notification failure must never block payment flow
+    }
   }
 
   /**

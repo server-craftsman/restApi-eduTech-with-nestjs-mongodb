@@ -16,3 +16,5 @@ export * from './teacher-education-level.enum';
 export * from './parent-relationship.enum';
 export * from './ai-training-status.enum';
 export * from './exam-scope.enum';
+export * from './notification-type.enum';
+export * from './notification-channel.enum';

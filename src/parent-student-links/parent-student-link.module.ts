@@ -16,6 +16,7 @@ import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { SmsService, ZaloService } from './services/messaging.service';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SmsService, ZaloService } from './services/messaging.service';
     QuizAttemptModule,
     MailModule,
     UsersModule,
+    NotificationModule,
   ],
   controllers: [ParentStudentLinkController],
   providers: [

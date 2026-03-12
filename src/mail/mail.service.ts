@@ -380,4 +380,67 @@ export class MailService {
       `Progress report email (${period}) sent to ${parentEmail} for student ${studentName}`,
     );
   }
+
+  /**
+   * Send a generic notification email (used as fallback when Novu is not enabled).
+   * @param email - Recipient email
+   * @param title - Notification title
+   * @param message - Notification body text
+   * @param actionUrl - Optional deep link / CTA URL
+   */
+  async sendNotificationEmail(
+    email: string,
+    title: string,
+    message: string,
+    actionUrl?: string,
+  ): Promise<void> {
+    const subject = `${title} — EduTech`;
+    const ctaBlock = actionUrl
+      ? `<p style="text-align: center; margin: 30px 0;">
+           <a href="${this.appUrl}${actionUrl}" class="cta-button">Xem chi tiết →</a>
+         </p>`
+      : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html dir="ltr" lang="vi">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c3e50; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+            .email-wrapper { background: #ffffff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); overflow: hidden; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; color: #ffffff; }
+            .logo { font-size: 28px; font-weight: 700; margin: 0; }
+            .content { padding: 30px; }
+            .title { font-size: 20px; font-weight: 700; color: #2c3e50; margin: 0 0 15px 0; }
+            .message { font-size: 15px; color: #555; line-height: 1.8; margin: 0 0 20px 0; }
+            .cta-button { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; }
+            .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0; font-size: 12px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="email-wrapper">
+              <div class="header">
+                <div class="logo">🔔 EduTech</div>
+              </div>
+              <div class="content">
+                <p class="title">${title}</p>
+                <p class="message">${message}</p>
+                ${ctaBlock}
+              </div>
+              <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} EduTech — Nền tảng học tập thông minh</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await this.mailerService.sendMail(email, subject, html);
+    this.logger.log(`Notification email sent to ${email}: "${title}"`);
+  }
 }

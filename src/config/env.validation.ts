@@ -114,6 +114,10 @@ export const envValidationSchema = Joi.object({
     .positive()
     .default(24 * 60),
 
+  // Novu notification infrastructure
+  NOVU_API_KEY: Joi.string().allow('').optional().default(''),
+  NOVU_SUBSCRIBER_PREFIX: Joi.string().allow('').optional().default('edutech_'),
+
   SEPAY_API_KEY: Joi.string().allow('').optional().default(''),
   SEPAY_BANK_ACCOUNT: Joi.string().allow('').optional().default(''),
   SEPAY_BANK_NAME: Joi.string().allow('').optional().default('MBBank'),

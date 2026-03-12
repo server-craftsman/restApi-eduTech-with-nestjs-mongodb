@@ -19,6 +19,7 @@ import {
 import { ReportPeriod } from './dto/progress-report-period.dto';
 import { SmsService } from './services/messaging.service';
 import { ZaloService } from './services/messaging.service';
+import { NotificationTriggersService } from '../notifications/services';
 
 @Injectable()
 export class ParentStudentLinkService {
@@ -34,6 +35,7 @@ export class ParentStudentLinkService {
     private readonly usersService: UsersService,
     private readonly smsService: SmsService,
     private readonly zaloService: ZaloService,
+    private readonly notificationTriggers: NotificationTriggersService,
   ) {}
 
   // ─── Base CRUD ────────────────────────────────────────────────────────────
@@ -245,7 +247,51 @@ export class ParentStudentLinkService {
       linkCodeExpires: null,
     });
 
+    void this.tryPushParentLinkNotifications(
+      parentUserId,
+      parentProfile.fullName,
+      link.studentId,
+    );
+
     return updated!;
+  }
+
+  private async tryPushParentLinkNotifications(
+    parentUserId: string,
+    parentName: string,
+    studentProfileId: string,
+  ): Promise<void> {
+    try {
+      const [parentUser, studentProfile] = await Promise.all([
+        this.usersService.findById(parentUserId),
+        this.studentProfileService.getProfileById(studentProfileId),
+      ]);
+      if (!studentProfile) return;
+
+      const studentUser = await this.usersService.findById(studentProfile.userId);
+
+      if (studentUser?.email) {
+        await this.notificationTriggers.onParentLinkUpdate(
+          studentUser.id,
+          studentUser.email,
+          parentName,
+          'approved',
+          studentUser.email.split('@')[0],
+        );
+      }
+
+      if (parentUser?.email) {
+        await this.notificationTriggers.onParentLinkUpdate(
+          parentUser.id,
+          parentUser.email,
+          studentProfile.fullName ?? 'học sinh',
+          'approved',
+          parentUser.email.split('@')[0],
+        );
+      }
+    } catch {
+      // Notification failure must never block parent-link flow
+    }
   }
 
   /**

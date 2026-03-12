@@ -9,6 +9,8 @@ import { LessonService } from '../lessons/lesson.service';
 import { QuestionService } from '../questions/question.service';
 import { WrongAnswerService } from '../wrong-answers/wrong-answer.service';
 import { RewardService } from '../rewards/reward.service';
+import { UsersService } from '../users/users.service';
+import { NotificationTriggersService } from '../notifications/services';
 import { QuizAttempt, QuestionAnswer } from './domain/quiz-attempt';
 import {
   CreateQuizAttemptDto,
@@ -28,6 +30,8 @@ export class QuizAttemptService {
     private readonly questionService: QuestionService,
     private readonly wrongAnswerService: WrongAnswerService,
     private readonly rewardService: RewardService,
+    private readonly usersService: UsersService,
+    private readonly notificationTriggers: NotificationTriggersService,
   ) {}
 
   /**
@@ -115,6 +119,15 @@ export class QuizAttemptService {
       void this.tryAwardPerfectQuiz(userId);
     }
 
+    // Push quiz result notification (fire-and-forget)
+    void this.tryPushQuizResultNotification(
+      userId,
+      dto.lessonId,
+      saved.id,
+      correctCount,
+      totalQuestions,
+    );
+
     return saved;
   }
 
@@ -147,6 +160,39 @@ export class QuizAttemptService {
       await this.rewardService.awardPerfectQuiz(userId);
     } catch {
       // Reward failure must never break the quiz submission
+    }
+  }
+
+  /**
+   * Push quiz result notification after attempt is graded.
+   * Fire-and-forget — failures never block submission.
+   */
+  private async tryPushQuizResultNotification(
+    userId: string,
+    lessonId: string,
+    attemptId: string,
+    correctAnswers: number,
+    totalQuestions: number,
+  ): Promise<void> {
+    try {
+      const [user, lesson] = await Promise.all([
+        this.usersService.findById(userId),
+        this.lessonService.getLessonById(lessonId),
+      ]);
+
+      if (!user?.email) return;
+
+      await this.notificationTriggers.onQuizResult(
+        user.id,
+        user.email,
+        lesson?.title ?? 'Bài kiểm tra',
+        correctAnswers,
+        totalQuestions,
+        attemptId,
+        user.email.split('@')[0],
+      );
+    } catch {
+      // Notification failure must never break the quiz submission
     }
   }
 

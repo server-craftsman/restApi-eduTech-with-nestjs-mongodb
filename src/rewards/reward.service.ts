@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
 import { BadgeType } from '../enums';
 import { BadgeCatalogItemDto, MyRewardsDto } from './dto';
+import { UsersService } from '../users/users.service';
+import { NotificationTriggersService } from '../notifications/services';
 
 // ── Point values per event ────────────────────────────────────────────────────
 
@@ -73,7 +75,11 @@ export const BADGE_THRESHOLDS: BadgeThreshold[] = [
 
 @Injectable()
 export class RewardService {
-  constructor(private readonly studentProfileService: StudentProfileService) {}
+  constructor(
+    private readonly studentProfileService: StudentProfileService,
+    private readonly usersService: UsersService,
+    private readonly notificationTriggers: NotificationTriggersService,
+  ) {}
 
   // ── Public trigger methods ─────────────────────────────────────────────────
 
@@ -82,7 +88,11 @@ export class RewardService {
    * Called fire-and-forget from LessonProgressService — errors are silently swallowed.
    */
   async awardLessonCompletion(userId: string): Promise<void> {
-    await this.awardPoints(userId, POINTS_LESSON_COMPLETED);
+    await this.awardPoints(
+      userId,
+      POINTS_LESSON_COMPLETED,
+      'hoàn thành bài học',
+    );
   }
 
   /**
@@ -90,7 +100,11 @@ export class RewardService {
    * Called fire-and-forget from QuizAttemptService — errors are silently swallowed.
    */
   async awardPerfectQuiz(userId: string): Promise<void> {
-    await this.awardPoints(userId, POINTS_PERFECT_QUIZ);
+    await this.awardPoints(
+      userId,
+      POINTS_PERFECT_QUIZ,
+      'hoàn thành bài kiểm tra xuất sắc',
+    );
   }
 
   // ── Query helpers ──────────────────────────────────────────────────────────
@@ -136,12 +150,29 @@ export class RewardService {
    *  2. Compute which badges are newly earned based on the new total
    *  3. Append each new badge via $addToSet (idempotent)
    */
-  private async awardPoints(userId: string, points: number): Promise<void> {
+  private async awardPoints(
+    userId: string,
+    points: number,
+    reason: string,
+  ): Promise<void> {
     const updated = await this.studentProfileService.incrementPoints(
       userId,
       points,
     );
     if (!updated) return; // no profile for this user — silently skip
+
+    const user = await this.usersService.findById(userId);
+    if (user?.email) {
+      void this.notificationTriggers
+        .onPointsEarned(
+          user.id,
+          user.email,
+          points,
+          reason,
+          user.email.split('@')[0],
+        )
+        .catch(() => undefined);
+    }
 
     const newBadges = this.computeNewBadges(
       updated.totalPoints,
@@ -149,6 +180,20 @@ export class RewardService {
     );
     for (const badge of newBadges) {
       await this.studentProfileService.addBadge(userId, badge);
+
+      if (user?.email) {
+        const badgeLabel =
+          BADGE_THRESHOLDS.find((t) => t.badge === badge)?.label ?? badge;
+        void this.notificationTriggers
+          .onBadgeUnlocked(
+            user.id,
+            user.email,
+            badgeLabel,
+            undefined,
+            user.email.split('@')[0],
+          )
+          .catch(() => undefined);
+      }
     }
   }
 

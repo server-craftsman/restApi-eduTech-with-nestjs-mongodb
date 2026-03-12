@@ -8,6 +8,7 @@ import {
 import { NotificationRepositoryAbstract } from './notification.repository.abstract';
 import { NotificationMapper } from '../mappers/notification.mapper';
 import { Notification } from '../../../../domain/notification';
+import { NotificationType } from '../../../../../enums';
 
 @Injectable()
 export class NotificationRepository implements NotificationRepositoryAbstract {
@@ -23,7 +24,7 @@ export class NotificationRepository implements NotificationRepositoryAbstract {
   }
 
   async findAll(): Promise<Notification[]> {
-    const docs = await this.notificationModel.find();
+    const docs = await this.notificationModel.find().sort({ createdAt: -1 });
     return this.mapper.toDomainArray(docs);
   }
 
@@ -34,8 +35,12 @@ export class NotificationRepository implements NotificationRepositoryAbstract {
       userId: new Types.ObjectId(data.userId),
       title: data.title,
       message: data.message,
-      isRead: data.isRead,
+      isRead: data.isRead ?? false,
       type: data.type,
+      actionUrl: data.actionUrl ?? null,
+      metadata: data.metadata ?? null,
+      emailSent: data.emailSent ?? false,
+      novuMessageId: data.novuMessageId ?? null,
     });
     return this.mapper.toDomain(doc);
   }
@@ -46,9 +51,18 @@ export class NotificationRepository implements NotificationRepositoryAbstract {
 
   async findByUserId(userId: string): Promise<Notification[]> {
     const docs = await this.notificationModel
-      .find({
-        userId: new Types.ObjectId(userId),
-      })
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    return this.mapper.toDomainArray(docs);
+  }
+
+  async findByUserIdAndType(
+    userId: string,
+    type: NotificationType,
+  ): Promise<Notification[]> {
+    const docs = await this.notificationModel
+      .find({ userId: new Types.ObjectId(userId), type })
       .sort({ createdAt: -1 });
     return this.mapper.toDomainArray(docs);
   }
@@ -60,6 +74,13 @@ export class NotificationRepository implements NotificationRepositoryAbstract {
       { new: true },
     );
     return doc ? this.mapper.toDomain(doc) : null;
+  }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await this.notificationModel.updateMany(
+      { userId: new Types.ObjectId(userId), isRead: false },
+      { isRead: true },
+    );
   }
 
   async markMultipleAsRead(ids: string[]): Promise<void> {

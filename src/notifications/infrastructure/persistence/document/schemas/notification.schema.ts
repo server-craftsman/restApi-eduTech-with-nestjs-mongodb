@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { CollectionName } from '../../../../../core/constants';
+import { NotificationType } from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: CollectionName.Notifications })
 export class NotificationDocument {
@@ -16,8 +17,20 @@ export class NotificationDocument {
   @Prop({ default: false })
   isRead!: boolean;
 
-  @Prop({ required: true })
-  type!: string;
+  @Prop({ required: true, enum: NotificationType })
+  type!: NotificationType;
+
+  @Prop({ type: String, default: null })
+  actionUrl?: string | null;
+
+  @Prop({ type: Object, default: null })
+  metadata?: Record<string, unknown> | null;
+
+  @Prop({ default: false })
+  emailSent!: boolean;
+
+  @Prop({ type: String, default: null })
+  novuMessageId?: string | null;
 }
 
 export type NotificationDocumentType =

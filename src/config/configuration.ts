@@ -77,6 +77,10 @@ export default () => ({
     bankName: getEnv('SEPAY_BANK_NAME', 'MBBank'),
     webhookSecret: getEnv('SEPAY_WEBHOOK_SECRET', ''),
   },
+  novu: {
+    apiKey: getEnv('NOVU_API_KEY', ''),
+    subscriberIdPrefix: getEnv('NOVU_SUBSCRIBER_PREFIX', 'edutech_'),
+  },
   ai: {
     provider: getEnv('AI_PROVIDER', 'gemini') as 'gemini' | 'openai',
     // Gemini (free tier)
