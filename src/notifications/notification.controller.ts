@@ -75,11 +75,7 @@ export class NotificationController extends BaseController {
     @Res() res: Response,
   ): Promise<Response> {
     await this.notificationService.markAllAsRead(user.id);
-    return this.sendSuccess(
-      res,
-      null,
-      'All notifications marked as read',
-    );
+    return this.sendSuccess(res, null, 'All notifications marked as read');
   }
 
   @Put(':id/mark-as-read')
@@ -99,11 +95,7 @@ export class NotificationController extends BaseController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return this.sendSuccess(
-      res,
-      notification,
-      'Notification marked as read',
-    );
+    return this.sendSuccess(res, notification, 'Notification marked as read');
   }
 
   @Put('mark-multiple-as-read')
@@ -114,11 +106,7 @@ export class NotificationController extends BaseController {
     @Res() res: Response,
   ): Promise<Response> {
     await this.notificationService.markMultipleAsRead(ids);
-    return this.sendSuccess(
-      res,
-      null,
-      'Notifications marked as read',
-    );
+    return this.sendSuccess(res, null, 'Notifications marked as read');
   }
 
   @Delete('me')
@@ -222,11 +210,7 @@ export class NotificationController extends BaseController {
     @Res() res: Response,
   ): Promise<Response> {
     await this.notificationService.deleteNotification(id);
-    return this.sendSuccess(
-      res,
-      null,
-      'Notification deleted successfully',
-    );
+    return this.sendSuccess(res, null, 'Notification deleted successfully');
   }
 
   @Delete('admin/user/:userId')

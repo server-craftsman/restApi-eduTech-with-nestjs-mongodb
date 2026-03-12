@@ -82,7 +82,12 @@ export class NotificationTriggersService {
     // 2. Fallback: send email directly via MailService if Novu is not enabled
     if (sendEmail && !emailSent && email) {
       try {
-        await this.mailService.sendNotificationEmail(email, title, message, actionUrl);
+        await this.mailService.sendNotificationEmail(
+          email,
+          title,
+          message,
+          actionUrl,
+        );
         emailSent = true;
       } catch (err: unknown) {
         this.logger.warn(

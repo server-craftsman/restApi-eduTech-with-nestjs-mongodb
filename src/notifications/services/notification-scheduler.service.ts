@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { NotificationTriggersService } from './notification-triggers.service';
-import { UserRole } from '../../enums';
 
 /**
  * NotificationSchedulerService — scheduled cron jobs for automated reminders.
@@ -21,9 +20,7 @@ import { UserRole } from '../../enums';
 export class NotificationSchedulerService {
   private readonly logger = new Logger(NotificationSchedulerService.name);
 
-  constructor(
-    private readonly triggers: NotificationTriggersService,
-  ) {}
+  constructor(private readonly triggers: NotificationTriggersService) {}
 
   /**
    * Streak Reminder — runs every day at 18:00 (Vietnam time, UTC+7).
@@ -37,7 +34,7 @@ export class NotificationSchedulerService {
    * module exposes a method like `findStudentsWithStreakAtRisk()`.
    */
   @Cron('0 11 * * *', { name: 'streak-reminder', timeZone: 'Asia/Ho_Chi_Minh' })
-  async handleStreakReminder(): Promise<void> {
+  handleStreakReminder(): void {
     this.logger.log('Running streak reminder cron job...');
 
     // TODO: Inject UserRepositoryAbstract or a dedicated StreakQueryService
@@ -69,8 +66,11 @@ export class NotificationSchedulerService {
    * Same implementation note as above — requires a method like
    * `findInactiveStudents(daysSinceLastActivity: number)`.
    */
-  @Cron('0 3 * * *', { name: 'inactive-reminder', timeZone: 'Asia/Ho_Chi_Minh' })
-  async handleInactiveReminder(): Promise<void> {
+  @Cron('0 3 * * *', {
+    name: 'inactive-reminder',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  handleInactiveReminder(): void {
     this.logger.log('Running inactive reminder cron job...');
 
     // TODO: Inject UserRepositoryAbstract or a dedicated ActivityQueryService

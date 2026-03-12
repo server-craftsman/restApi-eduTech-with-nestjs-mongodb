@@ -27,9 +27,7 @@ export class NotificationMapper {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  toDocument(
-    data: Partial<Notification>,
-  ): Partial<NotificationDocument> {
+  toDocument(data: Partial<Notification>): Partial<NotificationDocument> {
     const doc: Record<string, unknown> = {};
     if (data.userId !== undefined) doc.userId = data.userId;
     if (data.title !== undefined) doc.title = data.title;

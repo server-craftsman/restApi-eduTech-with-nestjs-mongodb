@@ -53,7 +53,9 @@ export class NovuService implements OnModuleInit {
   onModuleInit() {
     if (this.apiKey) {
       this.novu = new Novu(this.apiKey);
-      this.logger.log('Novu SDK initialized — multi-channel notifications enabled');
+      this.logger.log(
+        'Novu SDK initialized — multi-channel notifications enabled',
+      );
     } else {
       this.logger.warn(
         'NOVU_API_KEY not set — notifications will be stored locally only. ' +
@@ -135,7 +137,8 @@ export class NovuService implements OnModuleInit {
       });
 
       const transactionId =
-        (result?.data as Record<string, unknown>)?.transactionId as string ?? null;
+        ((result?.data as Record<string, unknown>)?.transactionId as string) ??
+        null;
 
       this.logger.log(
         `Novu workflow "${payload.workflowId}" triggered for ${subscriberId} — txId: ${transactionId}`,

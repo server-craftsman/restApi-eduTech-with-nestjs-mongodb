@@ -268,7 +268,9 @@ export class ParentStudentLinkService {
       ]);
       if (!studentProfile) return;
 
-      const studentUser = await this.usersService.findById(studentProfile.userId);
+      const studentUser = await this.usersService.findById(
+        studentProfile.userId,
+      );
 
       if (studentUser?.email) {
         await this.notificationTriggers.onParentLinkUpdate(
