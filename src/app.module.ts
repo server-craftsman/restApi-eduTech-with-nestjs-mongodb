@@ -29,7 +29,6 @@ import { QuizAttemptModule } from './quiz-attempts';
 import { WrongAnswerModule } from './wrong-answers/wrong-answer.module';
 import { RewardModule } from './rewards/reward.module';
 import { SubscriptionPlanModule } from './subscription-plans';
-import { UserSubscriptionModule } from './user-subscriptions';
 import { TransactionModule } from './transactions';
 import { NotificationModule } from './notifications';
 import { LearningPathModule } from './learning-path';
@@ -40,6 +39,7 @@ import { SearchModule } from './search/search.module';
 import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 import { ExamModule } from './exams/exam.module';
 import { PaymentModule } from './payments';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -76,7 +76,6 @@ import { PaymentModule } from './payments';
     WrongAnswerModule,
     RewardModule,
     SubscriptionPlanModule,
-    UserSubscriptionModule,
     TransactionModule,
     NotificationModule,
     LearningPathModule,
@@ -87,6 +86,7 @@ import { PaymentModule } from './payments';
     AiAssistantModule,
     ExamModule,
     PaymentModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

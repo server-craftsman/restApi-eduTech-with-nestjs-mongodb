@@ -116,6 +116,13 @@ export const envValidationSchema = Joi.object({
 
   // Novu notification infrastructure
   NOVU_API_KEY: Joi.string().allow('').optional().default(''),
+  NOVU_APP_ID: Joi.string().allow('').optional().default(''),
+  NOVU_SOCKET_URL: Joi.string()
+    .uri({ scheme: ['ws', 'wss'] })
+    .allow('')
+    .optional()
+    .default('wss://socket.novu.co'),
+  NOVU_INBOX_HMAC_SECRET: Joi.string().allow('').optional().default(''),
   NOVU_SUBSCRIBER_PREFIX: Joi.string().allow('').optional().default('edutech_'),
 
   SEPAY_API_KEY: Joi.string().allow('').optional().default(''),

@@ -16,7 +16,7 @@ import { User } from '../users/domain/user';
 @ApiTags('Learning Path')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('Learning Path')
+@Controller('learning-path')
 export class LearningPathController {
   constructor(private readonly learningPathService: LearningPathService) {}
 

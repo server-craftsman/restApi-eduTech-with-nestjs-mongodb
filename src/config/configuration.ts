@@ -79,6 +79,9 @@ export default () => ({
   },
   novu: {
     apiKey: getEnv('NOVU_API_KEY', ''),
+    appId: getEnv('NOVU_APP_ID', ''),
+    socketUrl: getEnv('NOVU_SOCKET_URL', 'wss://socket.novu.co'),
+    inboxHmacSecret: getEnv('NOVU_INBOX_HMAC_SECRET', ''),
     subscriberIdPrefix: getEnv('NOVU_SUBSCRIBER_PREFIX', 'edutech_'),
   },
   ai: {

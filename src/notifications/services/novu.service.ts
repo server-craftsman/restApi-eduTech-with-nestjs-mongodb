@@ -2,6 +2,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Novu } from '@novu/node';
 import { NotificationType } from '../../enums';
+import { MessagesStatusEnum } from '@novu/shared';
+import { createHmac } from 'crypto';
+import { AxiosError } from 'axios';
 
 /**
  * Payload for triggering a Novu workflow.
@@ -27,6 +30,24 @@ export interface NovuTriggerPayload {
   metadata?: Record<string, unknown>;
 }
 
+export interface NovuFeedItem {
+  id: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  type: NotificationType;
+  actionUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
+export interface NovuInboxContext {
+  applicationIdentifier: string;
+  subscriberId: string;
+  socketUrl: string;
+  subscriberHash: string | null;
+}
+
 /**
  * NovuService — wraps Novu SDK to trigger multi-channel notifications.
  *
@@ -43,9 +64,18 @@ export class NovuService implements OnModuleInit {
   private novu: Novu | null = null;
   private readonly subscriberPrefix: string;
   private readonly apiKey: string;
+  private readonly appId: string;
+  private readonly socketUrl: string;
+  private readonly inboxHmacSecret: string;
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('novu.apiKey') || '';
+    this.appId = this.configService.get<string>('novu.appId') || '';
+    this.socketUrl =
+      this.configService.get<string>('novu.socketUrl') ||
+      'wss://socket.novu.co';
+    this.inboxHmacSecret =
+      this.configService.get<string>('novu.inboxHmacSecret') || '';
     this.subscriberPrefix =
       this.configService.get<string>('novu.subscriberIdPrefix') || 'edutech_';
   }
@@ -146,8 +176,14 @@ export class NovuService implements OnModuleInit {
 
       return transactionId;
     } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+      const status = axiosError.response?.status;
+      const responseData = axiosError.response?.data;
+
       this.logger.error(
-        `Failed to trigger Novu workflow "${payload.workflowId}" for user ${payload.userId}: ${(error as Error).message}`,
+        `Failed to trigger Novu workflow "${payload.workflowId}" for user ${payload.userId}: ${(error as Error).message}` +
+          (status ? ` | status=${status}` : '') +
+          (responseData ? ` | response=${JSON.stringify(responseData)}` : ''),
       );
       return null;
     }
@@ -158,5 +194,121 @@ export class NovuService implements OnModuleInit {
    */
   isEnabled(): boolean {
     return this.novu !== null;
+  }
+
+  async getUserFeed(
+    userId: string,
+    page = 0,
+    limit = 50,
+  ): Promise<NovuFeedItem[]> {
+    if (!this.novu) return [];
+
+    try {
+      const subscriberId = this.getSubscriberId(userId);
+      const response = await this.novu.subscribers.getNotificationsFeed(
+        subscriberId,
+        {
+          page,
+          limit,
+        },
+      );
+
+      const data = response?.data as { data?: Array<Record<string, unknown>> };
+      const items = data?.data ?? [];
+
+      return items.map((item) => {
+        const payload = (item.payload as Record<string, unknown>) ?? {};
+        const messageId = this.asString(item._id) || this.asString(item.id);
+        const title = this.asString(payload.title) || this.asString(item.title);
+        const message =
+          this.asString(payload.message) || this.asString(item.content);
+        const createdAtRaw = item.createdAt;
+        const createdAt =
+          createdAtRaw instanceof Date
+            ? createdAtRaw
+            : new Date(this.asString(createdAtRaw) || new Date().toISOString());
+
+        return {
+          id: messageId,
+          title,
+          message,
+          isRead: Boolean(item.read),
+          type:
+            (payload.type as NotificationType) ??
+            NotificationType.SystemAnnouncement,
+          actionUrl: (payload.actionUrl as string) ?? null,
+          metadata: (payload.metadata as Record<string, unknown>) ?? null,
+          createdAt,
+        };
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to read Novu feed for user ${userId}: ${(error as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    if (!this.novu) return 0;
+
+    try {
+      const subscriberId = this.getSubscriberId(userId);
+      const response = await this.novu.subscribers.getUnseenCount(
+        subscriberId,
+        false,
+      );
+      const payload = response?.data as Record<string, unknown>;
+      const count = payload?.count ?? payload?.data ?? 0;
+      return Number(count) || 0;
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to read unread count for user ${userId}: ${(error as Error).message}`,
+      );
+      return 0;
+    }
+  }
+
+  async markMessageRead(userId: string, messageId: string): Promise<void> {
+    if (!this.novu) return;
+    const subscriberId = this.getSubscriberId(userId);
+    await this.novu.subscribers.markMessageRead(subscriberId, messageId);
+  }
+
+  async markMessagesRead(userId: string, messageIds: string[]): Promise<void> {
+    if (!this.novu || messageIds.length === 0) return;
+    const subscriberId = this.getSubscriberId(userId);
+    await Promise.all(
+      messageIds.map((id) =>
+        this.novu!.subscribers.markMessageRead(subscriberId, id),
+      ),
+    );
+  }
+
+  async markAllRead(userId: string): Promise<void> {
+    if (!this.novu) return;
+    const subscriberId = this.getSubscriberId(userId);
+    await this.novu.subscribers.markAllMessagesAs(
+      subscriberId,
+      MessagesStatusEnum.READ,
+    );
+  }
+
+  private asString(value: unknown): string {
+    return typeof value === 'string' ? value : '';
+  }
+
+  getInboxContext(userId: string): NovuInboxContext {
+    const subscriberId = this.getSubscriberId(userId);
+    return {
+      applicationIdentifier: this.appId,
+      subscriberId,
+      socketUrl: this.socketUrl,
+      subscriberHash: this.inboxHmacSecret
+        ? createHmac('sha256', this.inboxHmacSecret)
+            .update(subscriberId)
+            .digest('hex')
+        : null,
+    };
   }
 }

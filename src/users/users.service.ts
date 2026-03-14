@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -180,6 +184,59 @@ export class UsersService extends BaseService {
     const user = await this.findById(id);
     if (!user) throw new Error(`User with id ${id} not found`);
     return this.userRepository.update(id, { avatarUrl }) as Promise<User>;
+  }
+
+  // ──────────────────────────────────────────────
+  // TEACHER APPROVAL
+  // ──────────────────────────────────────────────
+
+  /**
+   * Admin approves a pending teacher account.
+   * Sets approvalStatus=Approved, activates the account,
+   * records who reviewed it and when.
+   */
+  async approveTeacher(adminId: string, userId: string): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (user.role !== UserRole.Teacher)
+      throw new BadRequestException('User is not a Teacher');
+    if (user.approvalStatus !== ApprovalStatus.PendingApproval)
+      throw new BadRequestException(
+        'Teacher account is not in PendingApproval state',
+      );
+    const updated = await this.userRepository.update(userId, {
+      approvalStatus: ApprovalStatus.Approved,
+      approvalReviewedAt: new Date(),
+      approvalReviewedBy: adminId,
+      approvalRejectionReason: null,
+      isActive: true,
+    });
+    if (!updated) throw new Error('Failed to update user');
+    return updated;
+  }
+
+  /**
+   * Admin rejects a teacher account (Pending or already Approved).
+   * Sets approvalStatus=Rejected, deactivates account, stores reason.
+   */
+  async rejectTeacher(
+    adminId: string,
+    userId: string,
+    reason: string,
+  ): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (user.role !== UserRole.Teacher)
+      throw new BadRequestException('User is not a Teacher');
+    const updated = await this.userRepository.update(userId, {
+      approvalStatus: ApprovalStatus.Rejected,
+      approvalRejectionReason: reason,
+      approvalReviewedAt: new Date(),
+      approvalReviewedBy: adminId,
+      isActive: false,
+    });
+    if (!updated) throw new Error('Failed to update user');
+    return updated;
   }
 
   // ──────────────────────────────────────────────

@@ -8,6 +8,7 @@ import { TransactionRepository } from './infrastructure/persistence/document/rep
 import { TransactionRepositoryAbstract } from './infrastructure/persistence/document/repositories/transaction.repository.abstract';
 import { TransactionMapper } from './infrastructure/persistence/document/mappers/transaction.mapper';
 import { TransactionService } from './transaction.service';
+import { TransactionController } from './transaction.controller';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TransactionService } from './transaction.service';
       { name: TransactionDocument.name, schema: TransactionSchema },
     ]),
   ],
+  controllers: [TransactionController],
   providers: [
     TransactionService,
     {

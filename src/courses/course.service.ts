@@ -389,4 +389,52 @@ export class CourseService extends BaseService {
       // Notification failures must never block course moderation flow
     }
   }
+
+  /**
+   * Admin dashboard aggregation — course counts by status.
+   */
+  async getCourseStatistics(): Promise<{
+    total: number;
+    published: number;
+    underReview: number;
+    draft: number;
+    rejected: number;
+    archived: number;
+    deleted: number;
+  }> {
+    const [total, published, underReview, draft, rejected, archived, deleted] =
+      await Promise.all([
+        this.courseRepository.countByFilter({}),
+        this.courseRepository.countByFilter({
+          status: CourseStatus.Published,
+          isDeleted: { $ne: true },
+        }),
+        this.courseRepository.countByFilter({
+          status: CourseStatus.Under_Review,
+          isDeleted: { $ne: true },
+        }),
+        this.courseRepository.countByFilter({
+          status: CourseStatus.Draft,
+          isDeleted: { $ne: true },
+        }),
+        this.courseRepository.countByFilter({
+          status: CourseStatus.Rejected,
+          isDeleted: { $ne: true },
+        }),
+        this.courseRepository.countByFilter({
+          status: CourseStatus.Archived,
+          isDeleted: { $ne: true },
+        }),
+        this.courseRepository.countByFilter({ isDeleted: true }),
+      ]);
+    return {
+      total,
+      published,
+      underReview,
+      draft,
+      rejected,
+      archived,
+      deleted,
+    };
+  }
 }

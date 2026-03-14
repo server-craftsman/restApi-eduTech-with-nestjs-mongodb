@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NotificationType } from '../../enums';
-import { NotificationRepositoryAbstract } from '../infrastructure/persistence/document/repositories/notification.repository.abstract';
 import { Notification } from '../domain/notification';
 import { NovuService } from './novu.service';
 import { MailService } from '../../mail/mail.service';
@@ -10,9 +9,8 @@ import { MailService } from '../../mail/mail.service';
  *
  * Each method:
  *   1. Builds the notification payload (title, message, actionUrl, metadata)
- *   2. Saves it to MongoDB (in-app bell icon)
- *   3. Triggers Novu workflow for multi-channel delivery (email, push in future)
- *   4. Falls back to direct email via MailService if Novu is not enabled
+ *   2. Triggers Novu workflow for multi-channel delivery (email, push in future)
+ *   3. Falls back to direct email via MailService if Novu is not enabled
  *
  * Other services (RewardService, ExamService, etc.) call these methods
  * instead of creating notifications directly.
@@ -22,16 +20,13 @@ export class NotificationTriggersService {
   private readonly logger = new Logger(NotificationTriggersService.name);
 
   constructor(
-    private readonly notificationRepository: NotificationRepositoryAbstract,
     private readonly novuService: NovuService,
     private readonly mailService: MailService,
   ) {}
 
   // ─── Helper ────────────────────────────────────────────────────────────────
 
-  /**
-   * Core method — persists notification and triggers external channels.
-   */
+  /** Core method — triggers external channels (Novu + email fallback). */
   private async sendNotification(params: {
     userId: string;
     email: string;
@@ -96,8 +91,8 @@ export class NotificationTriggersService {
       }
     }
 
-    // 3. Persist in-app notification to MongoDB
-    const notification = await this.notificationRepository.create({
+    const notification: Notification = {
+      id: novuMessageId ?? `novu-${Date.now()}`,
       userId,
       title,
       message,
@@ -107,7 +102,8 @@ export class NotificationTriggersService {
       metadata: metadata ?? null,
       emailSent,
       novuMessageId,
-    });
+      createdAt: new Date(),
+    };
 
     this.logger.log(
       `Notification [${type}] sent to user ${userId}: "${title}" (email: ${emailSent})`,
@@ -452,6 +448,34 @@ export class NotificationTriggersService {
       actionUrl: '/parent-links',
       metadata: { parentOrStudentName, status },
       novuWorkflowId: 'parent-link-update',
+    });
+  }
+
+  /**
+   * Teacher account approval / rejection by admin.
+   */
+  async onTeacherApproval(
+    userId: string,
+    email: string,
+    status: 'approved' | 'rejected',
+    reason?: string,
+    firstName?: string,
+  ): Promise<Notification> {
+    const isApproved = status === 'approved';
+    return this.sendNotification({
+      userId,
+      email,
+      firstName,
+      title: isApproved
+        ? 'Tài khoản giảng viên đã được phê duyệt ✅'
+        : 'Tài khoản giảng viên không được phê duyệt ❌',
+      message: isApproved
+        ? 'Chúc mững! Tài khoản giảng viên của bạn đã được quản trị viên phê duyệt. Bạn có thể đăng nhập và bắt đầu tạo khóa học ngay!'
+        : `Tài khoản giảng viên của bạn không được phê duyệt. Lý do: ${reason ?? 'Không có lý do cụ thể.'}. Liên hệ hỗ trợ nếu bạn cần giải thích thêm.`,
+      type: NotificationType.TeacherApproval,
+      actionUrl: isApproved ? '/dashboard' : '/support',
+      metadata: { status, reason: reason ?? null },
+      novuWorkflowId: 'teacher-approval',
     });
   }
 

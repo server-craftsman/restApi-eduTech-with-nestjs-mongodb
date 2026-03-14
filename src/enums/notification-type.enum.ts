@@ -29,4 +29,6 @@ export enum NotificationType {
   ParentLinkUpdate = 'parent_link_update',
   /** Course approval status change (for teachers) */
   CourseApproval = 'course_approval',
+  /** Teacher account approval/rejection by admin */
+  TeacherApproval = 'teacher_approval',
 }
