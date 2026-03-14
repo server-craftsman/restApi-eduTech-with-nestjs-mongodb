@@ -14,6 +14,7 @@ import {
   PaymentProvider,
   TransactionStatus,
   SubscriptionPeriod,
+  SubscriptionStatus,
 } from '../enums';
 import { Transaction } from '../transactions/domain/transaction';
 import {
@@ -461,7 +462,7 @@ export class PaymentService {
       planId: transaction.planId,
       startDate,
       endDate,
-      status: 'ACTIVE',
+      status: SubscriptionStatus.Active,
     });
 
     void this.tryPushPaymentNotifications(transaction, plan.name, endDate);

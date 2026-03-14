@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { CollectionName } from '../../../../../core/constants';
+import { SubscriptionStatus } from '../../../../../enums';
 
 @Schema({ timestamps: true, collection: CollectionName.UserSubscriptions })
 export class UserSubscriptionDocument {
@@ -18,10 +19,10 @@ export class UserSubscriptionDocument {
 
   @Prop({
     required: true,
-    enum: ['ACTIVE', 'EXPIRED', 'CANCELLED'],
-    default: 'ACTIVE',
+    enum: Object.values(SubscriptionStatus),
+    default: SubscriptionStatus.Active,
   })
-  status!: string;
+  status!: SubscriptionStatus;
 }
 
 export type UserSubscriptionDocumentType =
