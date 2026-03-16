@@ -1,0 +1,33 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve keep-alive URL
+        id: resolve
+        env:
+          KEEP_ALIVE_URL_SECRET: ${{ secrets.KEEP_ALIVE_URL }}
+          KEEP_ALIVE_URL_VAR: ${{ vars.KEEP_ALIVE_URL }}
+        run: |
+          URL="${KEEP_ALIVE_URL_SECRET:-$KEEP_ALIVE_URL_VAR}"
+          if [ -z "$URL" ]; then
+            echo "KEEP_ALIVE_URL is not set (secret or variable)."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Ping backend
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 "${{ steps.resolve.outputs.url }}" > /dev/null
+          echo "Keep-alive ping sent successfully."
