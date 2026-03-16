@@ -12,7 +12,10 @@ import {
   FilterChapterDto,
   SortChapterDto,
 } from '../../../../dto/query-chapter.dto';
-import { NOT_DELETED } from '../../../../../core/constants';
+import {
+  NOT_DELETED,
+  buildVietnameseRegexQuery,
+} from '../../../../../core/constants';
 
 @Injectable()
 export class ChapterRepository extends ChapterRepositoryAbstract {
@@ -53,7 +56,7 @@ export class ChapterRepository extends ChapterRepositoryAbstract {
 
     if (filters?.courseId)
       query.courseId = new Types.ObjectId(filters.courseId);
-    if (filters?.title) query.title = { $regex: filters.title, $options: 'i' };
+    if (filters?.title) query.title = buildVietnameseRegexQuery(filters.title);
     if (filters?.isPublished != null) query.isPublished = filters.isPublished;
 
     const sortObj: Record<string, 1 | -1> = {};

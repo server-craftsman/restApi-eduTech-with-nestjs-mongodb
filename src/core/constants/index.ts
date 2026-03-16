@@ -5,3 +5,8 @@ export {
   BASE_FIELD_NAMES,
   NOT_DELETED,
 } from './base-schema';
+export {
+  normalizeVietnameseText,
+  buildVietnameseFuzzyPattern,
+  buildVietnameseRegexQuery,
+} from './vietnamese-search';

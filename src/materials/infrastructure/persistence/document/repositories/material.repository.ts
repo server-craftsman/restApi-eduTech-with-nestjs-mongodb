@@ -8,6 +8,7 @@ import {
 import { MaterialRepositoryAbstract } from './material.repository.abstract';
 import { MaterialMapper } from '../mappers/material.mapper';
 import { Material } from '../../../../domain/material';
+import { buildVietnameseRegexQuery } from '../../../../../core/constants';
 
 @Injectable()
 export class MaterialRepository implements MaterialRepositoryAbstract {
@@ -85,7 +86,7 @@ export class MaterialRepository implements MaterialRepositoryAbstract {
     page: number,
     limit: number,
   ): Promise<[Material[], number]> {
-    const regex = { $regex: keyword, $options: 'i' };
+    const regex = buildVietnameseRegexQuery(keyword);
     const query = { title: regex };
     const offset = (page - 1) * limit;
     const [docs, total] = await Promise.all([

@@ -6,7 +6,10 @@ import { ExamRepositoryAbstract } from './repositories/exam.repository.abstract'
 import { ExamMapper } from './mappers/exam.mapper';
 import { Exam } from '../../../domain/exam';
 import { FilterExamDto, SortExamDto } from '../../../dto/query-exam.dto';
-import { NOT_DELETED } from '../../../../core/constants';
+import {
+  NOT_DELETED,
+  buildVietnameseRegexQuery,
+} from '../../../../core/constants';
 
 @Injectable()
 export class ExamRepository extends ExamRepositoryAbstract {
@@ -38,7 +41,7 @@ export class ExamRepository extends ExamRepositoryAbstract {
     // Soft-delete gate
     query.isDeleted = filters?.isDeleted === true ? true : { $ne: true };
 
-    if (filters?.title) query.title = { $regex: filters.title, $options: 'i' };
+    if (filters?.title) query.title = buildVietnameseRegexQuery(filters.title);
     if (filters?.createdBy)
       query.createdBy = new Types.ObjectId(filters.createdBy);
     if (filters?.isPublished != null) query.isPublished = filters.isPublished;

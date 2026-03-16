@@ -16,10 +16,12 @@ import {
 @Injectable()
 export class SanitizeParamsPipe implements PipeTransform {
   private readonly dangerousPatterns = [
-    /[$](?:where|ne|gt|gte|lt|lte|in|nin|regex)/i, // MongoDB operators
-    /['"`]/g, // Quote characters
-    /<[^>]*>/g, // HTML tags
+    /(?:^|\W)\$(?:where|ne|gt|gte|lt|lte|in|nin|regex)(?:\W|$)/i, // MongoDB operators in raw string payloads
+    /<script\b[^>]*>/i, // Script tags
   ];
+
+  private readonly dangerousKeyPattern =
+    /^\$(?:where|ne|gt|gte|lt|lte|in|nin|regex)$/i;
 
   transform(value: unknown, metadata: ArgumentMetadata): unknown {
     // Only process params, query, and body
@@ -45,6 +47,11 @@ export class SanitizeParamsPipe implements PipeTransform {
     if (typeof value === 'object' && value !== null) {
       const sanitized: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(value)) {
+        if (this.dangerousKeyPattern.test(key)) {
+          throw new BadRequestException(
+            `Invalid parameter key. Detected potentially malicious key: "${key}"`,
+          );
+        }
         sanitized[key] = this.sanitizeValue(val);
       }
       return sanitized;
@@ -62,6 +69,21 @@ export class SanitizeParamsPipe implements PipeTransform {
     // Remove null bytes
     sanitized = sanitized.replace(/\0/g, '');
 
+    // Accept JSON encoded filters/sorts and recursively sanitize their keys/values.
+    // Example: filters={"title":"toan hoc"}
+    if (
+      (sanitized.startsWith('{') && sanitized.endsWith('}')) ||
+      (sanitized.startsWith('[') && sanitized.endsWith(']'))
+    ) {
+      try {
+        const parsed = JSON.parse(sanitized) as unknown;
+        this.sanitizeValue(parsed);
+        return sanitized;
+      } catch {
+        // Not valid JSON, continue with string-level checks.
+      }
+    }
+
     // Check for MongoDB injection patterns
     for (const pattern of this.dangerousPatterns) {
       if (pattern.test(sanitized)) {
@@ -72,7 +94,7 @@ export class SanitizeParamsPipe implements PipeTransform {
     }
 
     // Additional checks for specific patterns
-    if (sanitized.includes('$') && sanitized.includes('{')) {
+    if (sanitized.includes('${')) {
       throw new BadRequestException(
         'Invalid parameter value. Template injection detected.',
       );

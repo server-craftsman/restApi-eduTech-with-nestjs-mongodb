@@ -9,7 +9,10 @@ import {
 } from './schemas/ai-training-data.schema';
 import { AiTrainingDataMapper } from './mappers/ai-training-data.mapper';
 import { AiTrainingStatus } from '../../../../enums';
-import { NOT_DELETED } from '../../../../core/constants';
+import {
+  NOT_DELETED,
+  buildVietnameseRegexQuery,
+} from '../../../../core/constants';
 
 @Injectable()
 export class AiTrainingDataRepository extends AiTrainingDataRepositoryAbstract {
@@ -45,7 +48,7 @@ export class AiTrainingDataRepository extends AiTrainingDataRepositoryAbstract {
 
     if (filters?.status) query.status = filters.status;
     if (filters?.subject)
-      query.subject = { $regex: filters.subject, $options: 'i' };
+      query.subject = buildVietnameseRegexQuery(filters.subject);
 
     const [docs, total] = await Promise.all([
       this.model
@@ -110,7 +113,7 @@ export class AiTrainingDataRepository extends AiTrainingDataRepositoryAbstract {
       questionEmbedding: { $ne: null },
       ...NOT_DELETED,
     };
-    if (subject) query.subject = { $regex: subject, $options: 'i' };
+    if (subject) query.subject = buildVietnameseRegexQuery(subject);
 
     const docs = await this.model.find(query).exec();
     return this.mapper.toDomainArray(docs);

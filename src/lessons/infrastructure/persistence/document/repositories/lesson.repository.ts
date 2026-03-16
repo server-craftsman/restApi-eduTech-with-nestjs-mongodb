@@ -5,7 +5,10 @@ import { LessonDocument, LessonDocumentType } from '../schemas/lesson.schema';
 import { LessonRepositoryAbstract } from './lesson.repository.abstract';
 import { LessonMapper } from '../mappers/lesson.mapper';
 import { Lesson } from '../../../../domain/lesson';
-import { NOT_DELETED } from '../../../../../core/constants';
+import {
+  NOT_DELETED,
+  buildVietnameseRegexQuery,
+} from '../../../../../core/constants';
 
 @Injectable()
 export class LessonRepository extends LessonRepositoryAbstract {
@@ -125,7 +128,7 @@ export class LessonRepository extends LessonRepositoryAbstract {
     page: number,
     limit: number,
   ): Promise<[Lesson[], number]> {
-    const regex = { $regex: keyword, $options: 'i' };
+    const regex = buildVietnameseRegexQuery(keyword);
     const query = {
       $or: [{ title: regex }, { description: regex }, { contentMd: regex }],
       ...NOT_DELETED,

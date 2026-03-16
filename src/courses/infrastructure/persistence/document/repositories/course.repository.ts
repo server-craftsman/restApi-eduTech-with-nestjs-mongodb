@@ -8,7 +8,10 @@ import { Course } from '../../../../domain/course';
 import { GradeLevel, CourseStatus } from '../../../../../enums';
 import { BaseRepositoryImpl } from '../../../../../core/base/base.repository.impl';
 import { FilterCourseDto, SortCourseDto } from '../../../../dto';
-import { NOT_DELETED } from '../../../../../core/constants';
+import {
+  NOT_DELETED,
+  buildVietnameseRegexQuery,
+} from '../../../../../core/constants';
 
 @Injectable()
 export class CourseRepository
@@ -53,8 +56,8 @@ export class CourseRepository
     if (filters?.type) query.type = filters.type;
     if (filters?.search)
       query.$or = [
-        { title: { $regex: filters.search, $options: 'i' } },
-        { description: { $regex: filters.search, $options: 'i' } },
+        { title: buildVietnameseRegexQuery(filters.search) },
+        { description: buildVietnameseRegexQuery(filters.search) },
       ];
 
     const sortObj: Record<string, 1 | -1> = {};

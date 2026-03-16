@@ -3,6 +3,7 @@ import { SortOrder } from 'mongoose';
 import { SubjectRepositoryAbstract } from './infrastructure/persistence/document/repositories/subject.repository.abstract';
 import { Subject } from './domain/subject';
 import { BaseCrudService } from '../core/base/base.crud.service';
+import { buildVietnameseRegexQuery } from '../core/constants';
 import {
   SubjectDocument,
   SubjectDocumentType,
@@ -127,10 +128,10 @@ export class SubjectService extends BaseCrudService<
     // Show deleted only when caller explicitly sets isDeleted=true (Admin audit)
     filter['isDeleted'] = filters?.isDeleted === true ? true : { $ne: true };
 
-    if (filters?.name) filter['name'] = { $regex: filters.name, $options: 'i' };
+    if (filters?.name) filter['name'] = buildVietnameseRegexQuery(filters.name);
     if (filters?.slug) filter['slug'] = filters.slug;
     if (filters?.slugContains)
-      filter['slug'] = { $regex: filters.slugContains, $options: 'i' };
+      filter['slug'] = buildVietnameseRegexQuery(filters.slugContains);
 
     // ── Build sort (default: newest first) ─────────────────────────────
     const sortQuery: Record<string, SortOrder | { $meta: 'textScore' }> = {};
