@@ -3,4 +3,12 @@ export {
   SearchResultDto,
   LessonSearchResultDto,
   MaterialSearchResultDto,
+  CourseSearchResultDto,
+  ChapterSearchResultDto,
+  SubjectSearchResultDto,
+  ExamSearchResultDto,
+  SearchMixedItemDto,
+  SearchGroupResultDto,
+  SearchMetaDto,
+  SearchCountByTypeDto,
 } from './search-result.dto';
