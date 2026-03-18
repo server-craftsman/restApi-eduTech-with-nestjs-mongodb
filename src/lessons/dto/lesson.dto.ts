@@ -1,16 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { BaseAuditDto } from '../../core/dto';
 import { UploadUrlDto } from '../../uploads/dto';
 
 /**
  * DTO for lesson response - represents the complete lesson data structure
  */
-export class LessonDto {
-  @ApiProperty({
-    description: 'Unique identifier (MongoDB ObjectId)',
-    example: '507f1f77bcf86cd799439011',
-  })
-  id!: string;
-
+export class LessonDto extends BaseAuditDto {
   @ApiProperty({
     description: 'Chapter ID this lesson belongs to',
     example: '507f1f77bcf86cd799439012',
@@ -53,29 +48,4 @@ export class LessonDto {
     example: false,
   })
   isPreview!: boolean;
-
-  @ApiProperty({
-    description: 'Soft-delete flag',
-    example: false,
-  })
-  isDeleted!: boolean;
-
-  @ApiProperty({
-    description: 'Soft-delete timestamp',
-    example: null,
-    nullable: true,
-  })
-  deletedAt?: Date | null;
-
-  @ApiProperty({
-    description: 'Creation timestamp',
-    example: '2026-03-05T10:00:00Z',
-  })
-  createdAt!: Date;
-
-  @ApiProperty({
-    description: 'Last update timestamp',
-    example: '2026-03-05T11:00:00Z',
-  })
-  updatedAt!: Date;
 }

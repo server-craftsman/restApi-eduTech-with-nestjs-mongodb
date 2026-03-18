@@ -11,13 +11,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseCreateDto } from '../../core/dto';
 import { UploadUrlDto } from '../../uploads/dto';
 
 /**
  * DTO for creating a new lesson
  * Only TEACHER and ADMIN can create lessons
  */
-export class CreateLessonDto {
+export class CreateLessonDto extends BaseCreateDto {
   @ApiProperty({
     description: 'Chapter ID this lesson belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',

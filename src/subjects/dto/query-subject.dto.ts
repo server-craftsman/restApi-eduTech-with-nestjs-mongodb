@@ -2,19 +2,23 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type, plainToInstance } from 'class-transformer';
+import {
+  BaseFilterDto,
+  BaseSortDto,
+  BasePaginationQueryDto,
+} from '../../core/dto';
 import { Subject } from '../domain/subject';
 
 /**
  * FilterSubjectDto — all fields optional; pass as JSON-encoded string.
  * Example: `filters={"name":"ợn","isDeleted":false}`
  */
-export class FilterSubjectDto {
+export class FilterSubjectDto extends BaseFilterDto {
   @ApiPropertyOptional({
     type: String,
     description: 'Partial case-insensitive name search',
@@ -56,14 +60,14 @@ export class FilterSubjectDto {
         ? false
         : (value as boolean | null),
   )
-  isDeleted?: boolean | null;
+  declare isDeleted?: boolean | null;
 }
 
 /**
  * SortSubjectDto — one sort criterion; supply as array for multi-column sort.
  * Example: `sort=[{"orderBy":"name","order":"asc"}]`
  */
-export class SortSubjectDto {
+export class SortSubjectDto extends BaseSortDto {
   @ApiProperty({
     type: String,
     description: 'Field to sort by',
@@ -71,7 +75,7 @@ export class SortSubjectDto {
     enum: ['id', 'name', 'slug', 'isDeleted', 'createdAt', 'updatedAt'],
   })
   @IsString()
-  orderBy!: keyof Subject;
+  declare orderBy: keyof Subject;
 
   @ApiProperty({
     enum: ['asc', 'desc'],
@@ -79,28 +83,10 @@ export class SortSubjectDto {
     description: 'Sort direction',
   })
   @IsEnum(['asc', 'desc'])
-  order!: 'asc' | 'desc';
+  declare order: 'asc' | 'desc';
 }
 
-export class QuerySubjectDto {
-  @ApiPropertyOptional({ type: Number, default: 1, minimum: 1, example: 1 })
-  @Transform(({ value }) => (value ? Number(value) : 1))
-  @IsNumber()
-  @IsOptional()
-  page?: number;
-
-  @ApiPropertyOptional({
-    type: Number,
-    default: 10,
-    minimum: 1,
-    maximum: 100,
-    example: 10,
-  })
-  @Transform(({ value }) => (value ? Number(value) : 10))
-  @IsNumber()
-  @IsOptional()
-  limit?: number;
-
+export class QuerySubjectDto extends BasePaginationQueryDto {
   @ApiPropertyOptional({
     type: String,
     description:

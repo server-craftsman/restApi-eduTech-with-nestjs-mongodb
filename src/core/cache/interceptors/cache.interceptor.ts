@@ -1,0 +1,169 @@
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  Logger,
+} from '@nestjs/common';
+import { from, Observable, of } from 'rxjs';
+import { switchMap, tap } from 'rxjs/operators';
+import { CacheService } from '../services/cache.service';
+import { CACHE_KEYS } from '../config/redis.config';
+import { Request, Response } from 'express';
+
+type RequestWithUser = Request & {
+  user?: {
+    id?: string | number;
+  };
+};
+
+type CacheValue =
+  | string
+  | number
+  | boolean
+  | null
+  | Record<string, unknown>
+  | CacheValue[];
+
+/**
+ * Cache Interceptor
+ * Automatically cache GET responses dựa trên URL và query parameters
+ * Đặc biệt hữu dụng cho frequently accessed endpoints (read-only)
+ */
+@Injectable()
+export class CacheInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(CacheInterceptor.name);
+
+  // Endpoints không nên cache (POST, PUT, DELETE, hoặc dynamic responses)
+  private readonly noCachePatterns = [
+    /\/auth\//,
+    /\/login/,
+    /\/logout/,
+    /\/sign-up/,
+    /\/password/,
+    /\/upload/,
+    /\/admin\//,
+    /\/(post|put|delete|patch)/i,
+  ];
+
+  // Chỉ cache GET requests cho endpoints này
+  private readonly cacheablePatterns = [
+    /\/lessons/,
+    /\/courses/,
+    /\/chapters/,
+    /\/materials/,
+    /\/subjects/,
+    /\/exams/,
+    /\/quiz/,
+    /\/search/,
+    /\/public/,
+  ];
+
+  constructor(private cacheService: CacheService) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
+    const response = context.switchToHttp().getResponse<Response>();
+    const method = request.method;
+
+    // Chỉ cache GET requests
+    if (method !== 'GET') {
+      return next.handle();
+    }
+
+    // Check if endpoint should be cached
+    if (!this.shouldCache(request.path)) {
+      return next.handle();
+    }
+
+    // Generate cache key từ URL + query params
+    const cacheKey = this.generateCacheKey(request);
+
+    // Thử lấy từ cache
+    return from(this.getCachedResponse(cacheKey)).pipe(
+      switchMap((cached) => {
+        if (cached !== null && cached !== undefined) {
+          this.logger.debug(`Cache HIT for ${cacheKey}`);
+          response.set({
+            'X-Cache': 'HIT',
+            'Cache-Control': 'public, max-age=300',
+          });
+          return of(cached);
+        }
+
+        this.logger.debug(`Cache MISS for ${cacheKey}`);
+        return next.handle().pipe(
+          tap((data: unknown) => {
+            const ttl = this.extractTtlFromHeaders(response);
+            this.cacheService.set(cacheKey, data, ttl).catch((err) => {
+              this.logger.warn(`Failed to cache ${cacheKey}:`, err);
+            });
+
+            response.set({
+              'X-Cache': 'MISS',
+              'Cache-Control': `public, max-age=${ttl || 300}`,
+            });
+          }),
+        );
+      }),
+    );
+  }
+
+  /**
+   * Check if endpoint should be cached
+   */
+  private shouldCache(path: string): boolean {
+    // Exclude no-cache patterns
+    if (this.noCachePatterns.some((pattern) => pattern.test(path))) {
+      return false;
+    }
+
+    // Only cache cacheable patterns
+    return this.cacheablePatterns.some((pattern) => pattern.test(path));
+  }
+
+  /**
+   * Generate cache key từ request
+   */
+  private generateCacheKey(request: RequestWithUser): string {
+    const path = request.path;
+    const queryString = request.url.split('?')[1];
+    const userId = request.user?.id;
+
+    // Include user ID trong key nếu authenticated (user-specific caching)
+    if (userId) {
+      return `${CACHE_KEYS.SEARCH}${userId}:${path}:${queryString || 'default'}`;
+    }
+
+    // Public cache
+    return `${CACHE_KEYS.SEARCH}public:${path}:${queryString || 'default'}`;
+  }
+
+  /**
+   * Get cached response
+   */
+  private async getCachedResponse(
+    key: string,
+  ): Promise<CacheValue | undefined> {
+    try {
+      return await this.cacheService.get<CacheValue>(key);
+    } catch (error) {
+      this.logger.warn(`Failed to get cache ${key}:`, error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Extract TTL from response headers
+   */
+  private extractTtlFromHeaders(response: Response): number {
+    const cacheControl = response.getHeader('Cache-Control');
+    if (typeof cacheControl === 'string' && cacheControl.includes('max-age=')) {
+      const match = cacheControl.match(/max-age=(\d+)/);
+      if (match?.[1]) {
+        return parseInt(match[1], 10);
+      }
+    }
+    return 300; // Default 5 minutes
+  }
+}

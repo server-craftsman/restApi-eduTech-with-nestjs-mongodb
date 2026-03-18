@@ -8,6 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseUpdateDto } from '../../core/dto';
 import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
 
 /**
@@ -15,7 +16,7 @@ import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
  * Only the course author (TEACHER) or ADMIN can update courses
  * Partial update - all fields are optional
  */
-export class UpdateCourseDto {
+export class UpdateCourseDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Course title update',
     example: 'Advanced Mathematics - 2026 Edition',

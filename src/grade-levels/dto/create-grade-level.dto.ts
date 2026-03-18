@@ -8,12 +8,13 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { BaseCreateDto } from '../../core/dto';
 
 /**
  * DTO for creating a new grade level
  * Only ADMIN can create grade levels
  */
-export class CreateGradeLevelDto {
+export class CreateGradeLevelDto extends BaseCreateDto {
   @ApiProperty({
     description: 'Grade level display name (e.g., "Grade 10", "Khối 10")',
     example: 'Grade 10',

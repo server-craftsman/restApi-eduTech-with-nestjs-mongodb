@@ -7,9 +7,10 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { BaseUpdateDto } from '../../core/dto';
 import { UserRole, EmailVerificationStatus, ApprovalStatus } from '../../enums';
 
-export class UpdateUserDto {
+export class UpdateUserDto extends BaseUpdateDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsEmail()

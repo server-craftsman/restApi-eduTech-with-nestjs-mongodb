@@ -9,6 +9,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseCreateDto } from '../../core/dto';
 import { UploadUrlDto } from '../../uploads/dto';
 
 export enum MaterialType {
@@ -27,7 +28,7 @@ export enum MaterialType {
  * DTO for creating a new material
  * Only TEACHER and ADMIN can create materials
  */
-export class CreateMaterialDto {
+export class CreateMaterialDto extends BaseCreateDto {
   @ApiProperty({
     description: 'Lesson ID this material belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',

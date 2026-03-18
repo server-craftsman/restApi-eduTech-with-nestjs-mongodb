@@ -4,12 +4,14 @@ import {
   IsEnum,
   IsString,
   IsBoolean,
-  IsNumber,
-  Min,
-  Max,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type, plainToInstance } from 'class-transformer';
+import {
+  BaseFilterDto,
+  BaseSortDto,
+  BasePaginationQueryDto,
+} from '../../core/dto';
 import { Course } from '../domain/course';
 import { CourseStatus, CourseType } from '../../enums';
 
@@ -25,7 +27,7 @@ const toBooleanOrNull = (value: unknown): boolean | null | undefined => {
  * FilterCourseDto — all fields optional; combine freely.
  * Pass as JSON string: `filters={"status":"Published","subjectId":"xxx"}`
  */
-export class FilterCourseDto {
+export class FilterCourseDto extends BaseFilterDto {
   @ApiPropertyOptional({
     type: String,
     description: 'Filter by subject ID',
@@ -88,49 +90,28 @@ export class FilterCourseDto {
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => toBooleanOrNull(value))
-  isDeleted?: boolean | null;
+  declare isDeleted?: boolean | null;
 }
 
 /**
  * SortCourseDto — one sort criterion; supply an **array** for multi-column sort.
  * `sort=[{"orderBy":"createdAt","order":"desc"},{"orderBy":"title","order":"asc"}]`
  */
-export class SortCourseDto {
+export class SortCourseDto extends BaseSortDto {
   @ApiProperty({
     type: String,
     example: 'createdAt',
     enum: ['title', 'status', 'type', 'createdAt', 'updatedAt'],
   })
   @IsString()
-  orderBy: keyof Course;
+  declare orderBy: keyof Course;
 
   @ApiProperty({ enum: ['asc', 'desc'], example: 'desc' })
   @IsEnum(['asc', 'desc'])
-  order: 'asc' | 'desc';
+  declare order: 'asc' | 'desc';
 }
 
-export class QueryCourseDto {
-  @ApiPropertyOptional({ type: Number, default: 1, minimum: 1, example: 1 })
-  @Transform(({ value }) => (value ? Number(value) : 1))
-  @IsNumber()
-  @Min(1)
-  @IsOptional()
-  page?: number;
-
-  @ApiPropertyOptional({
-    type: Number,
-    default: 10,
-    minimum: 1,
-    maximum: 100,
-    example: 10,
-  })
-  @Transform(({ value }) => (value ? Number(value) : 10))
-  @IsNumber()
-  @Min(1)
-  @Max(100)
-  @IsOptional()
-  limit?: number;
-
+export class QueryCourseDto extends BasePaginationQueryDto {
   @ApiPropertyOptional({
     type: String,
     description:

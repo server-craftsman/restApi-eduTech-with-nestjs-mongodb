@@ -10,9 +10,10 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseCreateDto } from '../../core/dto';
 import { TeacherEducationLevel } from '../../enums';
 
-export class CreateTeacherProfileDto {
+export class CreateTeacherProfileDto extends BaseCreateDto {
   @ApiProperty({
     description: 'User ID this profile belongs to',
     example: '507f1f77bcf86cd799439011',

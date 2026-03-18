@@ -7,9 +7,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseUpdateDto } from '../../core/dto';
 import { IconUrlDto } from './icon-url.dto';
 
-export class UpdateSubjectDto {
+export class UpdateSubjectDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description:
       'Subject name — slug will be automatically regenerated when this changes',

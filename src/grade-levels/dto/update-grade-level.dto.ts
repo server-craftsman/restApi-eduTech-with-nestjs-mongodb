@@ -8,12 +8,13 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { BaseUpdateDto } from '../../core/dto';
 
 /**
  * DTO for updating a grade level
  * Only ADMIN can update grade levels
  */
-export class UpdateGradeLevelDto {
+export class UpdateGradeLevelDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description:
       'Grade level display name (e.g., "Grade 10", "Khối 10") - optional update',

@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from './cache/cache.module';
 
-@Module({})
+@Module({
+  imports: [CacheModule],
+  exports: [CacheModule],
+})
 export class CoreModule {}

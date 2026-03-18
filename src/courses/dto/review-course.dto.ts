@@ -1,7 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { BasePatchDto } from '../../core/dto';
 
-export class ReviewCourseDto {
+export class ReviewCourseDto extends BasePatchDto {
   @ApiPropertyOptional({
     description:
       'Note from Admin (required when rejecting, optional when approving)',

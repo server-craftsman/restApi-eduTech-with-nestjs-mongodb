@@ -6,6 +6,7 @@ import {
   IsString,
   IsArray,
 } from 'class-validator';
+import { BasePatchDto } from '../../core/dto';
 import { GradeLevel } from '../../enums';
 
 /**
@@ -17,7 +18,7 @@ import { GradeLevel } from '../../enums';
  *    can surface only the most relevant courses and lessons.
  *  - `onboardingCompleted` is flipped to `true`, unlocking the full Dashboard.
  */
-export class CompleteOnboardingDto {
+export class CompleteOnboardingDto extends BasePatchDto {
   /**
    * The student's current school grade.
    * This is the primary signal used to filter out irrelevant content

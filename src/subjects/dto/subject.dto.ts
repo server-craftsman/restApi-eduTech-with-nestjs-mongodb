@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
+import { BaseAuditDto } from '../../core/dto';
 
 export class SubjectIconDto {
   @ApiProperty({
@@ -15,13 +16,7 @@ export class SubjectIconDto {
   url!: string;
 }
 
-export class SubjectDto {
-  @ApiProperty({
-    description: 'Subject MongoDB ID',
-    example: '65f7d8b2b58d59f90cf59225',
-  })
-  id!: string;
-
+export class SubjectDto extends BaseAuditDto {
   @ApiProperty({ description: 'Subject name', example: 'Toán Học' })
   name!: string;
 
@@ -36,32 +31,4 @@ export class SubjectDto {
     type: SubjectIconDto,
   })
   iconUrl!: SubjectIconDto;
-
-  @ApiProperty({ description: 'Soft-delete flag', example: false })
-  isDeleted!: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Soft-delete timestamp — null when active',
-    nullable: true,
-    type: String,
-    format: 'date-time',
-    example: null,
-  })
-  deletedAt?: Date | null;
-
-  @ApiProperty({
-    description: 'Creation timestamp',
-    type: String,
-    format: 'date-time',
-    example: '2026-03-03T10:00:00.000Z',
-  })
-  createdAt!: Date;
-
-  @ApiProperty({
-    description: 'Last update timestamp',
-    type: String,
-    format: 'date-time',
-    example: '2026-03-03T10:30:00.000Z',
-  })
-  updatedAt!: Date;
 }

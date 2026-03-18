@@ -8,6 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseUpdateDto } from '../../core/dto';
 import { MaterialType } from './create-material.dto';
 import { UploadUrlDto } from '../../uploads/dto';
 
@@ -16,7 +17,7 @@ import { UploadUrlDto } from '../../uploads/dto';
  * All fields are optional - only provided fields will be updated
  * Only TEACHER and ADMIN can update materials
  */
-export class UpdateMaterialDto {
+export class UpdateMaterialDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Material title',
     example: 'Updated Course Notes',

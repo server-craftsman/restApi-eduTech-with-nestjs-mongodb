@@ -9,9 +9,10 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseUpdateDto } from '../../core/dto';
 import { TeacherEducationLevel } from '../../enums';
 
-export class UpdateTeacherProfileDto {
+export class UpdateTeacherProfileDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Teacher full name',
     example: 'Jane Doe',

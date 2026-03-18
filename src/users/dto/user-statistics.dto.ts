@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { BaseStatisticsDto } from '../../core/dto';
 import { UserRole } from '../../enums';
 
 /** Per-role document count (used inside UserStatisticsDto.byRole) */
@@ -15,10 +16,7 @@ export class UserRoleStatsDto {
 }
 
 /** Response shape for GET /users/admin/stats */
-export class UserStatisticsDto {
-  @ApiProperty({ description: 'Total non-deleted users', example: 120 })
-  total!: number;
-
+export class UserStatisticsDto extends BaseStatisticsDto {
   @ApiProperty({
     description: 'Count of non-deleted users grouped by role',
     example: {
@@ -29,22 +27,4 @@ export class UserStatisticsDto {
     },
   })
   byRole!: Record<string, number>;
-
-  @ApiProperty({
-    description: 'Non-deleted users with isActive = true',
-    example: 110,
-  })
-  active!: number;
-
-  @ApiProperty({
-    description: 'Non-deleted users with isActive = false',
-    example: 10,
-  })
-  inactive!: number;
-
-  @ApiProperty({
-    description: 'Soft-deleted users (isDeleted = true)',
-    example: 3,
-  })
-  deleted!: number;
 }

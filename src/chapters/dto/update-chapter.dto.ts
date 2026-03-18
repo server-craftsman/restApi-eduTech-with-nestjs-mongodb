@@ -8,8 +8,9 @@ import {
   MinLength,
   IsBoolean,
 } from 'class-validator';
+import { BaseUpdateDto } from '../../core/dto';
 
-export class UpdateChapterDto {
+export class UpdateChapterDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Course ID this chapter belongs to',
     example: '507f1f77bcf86cd799439011',

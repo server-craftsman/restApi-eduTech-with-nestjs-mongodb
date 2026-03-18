@@ -5,6 +5,7 @@ import { configuration, envValidationSchema } from './config';
 import { DatabaseModule } from './database';
 import { StorageModule } from './storage';
 import { CoreModule } from './core';
+import { CacheModule } from './core/cache';
 import { HomeModule } from './home';
 import { AuthModule } from './auth';
 import { AuthGoogleModule } from './auth-google';
@@ -50,6 +51,7 @@ import { AdminModule } from './admin/admin.module';
     }),
     ScheduleModule.forRoot(),
     CoreModule,
+    CacheModule,
     DatabaseModule,
     StorageModule,
     MailerModule,

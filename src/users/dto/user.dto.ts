@@ -1,10 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BaseAuditDto } from '../../core/dto';
 import { UserRole, EmailVerificationStatus } from '../../enums';
 
-export class UserDto {
-  @ApiProperty({ description: 'MongoDB document id' })
-  id!: string;
-
+export class UserDto extends BaseAuditDto {
   @ApiProperty({ example: 'user@example.com' })
   email!: string;
 
@@ -22,18 +20,6 @@ export class UserDto {
   isActive!: boolean;
 
   @ApiProperty({
-    description: 'Soft-delete flag; true means the record has been deleted',
-  })
-  isDeleted!: boolean;
-
-  @ApiPropertyOptional({
-    type: Date,
-    nullable: true,
-    description: 'Timestamp of soft deletion',
-  })
-  deletedAt?: Date | null;
-
-  @ApiProperty({
     enum: EmailVerificationStatus,
     enumName: 'EmailVerificationStatus',
   })
@@ -44,10 +30,4 @@ export class UserDto {
 
   @ApiPropertyOptional({ type: Date, nullable: true })
   emailVerificationExpires?: Date | null;
-
-  @ApiProperty()
-  createdAt!: Date;
-
-  @ApiProperty()
-  updatedAt!: Date;
 }

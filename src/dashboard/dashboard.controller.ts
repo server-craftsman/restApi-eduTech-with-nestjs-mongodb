@@ -13,7 +13,7 @@ import { LessonProgressService } from '../lesson-progress/lesson-progress.servic
 import { StudentProfileService } from '../student-profiles/student-profile.service';
 import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
 
-@ApiTags('dashboard')
+@ApiTags('My Dashboard')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')

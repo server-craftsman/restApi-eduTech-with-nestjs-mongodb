@@ -8,9 +8,10 @@ import {
   Min,
   IsDateString,
 } from 'class-validator';
+import { BaseCreateDto } from '../../core/dto';
 import { GradeLevel } from '../../enums';
 
-export class CreateStudentProfileDto {
+export class CreateStudentProfileDto extends BaseCreateDto {
   @ApiProperty({
     description: 'User ID this profile belongs to',
     example: '507f1f77bcf86cd799439011',

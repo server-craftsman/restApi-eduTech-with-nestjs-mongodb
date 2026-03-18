@@ -7,9 +7,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseCreateDto } from '../../core/dto';
 import { IconUrlDto } from './icon-url.dto';
 
-export class CreateSubjectDto {
+export class CreateSubjectDto extends BaseCreateDto {
   @ApiProperty({
     description:
       'Subject name — slug is automatically generated from this field (supports Vietnamese)',

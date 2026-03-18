@@ -209,6 +209,20 @@ export class ChapterService {
    * Get chapter statistics — ADMIN only
    */
   async getStatistics(): Promise<ChapterStatisticsDto> {
-    return this.chapterRepository.getStatistics();
+    const stats = await this.chapterRepository.getStatistics();
+    const grandTotal = stats.total + stats.deleted;
+
+    return {
+      ...stats,
+      active: stats.total,
+      activePercentage:
+        grandTotal > 0
+          ? Number(((stats.total / grandTotal) * 100).toFixed(2))
+          : 0,
+      deletedPercentage:
+        grandTotal > 0
+          ? Number(((stats.deleted / grandTotal) * 100).toFixed(2))
+          : 0,
+    };
   }
 }

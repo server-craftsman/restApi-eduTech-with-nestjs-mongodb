@@ -13,13 +13,14 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { BaseCreateDto } from '../../core/dto';
 import {
   UserRole,
   TeacherEducationLevel,
   ParentRelationship,
 } from '../../enums';
 
-export class CreateUserDto {
+export class CreateUserDto extends BaseCreateDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail()
   email!: string;

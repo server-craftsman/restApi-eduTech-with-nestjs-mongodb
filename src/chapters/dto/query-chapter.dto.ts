@@ -2,19 +2,23 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
 import { plainToInstance, Type, Transform } from 'class-transformer';
+import {
+  BaseFilterDto,
+  BaseSortDto,
+  BasePaginationQueryDto,
+} from '../../core/dto';
 import { Chapter } from '../domain/chapter';
 
 /**
  * FilterChapterDto — all fields optional; combine freely.
  * Pass as JSON string: `filters={"courseId":"507f1f77bcf86cd799439011","isPublished":true}`
  */
-export class FilterChapterDto {
+export class FilterChapterDto extends BaseFilterDto {
   @ApiPropertyOptional({
     type: String,
     description: 'Filter by course ID',
@@ -59,14 +63,14 @@ export class FilterChapterDto {
     if (value === 'false') return false;
     return value as boolean | undefined;
   })
-  isDeleted?: boolean | null;
+  declare isDeleted?: boolean | null;
 }
 
 /**
  * SortChapterDto — one sort criterion; supply an **array** for multi-column sort.
  * `sort=[{"orderBy":"orderIndex","order":"asc"}]`
  */
-export class SortChapterDto {
+export class SortChapterDto extends BaseSortDto {
   @ApiProperty({
     type: String,
     example: 'orderIndex',
@@ -82,35 +86,17 @@ export class SortChapterDto {
     ],
   })
   @IsString()
-  orderBy: keyof Chapter;
+  declare orderBy: keyof Chapter;
 
   @ApiProperty({ enum: ['asc', 'desc'], example: 'asc' })
   @IsEnum(['asc', 'desc'])
-  order: 'asc' | 'desc';
+  declare order: 'asc' | 'desc';
 }
 
 /**
  * QueryChapterDto — pagination + filtering + sorting
  */
-export class QueryChapterDto {
-  @ApiPropertyOptional({ type: Number, default: 1, minimum: 1, example: 1 })
-  @Transform(({ value }) => (value ? Number(value) : 1))
-  @IsNumber()
-  @IsOptional()
-  page?: number;
-
-  @ApiPropertyOptional({
-    type: Number,
-    default: 10,
-    minimum: 1,
-    maximum: 100,
-    example: 10,
-  })
-  @Transform(({ value }) => (value ? Number(value) : 10))
-  @IsNumber()
-  @IsOptional()
-  limit?: number;
-
+export class QueryChapterDto extends BasePaginationQueryDto {
   @ApiPropertyOptional({
     type: String,
     description:

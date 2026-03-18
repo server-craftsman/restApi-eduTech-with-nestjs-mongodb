@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { BaseUpdateDto } from '../../core/dto';
 import { GradeLevel } from '../../enums';
 
-export class UpdateStudentProfileDto {
+export class UpdateStudentProfileDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Student full name',
     example: 'Alice Smith',

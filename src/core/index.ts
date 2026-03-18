@@ -1,4 +1,5 @@
 export * from './base';
+export * from './cache';
 export * from './constants';
 export * from './dto';
 export * from './interfaces';

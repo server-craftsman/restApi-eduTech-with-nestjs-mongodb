@@ -8,8 +8,9 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { BaseCreateDto } from '../../core/dto';
 
-export class CreateChapterDto {
+export class CreateChapterDto extends BaseCreateDto {
   @ApiProperty({
     description: 'Course ID this chapter belongs to',
     example: '507f1f77bcf86cd799439011',

@@ -1,6 +1,7 @@
 import * as Joi from 'joi';
+import { cacheValidationSchema } from './cache-validation.schema';
 
-export const envValidationSchema = Joi.object({
+const baseEnvValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
@@ -136,3 +137,7 @@ export const envValidationSchema = Joi.object({
     .positive()
     .default(4 * 1024 * 1024 * 1024),
 });
+
+export const envValidationSchema = baseEnvValidationSchema.concat(
+  cacheValidationSchema,
+);

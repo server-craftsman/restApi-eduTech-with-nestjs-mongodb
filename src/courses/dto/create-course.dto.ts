@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CourseType } from '../../enums';
+import { BaseCreateDto } from '../../core/dto';
 import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
 
 /**
@@ -18,7 +19,7 @@ import { CloudinaryAssetDto } from '../../core/dto/cloudinary-asset.dto';
  * Only TEACHER and ADMIN can create courses
  * Course author is automatically set from JWT token (currentUser)
  */
-export class CreateCourseDto {
+export class CreateCourseDto extends BaseCreateDto {
   @ApiProperty({
     description: 'Subject ID this course belongs to (MongoDB ObjectId)',
     example: '507f1f77bcf86cd799439011',

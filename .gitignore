@@ -32,8 +32,8 @@ lerna-debug.log*
 .env
 .env.local
 .env.*.local
+.env.*.example
 # Allow example files for reference
-!.env.example
 !.env.development
 !.env.production
 

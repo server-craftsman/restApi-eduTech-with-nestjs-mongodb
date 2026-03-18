@@ -31,6 +31,7 @@
   "dependencies": {
     "@ffprobe-installer/ffprobe": "^1.4.1",
     "@google/genai": "^1.44.0",
+    "@nestjs/cache-manager": "^3.1.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
@@ -46,6 +47,8 @@
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.25.7",
+    "cache-manager": "^7.2.8",
+    "cache-manager-redis-store": "^3.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cloudinary": "^2.6.1",
@@ -56,6 +59,7 @@
     "helmet": "^8.1.0",
     "husky": "^9.1.7",
     "hygen": "^6.2.11",
+    "ioredis": "^5.10.0",
     "joi": "^17.13.3",
     "lint-staged": "^16.2.7",
     "mongoose": "^8.23.0",
@@ -64,6 +68,7 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
+    "redis": "^5.11.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20"

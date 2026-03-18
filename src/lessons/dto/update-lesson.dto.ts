@@ -10,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BaseUpdateDto } from '../../core/dto';
 import { UploadUrlDto } from '../../uploads/dto';
 
 /**
@@ -17,7 +18,7 @@ import { UploadUrlDto } from '../../uploads/dto';
  * All fields are optional - only provided fields will be updated
  * Only TEACHER and ADMIN can update lessons
  */
-export class UpdateLessonDto {
+export class UpdateLessonDto extends BaseUpdateDto {
   @ApiPropertyOptional({
     description: 'Lesson title',
     example: 'Advanced Variables',
