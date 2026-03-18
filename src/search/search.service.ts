@@ -25,7 +25,11 @@ import {
   SubjectSearchResultDto,
   SearchResultDto,
 } from './dto/search-result.dto';
-import { SearchQueryDto, SearchSortBy, SearchType } from './dto/search-query.dto';
+import {
+  SearchQueryDto,
+  SearchSortBy,
+  SearchType,
+} from './dto/search-query.dto';
 import { UploadUrlDto } from '../uploads/dto';
 
 type SearchEntityType = Exclude<SearchType, SearchType.All>;
@@ -89,7 +93,9 @@ export class SearchService {
         1,
         perTypeFetchLimit,
       );
-      bucket.lessons = lessons.map((lesson) => this.mapLesson(lesson, normalizedKeyword));
+      bucket.lessons = lessons.map((lesson) =>
+        this.mapLesson(lesson, normalizedKeyword),
+      );
     }
 
     if (targets.includes(SearchType.Materials)) {
@@ -116,7 +122,9 @@ export class SearchService {
         },
       );
 
-      bucket.courses = courses.map((course) => this.mapCourse(course, normalizedKeyword));
+      bucket.courses = courses.map((course) =>
+        this.mapCourse(course, normalizedKeyword),
+      );
     }
 
     if (targets.includes(SearchType.Chapters)) {
@@ -126,13 +134,13 @@ export class SearchService {
         {
           title: keyword,
           isPublished:
-            includeDraft || currentUserRole === UserRole.Admin
-              ? null
-              : true,
+            includeDraft || currentUserRole === UserRole.Admin ? null : true,
         },
       );
 
-      bucket.chapters = chapters.map((chapter) => this.mapChapter(chapter, normalizedKeyword));
+      bucket.chapters = chapters.map((chapter) =>
+        this.mapChapter(chapter, normalizedKeyword),
+      );
     }
 
     if (targets.includes(SearchType.Subjects)) {
@@ -153,9 +161,7 @@ export class SearchService {
         {
           title: keyword,
           isPublished:
-            includeDraft || currentUserRole === UserRole.Admin
-              ? null
-              : true,
+            includeDraft || currentUserRole === UserRole.Admin ? null : true,
         },
       );
       bucket.exams = exams.map((exam) => this.mapExam(exam, normalizedKeyword));
@@ -220,7 +226,10 @@ export class SearchService {
     ];
   }
 
-  private mapLesson(lesson: Lesson, normalizedKeyword: string): LessonSearchResultDto {
+  private mapLesson(
+    lesson: Lesson,
+    normalizedKeyword: string,
+  ): LessonSearchResultDto {
     const score = this.computeScore(normalizedKeyword, [
       lesson.title,
       lesson.description,
@@ -271,7 +280,10 @@ export class SearchService {
     };
   }
 
-  private mapCourse(course: Course, normalizedKeyword: string): CourseSearchResultDto {
+  private mapCourse(
+    course: Course,
+    normalizedKeyword: string,
+  ): CourseSearchResultDto {
     const score = this.computeScore(normalizedKeyword, [
       course.title,
       course.description,
@@ -312,7 +324,10 @@ export class SearchService {
     subject: Subject,
     normalizedKeyword: string,
   ): SubjectSearchResultDto {
-    const score = this.computeScore(normalizedKeyword, [subject.name, subject.slug]);
+    const score = this.computeScore(normalizedKeyword, [
+      subject.name,
+      subject.slug,
+    ]);
 
     return {
       id: subject.id,
@@ -369,40 +384,85 @@ export class SearchService {
   ): SearchMixedItemDto[] {
     const mixed: SearchMixedItemDto[] = [
       ...bucket.lessons.map((item) =>
-        this.toMixed(SearchType.Lessons, item.id, item.title, item.description, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Lessons,
+          item.id,
+          item.title,
+          item.description,
+          item.score,
+          item.createdAt,
+        ),
       ),
       ...bucket.materials.map((item) =>
-        this.toMixed(SearchType.Materials, item.id, item.title, item.type, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Materials,
+          item.id,
+          item.title,
+          item.type,
+          item.score,
+          item.createdAt,
+        ),
       ),
       ...bucket.courses.map((item) =>
-        this.toMixed(SearchType.Courses, item.id, item.title, item.description, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Courses,
+          item.id,
+          item.title,
+          item.description,
+          item.score,
+          item.createdAt,
+        ),
       ),
       ...bucket.chapters.map((item) =>
-        this.toMixed(SearchType.Chapters, item.id, item.title, item.description ?? null, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Chapters,
+          item.id,
+          item.title,
+          item.description ?? null,
+          item.score,
+          item.createdAt,
+        ),
       ),
       ...bucket.subjects.map((item) =>
-        this.toMixed(SearchType.Subjects, item.id, item.name, item.slug, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Subjects,
+          item.id,
+          item.name,
+          item.slug,
+          item.score,
+          item.createdAt,
+        ),
       ),
       ...bucket.exams.map((item) =>
-        this.toMixed(SearchType.Exams, item.id, item.title, item.description ?? null, item.score, item.createdAt),
+        this.toMixed(
+          SearchType.Exams,
+          item.id,
+          item.title,
+          item.description ?? null,
+          item.score,
+          item.createdAt,
+        ),
       ),
     ];
 
     switch (sortBy) {
       case SearchSortBy.Newest:
         return mixed.sort(
-          (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.score - a.score,
+          (a, b) =>
+            b.createdAt.getTime() - a.createdAt.getTime() || b.score - a.score,
         );
       case SearchSortBy.Oldest:
         return mixed.sort(
-          (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || b.score - a.score,
+          (a, b) =>
+            a.createdAt.getTime() - b.createdAt.getTime() || b.score - a.score,
         );
       case SearchSortBy.Alphabetical:
         return mixed.sort((a, b) => a.title.localeCompare(b.title, 'vi'));
       case SearchSortBy.Relevance:
       default:
         return mixed.sort(
-          (a, b) => b.score - a.score || b.createdAt.getTime() - a.createdAt.getTime(),
+          (a, b) =>
+            b.score - a.score || b.createdAt.getTime() - a.createdAt.getTime(),
         );
     }
   }
