@@ -6,4 +6,5 @@ export * from './interfaces';
 export * from './filters/http-exception.filter';
 export * from './pipes/sanitize-params.pipe';
 export * from './security/security.config';
+export * from './task-scheduler.service';
 export * from './core.module';
