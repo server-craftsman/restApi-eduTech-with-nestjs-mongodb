@@ -311,33 +311,33 @@ export class ParentStudentLinkController extends BaseController {
   /**
    * Parent / Admin: Immediately send a progress report email for a link.
    */
-  @Post('send-report')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Send progress report email on demand (Parent/Admin)',
-    description:
-      'Triggers an immediate progress report email to the parent for the given link. ' +
-      'Use `period` in the body or default to weekly.',
-  })
-  @ApiResponse({ status: 200, description: 'Report email sent successfully' })
-  @ApiResponse({ status: 400, description: 'Link not found or not verified' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async sendReport(
-    @Body() dto: SendProgressReportDto,
-    @Res() res: Response,
-  ): Promise<Response> {
-    await this.parentStudentLinkService.sendProgressReportToParents(
-      dto.linkId,
-      dto.period ?? ReportPeriod.Weekly,
-    );
-    return this.sendSuccess(
-      res,
-      null,
-      'Progress report email sent successfully',
-    );
-  }
+  // @Post('send-report')
+  // @HttpCode(HttpStatus.OK)
+  // @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: 'Send progress report email on demand (Parent/Admin)',
+  //   description:
+  //     'Triggers an immediate progress report email to the parent for the given link. ' +
+  //     'Use `period` in the body or default to weekly.',
+  // })
+  // @ApiResponse({ status: 200, description: 'Report email sent successfully' })
+  // @ApiResponse({ status: 400, description: 'Link not found or not verified' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // async sendReport(
+  //   @Body() dto: SendProgressReportDto,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   await this.parentStudentLinkService.sendProgressReportToParents(
+  //     dto.linkId,
+  //     dto.period ?? ReportPeriod.Weekly,
+  //   );
+  //   return this.sendSuccess(
+  //     res,
+  //     null,
+  //     'Progress report email sent successfully',
+  //   );
+  // }
 
   /**
    * Student: Revoke a specific parent link (removes the connection).
@@ -450,31 +450,31 @@ export class ParentStudentLinkController extends BaseController {
     return this.parentStudentLinkService.getAllLinks();
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Create a link manually (Admin)' })
-  async createLink(@Body() data: CreateParentStudentLinkDto) {
-    return this.parentStudentLinkService.createLink(data);
-  }
+  // @Post()
+  // @ApiOperation({ summary: 'Create a link manually (Admin)' })
+  // async createLink(@Body() data: CreateParentStudentLinkDto) {
+  //   return this.parentStudentLinkService.createLink(data);
+  // }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a link (Admin)' })
-  async updateLink(
-    @Param('id') id: string,
-    @Body() data: UpdateParentStudentLinkDto,
-  ) {
-    return this.parentStudentLinkService.updateLink(id, data);
-  }
+  // @Put(':id')
+  // @ApiOperation({ summary: 'Update a link (Admin)' })
+  // async updateLink(
+  //   @Param('id') id: string,
+  //   @Body() data: UpdateParentStudentLinkDto,
+  // ) {
+  //   return this.parentStudentLinkService.updateLink(id, data);
+  // }
 
-  @Put(':id/verify')
-  @ApiOperation({ summary: 'Manually verify a link (Admin)' })
-  async verifyLink(@Param('id') id: string) {
-    return this.parentStudentLinkService.verifyLink(id);
-  }
+  // @Put(':id/verify')
+  // @ApiOperation({ summary: 'Manually verify a link (Admin)' })
+  // async verifyLink(@Param('id') id: string) {
+  //   return this.parentStudentLinkService.verifyLink(id);
+  // }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a link (Admin)' })
-  async deleteLink(@Param('id') id: string) {
-    await this.parentStudentLinkService.deleteLink(id);
-    return { message: 'Link deleted successfully' };
-  }
+  // @Delete(':id')
+  // @ApiOperation({ summary: 'Delete a link (Admin)' })
+  // async deleteLink(@Param('id') id: string) {
+  //   await this.parentStudentLinkService.deleteLink(id);
+  //   return { message: 'Link deleted successfully' };
+  // }
 }
