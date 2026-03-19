@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Param,
   Res,
   UseGuards,
   NotFoundException,
@@ -11,7 +10,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiParam,
   ApiExtraModels,
 } from '@nestjs/swagger';
 import { Response } from 'express';

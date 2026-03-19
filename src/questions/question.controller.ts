@@ -2,8 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
-  Delete,
   Param,
   Body,
   Query,
@@ -21,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { QuestionService } from './question.service';
-import { CreateQuestionDto, UpdateQuestionDto, QuestionDto } from './dto';
+import { CreateQuestionDto, QuestionDto } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';

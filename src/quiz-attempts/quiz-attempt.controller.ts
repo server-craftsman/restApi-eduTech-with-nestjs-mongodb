@@ -1,10 +1,7 @@
 import {
   Controller,
   Get,
-  Put,
-  Delete,
   Param,
-  Body,
   UseGuards,
   Res,
   HttpStatus,
@@ -21,11 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { QuizAttemptService } from './quiz-attempt.service';
-import {
-  UpdateQuizAttemptDto,
-  QuizAttemptDto,
-  QuizAttemptDetailDto,
-} from './dto';
+import { QuizAttemptDetailDto } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
