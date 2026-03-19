@@ -7,9 +7,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import * as helmet from 'helmet';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
-import { SanitizeParamsPipe } from './core/pipes/sanitize-params.pipe';
 
 config();
 
@@ -26,36 +24,12 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type,Accept,Authorization',
   });
 
-  // ═══════════════════════════════════════════════════════════════════
-  // Security Hardening
-  // ═══════════════════════════════════════════════════════════════════
-
-  // 1. Helmet — Add security HTTP headers
-  app.use(
-    helmet.default({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
-          imgSrc: ["'self'", 'https:', 'data:'],
-        },
-      },
-      hsts: {
-        maxAge: 31536000, // 1 year
-        includeSubDomains: true,
-        preload: true,
-      },
-    }),
-  );
-
-  // 2. Parse JSON with size limit (prevent large payload attacks)
+  // Parse JSON with size limit
   expressApp.use(express.json({ limit: '10mb' }));
   expressApp.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-  // 3. Global parameter sanitization
+  // Global validation pipe
   app.useGlobalPipes(
-    new SanitizeParamsPipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -73,7 +47,7 @@ async function bootstrap() {
     }),
   );
 
-  // 4. Global exception filter — Format all errors consistently
+  // Global exception filter — Format all errors consistently
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Configure Handlebars template engine
@@ -121,9 +95,6 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
   console.log(`Server is running...`);
-  console.log(
-    `Security features enabled: Helmet, Rate Limiting, Input Sanitization`,
-  );
 }
 
 void bootstrap();
