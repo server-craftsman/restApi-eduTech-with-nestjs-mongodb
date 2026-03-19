@@ -18,7 +18,7 @@ export class TaskSchedulerService {
     this.homeEndpoint = `${appUrl.replace(/\/$/, '')}/`;
   }
 
-  @Cron(CronExpression.EVERY_30_SECONDS, {
+  @Cron(CronExpression.EVERY_10_MINUTES, {
     name: 'ping-home-endpoint',
     timeZone: 'Asia/Ho_Chi_Minh',
   })
