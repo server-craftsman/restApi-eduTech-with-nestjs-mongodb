@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { CacheService } from './cache/services/cache.service';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 
 /**
  * TaskSchedulerService
@@ -10,21 +11,29 @@ import { CacheService } from './cache/services/cache.service';
 @Injectable()
 export class TaskSchedulerService {
   private readonly logger = new Logger(TaskSchedulerService.name);
+  private readonly homeEndpoint: string;
 
-  constructor(private readonly cacheService: CacheService) {}
+  constructor(private readonly configService: ConfigService) {
+    const appUrl = this.configService.get<string>('app.url') ?? 'http://localhost:3000';
+    this.homeEndpoint = `${appUrl.replace(/\/$/, '')}/`;
+  }
 
   @Cron(CronExpression.EVERY_30_SECONDS, {
-    name: 'cache-health-check',
+    name: 'ping-home-endpoint',
     timeZone: 'Asia/Ho_Chi_Minh',
   })
-  async runCacheHealthCheck(): Promise<void> {
-    const healthy = await this.cacheService.healthCheck();
+  async pingHomeEndpoint(): Promise<void> {
+    try {
+      const response = await axios.get<string>(this.homeEndpoint, {
+        timeout: 5000,
+      });
 
-    if (!healthy) {
-      this.logger.warn('Cache health check failed');
-      return;
+      this.logger.log(
+        `Home ping success: ${response.status} ${response.statusText}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Home ping failed: ${message}`);
     }
-
-    this.logger.log('Cache health check passed');
   }
 }
