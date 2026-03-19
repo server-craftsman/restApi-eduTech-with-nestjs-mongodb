@@ -25,6 +25,7 @@
     "migration:run": "bun run typeorm migration:run",
     "migration:revert": "bun run typeorm migration:revert",
     "migration:show": "bun run typeorm migration:show",
+    "cron:render-keepalive": "node scripts/render-keepalive.mjs",
     "generate:module": "cross-env HYGEN_TMPLS=.hygen hygen module new",
     "prepare": "husky"
   },

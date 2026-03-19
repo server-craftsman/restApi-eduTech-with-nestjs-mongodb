@@ -1,0 +1,10 @@
+services:
+  - type: cron
+    name: edutech-backend-keepalive
+    runtime: node
+    schedule: '*/10 * * * *'
+    buildCommand: npm ci
+    startCommand: npm run cron:render-keepalive
+    envVars:
+      - key: KEEP_ALIVE_URL
+        sync: false
