@@ -38,7 +38,7 @@ import { TrainingDataDto } from './dto/training-data.dto';
 import { TrainModelResponseDto } from './dto/train-model-response.dto';
 import { AiTrainingStatus } from '../enums';
 
-@ApiTags('AI Assistant')
+@ApiTags('AI Assistant - Không thực thi')
 @Controller('ai-assistant')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

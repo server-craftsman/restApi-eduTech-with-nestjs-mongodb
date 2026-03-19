@@ -19,15 +19,15 @@ export class SessionController {
     return this.sessionService.findSessionById(id);
   }
 
-  @Delete(':id')
-  async deleteSession(@Param('id') id: string) {
-    await this.sessionService.deleteSession(id);
-    return { message: 'Session deleted successfully' };
-  }
+  // @Delete(':id')
+  // async deleteSession(@Param('id') id: string) {
+  //   await this.sessionService.deleteSession(id);
+  //   return { message: 'Session deleted successfully' };
+  // }
 
-  @Delete('user/:userId/all')
-  async deleteAllUserSessions(@Param('userId') userId: string) {
-    await this.sessionService.deleteSessionsByUserId(userId);
-    return { message: 'All user sessions deleted' };
-  }
+  // @Delete('user/:userId/all')
+  // async deleteAllUserSessions(@Param('userId') userId: string) {
+  //   await this.sessionService.deleteSessionsByUserId(userId);
+  //   return { message: 'All user sessions deleted' };
+  // }
 }

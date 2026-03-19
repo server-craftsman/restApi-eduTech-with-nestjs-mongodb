@@ -11,6 +11,13 @@ import { MongooseModule } from '@nestjs/mongoose';
         uri:
           configService.get<string>('database.mongoUri') ??
           configService.get<string>('MONGODB_URI'),
+        // Add timeout and error handling for MongoDB connection
+        connectTimeoutMS: 30000, // 30 seconds
+        serverSelectionTimeoutMS: 30000, // 30 seconds  
+        socketTimeoutMS: 120000, // 2 minutes
+        retryWrites: true,
+        maxPoolSize: 10,
+        minPoolSize: 1,
       }),
     }),
   ],

@@ -240,30 +240,30 @@ export class LessonController extends BaseController {
    * Delete a lesson
    * Only ADMIN can delete lessons
    */
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Delete a lesson (ADMIN only)',
-    description:
-      'Soft-delete a lesson. Only administrators can delete lessons.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Lesson ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Lesson deleted successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Lesson not found' })
-  async deleteLesson(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    await this.lessonService.deleteLesson(id);
-    return this.sendSuccess(res, null, 'Lesson deleted successfully');
-  }
+  // @Delete(':id')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.Admin)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: 'Delete a lesson (ADMIN only)',
+  //   description:
+  //     'Soft-delete a lesson. Only administrators can delete lessons.',
+  // })
+  // @ApiParam({
+  //   name: 'id',
+  //   description: 'Lesson ID',
+  //   example: '507f1f77bcf86cd799439011',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Lesson deleted successfully',
+  // })
+  // @ApiResponse({ status: 404, description: 'Lesson not found' })
+  // async deleteLesson(
+  //   @Param('id') id: string,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   await this.lessonService.deleteLesson(id);
+  //   return this.sendSuccess(res, null, 'Lesson deleted successfully');
+  // }
 }

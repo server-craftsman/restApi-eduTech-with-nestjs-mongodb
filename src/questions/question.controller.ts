@@ -294,67 +294,67 @@ export class QuestionController extends BaseController {
    * Update a question
    * Only TEACHER and ADMIN can update
    */
-  @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Teacher, UserRole.Admin)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Update a question (TEACHER/ADMIN only)',
-    description:
-      'Update an existing question. Only teachers and administrators can update questions.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Question ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Question updated successfully',
-    type: QuestionDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Bad request - Invalid update data',
-  })
-  @ApiResponse({ status: 404, description: 'Question not found' })
-  async updateQuestion(
-    @Param('id') id: string,
-    @Body() dto: UpdateQuestionDto,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const question = await this.questionService.updateQuestion(id, dto);
-    return this.sendSuccess(res, question, 'Question updated successfully');
-  }
+  // @Put(':id')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.Teacher, UserRole.Admin)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: 'Update a question (TEACHER/ADMIN only)',
+  //   description:
+  //     'Update an existing question. Only teachers and administrators can update questions.',
+  // })
+  // @ApiParam({
+  //   name: 'id',
+  //   description: 'Question ID',
+  //   example: '507f1f77bcf86cd799439011',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Question updated successfully',
+  //   type: QuestionDto,
+  // })
+  // @ApiResponse({
+  //   status: 400,
+  //   description: 'Bad request - Invalid update data',
+  // })
+  // @ApiResponse({ status: 404, description: 'Question not found' })
+  // async updateQuestion(
+  //   @Param('id') id: string,
+  //   @Body() dto: UpdateQuestionDto,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const question = await this.questionService.updateQuestion(id, dto);
+  //   return this.sendSuccess(res, question, 'Question updated successfully');
+  // }
 
-  /**
-   * Delete a question
-   * Only ADMIN can delete
-   */
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Delete a question (ADMIN only)',
-    description:
-      'Soft-delete a question. Only administrators can delete questions.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Question ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Question deleted successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Question not found' })
-  async deleteQuestion(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    await this.questionService.deleteQuestion(id);
-    return this.sendSuccess(res, null, 'Question deleted successfully');
-  }
+  // /**
+  //  * Delete a question
+  //  * Only ADMIN can delete
+  //  */
+  // @Delete(':id')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles(UserRole.Admin)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: 'Delete a question (ADMIN only)',
+  //   description:
+  //     'Soft-delete a question. Only administrators can delete questions.',
+  // })
+  // @ApiParam({
+  //   name: 'id',
+  //   description: 'Question ID',
+  //   example: '507f1f77bcf86cd799439011',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Question deleted successfully',
+  // })
+  // @ApiResponse({ status: 404, description: 'Question not found' })
+  // async deleteQuestion(
+  //   @Param('id') id: string,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   await this.questionService.deleteQuestion(id);
+  //   return this.sendSuccess(res, null, 'Question deleted successfully');
+  // }
 }

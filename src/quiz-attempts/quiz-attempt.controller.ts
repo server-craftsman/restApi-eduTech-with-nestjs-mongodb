@@ -386,56 +386,56 @@ export class QuizAttemptController extends BaseController {
   /**
    * Update attempt (ADMIN only)
    */
-  @Put(':id')
-  @Roles(UserRole.Admin)
-  @ApiOperation({
-    summary: 'Update quiz attempt (ADMIN only)',
-    description: 'Update attempt score, status, or other details',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Attempt ID',
-    example: '507f1f77bcf86cd799439001',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Attempt updated successfully',
-    type: QuizAttemptDto,
-  })
-  @ApiResponse({ status: 404, description: 'Attempt not found' })
-  async updateAttempt(
-    @Param('id') id: string,
-    @Body() dto: UpdateQuizAttemptDto,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const attempt = await this.quizAttemptService.updateAttempt(id, dto);
-    return this.sendSuccess(res, attempt, 'Attempt updated successfully');
-  }
+  // @Put(':id')
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({
+  //   summary: 'Update quiz attempt (ADMIN only)',
+  //   description: 'Update attempt score, status, or other details',
+  // })
+  // @ApiParam({
+  //   name: 'id',
+  //   description: 'Attempt ID',
+  //   example: '507f1f77bcf86cd799439001',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Attempt updated successfully',
+  //   type: QuizAttemptDto,
+  // })
+  // @ApiResponse({ status: 404, description: 'Attempt not found' })
+  // async updateAttempt(
+  //   @Param('id') id: string,
+  //   @Body() dto: UpdateQuizAttemptDto,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const attempt = await this.quizAttemptService.updateAttempt(id, dto);
+  //   return this.sendSuccess(res, attempt, 'Attempt updated successfully');
+  // }
 
-  /**
-   * Delete quiz attempt (ADMIN only)
-   */
-  @Delete(':id')
-  @Roles(UserRole.Admin)
-  @ApiOperation({
-    summary: 'Delete quiz attempt (ADMIN only)',
-    description: 'Soft-delete a quiz attempt',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Attempt ID',
-    example: '507f1f77bcf86cd799439001',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Attempt deleted successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Attempt not found' })
-  async deleteAttempt(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    await this.quizAttemptService.deleteAttempt(id);
-    return this.sendSuccess(res, null, 'Attempt deleted successfully');
-  }
+  // /**
+  //  * Delete quiz attempt (ADMIN only)
+  //  */
+  // @Delete(':id')
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({
+  //   summary: 'Delete quiz attempt (ADMIN only)',
+  //   description: 'Soft-delete a quiz attempt',
+  // })
+  // @ApiParam({
+  //   name: 'id',
+  //   description: 'Attempt ID',
+  //   example: '507f1f77bcf86cd799439001',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Attempt deleted successfully',
+  // })
+  // @ApiResponse({ status: 404, description: 'Attempt not found' })
+  // async deleteAttempt(
+  //   @Param('id') id: string,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   await this.quizAttemptService.deleteAttempt(id);
+  //   return this.sendSuccess(res, null, 'Attempt deleted successfully');
+  // }
 }

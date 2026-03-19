@@ -102,30 +102,30 @@ export class RewardController extends BaseController {
    * GET /rewards/admin/user/:userId
    * Admin can view any student's reward profile.
    */
-  @Get('admin/user/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  @Roles(UserRole.Admin)
-  @ApiOperation({
-    summary: "View any student's reward profile (Admin only)",
-  })
-  @ApiParam({ name: 'userId', example: '507f1f77bcf86cd799439011' })
-  @ApiResponse({ status: 200, type: MyRewardsDto })
-  @ApiResponse({ status: 404, description: 'Student profile not found' })
-  async getUserRewards(
-    @Param('userId') userId: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const rewards = await this.rewardService.getMyRewards(userId);
-    if (!rewards) {
-      throw new NotFoundException(
-        `Student profile not found for user ${userId}`,
-      );
-    }
-    return this.sendSuccess(
-      res,
-      rewards,
-      'Reward profile retrieved successfully',
-    );
-  }
+  // @Get('admin/user/:userId')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @ApiBearerAuth()
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({
+  //   summary: "View any student's reward profile (Admin only)",
+  // })
+  // @ApiParam({ name: 'userId', example: '507f1f77bcf86cd799439011' })
+  // @ApiResponse({ status: 200, type: MyRewardsDto })
+  // @ApiResponse({ status: 404, description: 'Student profile not found' })
+  // async getUserRewards(
+  //   @Param('userId') userId: string,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const rewards = await this.rewardService.getMyRewards(userId);
+  //   if (!rewards) {
+  //     throw new NotFoundException(
+  //       `Student profile not found for user ${userId}`,
+  //     );
+  //   }
+  //   return this.sendSuccess(
+  //     res,
+  //     rewards,
+  //     'Reward profile retrieved successfully',
+  //   );
+  // }
 }

@@ -234,18 +234,18 @@ export class WrongAnswerController extends BaseController {
    * DELETE /wrong-answers/admin/:id
    * Hard-soft-delete a specific wrong-answer record (Admin only).
    */
-  @Delete('admin/:id')
-  @Roles(UserRole.Admin)
-  @ApiOperation({ summary: 'Soft-delete a wrong-answer record (Admin only)' })
-  @ApiParam({ name: 'id', example: '507f1f77bcf86cd799439001' })
-  @ApiResponse({ status: 200, description: 'Record deleted successfully' })
-  async deleteRecord(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ): Promise<Response> {
-    await this.wrongAnswerService.softDeleteRecord(id);
-    return this.sendSuccess(res, null, 'Record deleted successfully');
-  }
+  // @Delete('admin/:id')
+  // @Roles(UserRole.Admin)
+  // @ApiOperation({ summary: 'Soft-delete a wrong-answer record (Admin only)' })
+  // @ApiParam({ name: 'id', example: '507f1f77bcf86cd799439001' })
+  // @ApiResponse({ status: 200, description: 'Record deleted successfully' })
+  // async deleteRecord(
+  //   @Param('id') id: string,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   await this.wrongAnswerService.softDeleteRecord(id);
+  //   return this.sendSuccess(res, null, 'Record deleted successfully');
+  // }
 
   // ──────────────────────────────────────────────────────────
   // Private helper
