@@ -37,18 +37,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { User } from '../users/domain/user';
-import { StudentProfileService } from '../student-profiles/student-profile.service';
-import { GradeLevelService } from '../grade-levels/grade-level.service';
 
 @ApiTags('Courses')
 @Controller('courses')
 @ApiExtraModels(FilterCourseDto, SortCourseDto)
 export class CourseController extends BaseController {
-  constructor(
-    private readonly courseService: CourseService,
-    private readonly studentProfileService: StudentProfileService,
-    private readonly gradeLevelService: GradeLevelService,
-  ) {
+  constructor(private readonly courseService: CourseService) {
     super();
   }
 
@@ -88,52 +82,26 @@ export class CourseController extends BaseController {
     @Res() res: Response,
   ): Promise<Response> {
     try {
-      // 1. Resolve student profile & preferred grade level
-      const profile = await this.studentProfileService.getProfileByUserId(
+      const result = await this.courseService.getPersonalizedCourses(
+        user.role,
         user.id,
+        query,
       );
 
-      if (profile && !profile.onboardingCompleted) {
+      if (result.needsOnboarding) {
         return this.sendSuccess(
           res,
           {
             needsOnboarding: true,
-            onboardingUrl: '/student-profiles/onboarding',
-            courses: [],
-            total: 0,
+            onboardingUrl:
+              result.onboardingUrl ?? '/student-profiles/onboarding',
+            strategy: result.strategy,
+            courses: result.courses,
+            total: result.total,
           },
           'Complete onboarding to receive personalised content',
         );
       }
-
-      // 2. Convert GradeLevel enum value → GradeLevel document ID
-      let gradeLevelId: string | undefined;
-      const gradeEnumValue = profile?.gradeLevel;
-      if (gradeEnumValue) {
-        const gradeLevelDoc = await this.gradeLevelService.findByValue(
-          parseInt(gradeEnumValue, 10),
-        );
-        gradeLevelId = gradeLevelDoc?.id;
-      }
-
-      // 3. Build forced overrides: always Published, always grade-filtered (if known)
-      const overrides: Partial<FilterCourseDto> = {
-        status: CourseStatus.Published,
-        ...(gradeLevelId ? { gradeLevelId } : {}),
-      };
-
-      // 4. Optionally pre-filter by first preferred subject when caller hasn't
-      //    already specified one and the profile has preferences set.
-      const callerSubjectId = query.filters?.subjectId;
-      const preferredSubjectId = profile?.preferredSubjectIds?.[0];
-      if (!callerSubjectId && preferredSubjectId) {
-        overrides.subjectId = preferredSubjectId;
-      }
-
-      const result = await this.courseService.findAllWithFilters(
-        query,
-        overrides,
-      );
 
       return this.sendPaginated(
         res,

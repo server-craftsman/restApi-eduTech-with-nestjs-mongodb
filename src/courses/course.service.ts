@@ -15,6 +15,16 @@ import { FilterCourseDto, QueryCourseDto, SortCourseDto } from './dto';
 import { BaseService } from '../core/base/base.service';
 import { UsersService } from '../users/users.service';
 import { NotificationTriggersService } from '../notifications/services';
+import { StudentProfileService } from '../student-profiles/student-profile.service';
+import { GradeLevelService } from '../grade-levels/grade-level.service';
+
+interface PersonalizedCoursesResult {
+  courses: Course[];
+  total: number;
+  needsOnboarding: boolean;
+  onboardingUrl?: string;
+  strategy: string;
+}
 
 @Injectable()
 export class CourseService extends BaseService {
@@ -26,8 +36,126 @@ export class CourseService extends BaseService {
     private readonly materialRepository: MaterialRepositoryAbstract,
     private readonly usersService: UsersService,
     private readonly notificationTriggers: NotificationTriggersService,
+    private readonly studentProfileService: StudentProfileService,
+    private readonly gradeLevelService: GradeLevelService,
   ) {
     super();
+  }
+
+  /**
+   * Personalized feed strategy (onboarding-aware):
+   * 1) If profile missing or onboarding incomplete => onboarding hint payload.
+   * 2) If onboarding complete => blend multiple candidate pools and rank:
+   *    - grade + preferred subject (strongest)
+   *    - grade only
+   *    - preferred subject only
+   *    - global published fallback
+   *
+   * Caller filters like `search` / `type` / `sort` are still respected.
+   */
+  async getPersonalizedCourses(
+    userRole: string,
+    userId: string,
+    query: QueryCourseDto,
+  ): Promise<PersonalizedCoursesResult> {
+    // Non-student roles: keep behavior simple, return all published courses.
+    if (userRole !== 'STUDENT') {
+      const result = await this.findAllWithFilters(query, {
+        status: CourseStatus.Published,
+      });
+      return {
+        courses: result.courses,
+        total: result.total,
+        needsOnboarding: false,
+        strategy: 'published-only-non-student',
+      };
+    }
+
+    const profile = await this.studentProfileService.getProfileByUserId(userId);
+    if (!profile || !profile.onboardingCompleted) {
+      return {
+        courses: [],
+        total: 0,
+        needsOnboarding: true,
+        onboardingUrl: '/student-profiles/onboarding',
+        strategy: !profile
+          ? 'missing-student-profile'
+          : 'onboarding-not-completed',
+      };
+    }
+
+    const preferredSubjectIds = Array.from(
+      new Set(profile.preferredSubjectIds.filter(Boolean)),
+    );
+
+    const gradeLevelId = await this.resolveGradeLevelId(profile.gradeLevel);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const candidateLimit = Math.max(60, page * limit * 4);
+
+    const candidateQuery: QueryCourseDto = {
+      ...query,
+      page: 1,
+      limit: candidateLimit,
+    };
+
+    const [gradeAndPreferred, gradeOnly, preferredOnly, fallbackPublished] =
+      await Promise.all([
+        this.fetchByGradeAndPreferred(
+          candidateQuery,
+          gradeLevelId,
+          preferredSubjectIds,
+        ),
+        gradeLevelId
+          ? this.findAllWithFilters(candidateQuery, {
+              status: CourseStatus.Published,
+              gradeLevelId,
+            })
+          : Promise.resolve({ courses: [], total: 0 }),
+        this.fetchByPreferredOnly(candidateQuery, preferredSubjectIds),
+        this.findAllWithFilters(candidateQuery, {
+          status: CourseStatus.Published,
+        }),
+      ]);
+
+    const dedup = new Map<string, Course>();
+    const pushCourses = (courses: Course[]): void => {
+      for (const course of courses) {
+        if (!dedup.has(course.id)) dedup.set(course.id, course);
+      }
+    };
+
+    // Priority order keeps relevance stable before scoring tie-breakers.
+    pushCourses(gradeAndPreferred.courses);
+    pushCourses(gradeOnly.courses);
+    pushCourses(preferredOnly.courses);
+    pushCourses(fallbackPublished.courses);
+
+    const ranked = Array.from(dedup.values()).sort((a, b) => {
+      const scoreA = this.computePersonalizationScore(
+        a,
+        gradeLevelId,
+        preferredSubjectIds,
+      );
+      const scoreB = this.computePersonalizationScore(
+        b,
+        gradeLevelId,
+        preferredSubjectIds,
+      );
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+    const offset = (page - 1) * limit;
+    const paged = ranked.slice(offset, offset + limit);
+
+    return {
+      courses: paged,
+      total: ranked.length,
+      needsOnboarding: false,
+      strategy: 'ranked-by-onboarding-signals',
+    };
   }
 
   async createCourse(
@@ -116,6 +244,83 @@ export class CourseService extends BaseService {
       (query.sort as SortCourseDto[]) ?? [],
     );
     return { courses, total };
+  }
+
+  private async resolveGradeLevelId(
+    gradeLevel?: GradeLevel | null,
+  ): Promise<string | undefined> {
+    if (!gradeLevel) return undefined;
+    const value = Number.parseInt(gradeLevel, 10);
+    if (Number.isNaN(value)) return undefined;
+    const gradeLevelDoc = await this.gradeLevelService.findByValue(value);
+    return gradeLevelDoc?.id;
+  }
+
+  private async fetchByGradeAndPreferred(
+    query: QueryCourseDto,
+    gradeLevelId: string | undefined,
+    preferredSubjectIds: string[],
+  ): Promise<{ courses: Course[]; total: number }> {
+    if (!gradeLevelId || preferredSubjectIds.length === 0) {
+      return { courses: [], total: 0 };
+    }
+
+    const results = await Promise.all(
+      preferredSubjectIds.map((subjectId) =>
+        this.findAllWithFilters(query, {
+          status: CourseStatus.Published,
+          gradeLevelId,
+          subjectId,
+        }),
+      ),
+    );
+
+    const dedup = new Map<string, Course>();
+    for (const result of results) {
+      for (const course of result.courses) {
+        if (!dedup.has(course.id)) dedup.set(course.id, course);
+      }
+    }
+
+    return { courses: Array.from(dedup.values()), total: dedup.size };
+  }
+
+  private async fetchByPreferredOnly(
+    query: QueryCourseDto,
+    preferredSubjectIds: string[],
+  ): Promise<{ courses: Course[]; total: number }> {
+    if (preferredSubjectIds.length === 0) {
+      return { courses: [], total: 0 };
+    }
+
+    const results = await Promise.all(
+      preferredSubjectIds.map((subjectId) =>
+        this.findAllWithFilters(query, {
+          status: CourseStatus.Published,
+          subjectId,
+        }),
+      ),
+    );
+
+    const dedup = new Map<string, Course>();
+    for (const result of results) {
+      for (const course of result.courses) {
+        if (!dedup.has(course.id)) dedup.set(course.id, course);
+      }
+    }
+
+    return { courses: Array.from(dedup.values()), total: dedup.size };
+  }
+
+  private computePersonalizationScore(
+    course: Course,
+    gradeLevelId: string | undefined,
+    preferredSubjectIds: string[],
+  ): number {
+    let score = 0;
+    if (gradeLevelId && course.gradeLevelId === gradeLevelId) score += 70;
+    if (preferredSubjectIds.includes(course.subjectId)) score += 50;
+    return score;
   }
 
   async updateCourse(
