@@ -60,33 +60,33 @@ export class ParentStudentLinkController extends BaseController {
   /**
    * Step 1 (Student): Generate a link code to share with a parent.
    */
-  @Post('generate-code')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Step 1 — Generate link code (Student)',
-    description:
-      'Generates an 8-character uppercase alphanumeric code valid for **24 hours**. ' +
-      'The student shares this code with their parent so the parent can connect. ' +
-      'If an unexpired code already exists, it is returned without creating a new one.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Link code generated successfully',
-    type: GenerateLinkCodeResponseDto,
-  })
-  @ApiResponse({ status: 400, description: 'Student profile not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async generateCode(
-    @CurrentUser() user: User,
-    @Res() res: Response,
-  ): Promise<Response> {
-    const result = await this.parentStudentLinkService.generateLinkCode(
-      user.id,
-    );
-    return this.sendSuccess(res, result, 'Link code generated successfully');
-  }
+  // @Post('generate-code')
+  // @HttpCode(HttpStatus.OK)
+  // @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: 'Step 1 — Generate link code (Student)',
+  //   description:
+  //     'Generates an 8-character uppercase alphanumeric code valid for **24 hours**. ' +
+  //     'The student shares this code with their parent so the parent can connect. ' +
+  //     'If an unexpired code already exists, it is returned without creating a new one.',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Link code generated successfully',
+  //   type: GenerateLinkCodeResponseDto,
+  // })
+  // @ApiResponse({ status: 400, description: 'Student profile not found' })
+  // @ApiResponse({ status: 401, description: 'Unauthorized' })
+  // async generateCode(
+  //   @CurrentUser() user: User,
+  //   @Res() res: Response,
+  // ): Promise<Response> {
+  //   const result = await this.parentStudentLinkService.generateLinkCode(
+  //     user.id,
+  //   );
+  //   return this.sendSuccess(res, result, 'Link code generated successfully');
+  // }
 
   /**
    * Step 1 extended (Student): Generate link code + pre-composed Zalo/SMS share text.
