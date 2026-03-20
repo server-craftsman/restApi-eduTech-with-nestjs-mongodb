@@ -234,11 +234,14 @@ export class AdminService {
    * - each chapter: 3 lessons + 1 chapter exam + 1 chapter quiz
    * - each lesson: 3 materials + 3 quiz questions
    */
-  async seedLearningData(adminUserId: string): Promise<SeedLearningDataResponseDto> {
+  async seedLearningData(
+    adminUserId: string,
+  ): Promise<SeedLearningDataResponseDto> {
     const created = this.zeroCounter();
     const reused = this.zeroCounter();
 
-    let gradeLevel = await this.gradeLevelService.findByValue(VIETNAM_GRADE_VALUE);
+    let gradeLevel =
+      await this.gradeLevelService.findByValue(VIETNAM_GRADE_VALUE);
     if (!gradeLevel) {
       gradeLevel = await this.gradeLevelService.createGradeLevel({
         name: VIETNAM_GRADE_NAME,
@@ -264,7 +267,9 @@ export class AdminService {
         reused.subjects++;
       }
 
-      const coursesBySubject = await this.courseService.findBySubjectId(subject.id);
+      const coursesBySubject = await this.courseService.findBySubjectId(
+        subject.id,
+      );
       let course = coursesBySubject.find((c) => c.title === courseSeed.title);
 
       if (!course) {
@@ -285,13 +290,21 @@ export class AdminService {
         reused.courses++;
       }
 
-      const existingChapters = await this.chapterService.findByCourseId(course.id);
+      const existingChapters = await this.chapterService.findByCourseId(
+        course.id,
+      );
       const allCourseQuestionIds: string[] = [];
 
-      for (let chapterIndex = 0; chapterIndex < courseSeed.chapters.length; chapterIndex++) {
+      for (
+        let chapterIndex = 0;
+        chapterIndex < courseSeed.chapters.length;
+        chapterIndex++
+      ) {
         const chapterSeed = courseSeed.chapters[chapterIndex];
 
-        let chapter = existingChapters.find((c) => c.title === chapterSeed.title);
+        let chapter = existingChapters.find(
+          (c) => c.title === chapterSeed.title,
+        );
         if (!chapter) {
           chapter = await this.chapterService.create({
             courseId: course.id,
@@ -305,13 +318,21 @@ export class AdminService {
           reused.chapters++;
         }
 
-        const existingLessons = await this.lessonService.findByChapterId(chapter.id);
+        const existingLessons = await this.lessonService.findByChapterId(
+          chapter.id,
+        );
         const chapterQuestionIds: string[] = [];
 
-        for (let lessonIndex = 0; lessonIndex < chapterSeed.lessons.length; lessonIndex++) {
+        for (
+          let lessonIndex = 0;
+          lessonIndex < chapterSeed.lessons.length;
+          lessonIndex++
+        ) {
           const lessonSeed = chapterSeed.lessons[lessonIndex];
 
-          let lesson = existingLessons.find((l) => l.title === lessonSeed.title);
+          let lesson = existingLessons.find(
+            (l) => l.title === lessonSeed.title,
+          );
           if (!lesson) {
             const lessonVideo = this.resolveLessonVideoAsset(
               courseSeed.subjectName,
@@ -343,7 +364,9 @@ export class AdminService {
             reused.lessons++;
           }
 
-          const existingMaterials = await this.materialService.findByLessonId(lesson.id);
+          const existingMaterials = await this.materialService.findByLessonId(
+            lesson.id,
+          );
           const materialTemplates = this.buildMaterialTemplates(
             courseSeed.subjectName,
             chapterSeed.title,
@@ -352,7 +375,9 @@ export class AdminService {
           );
 
           for (const material of materialTemplates) {
-            const found = existingMaterials.find((m) => m.title === material.title);
+            const found = existingMaterials.find(
+              (m) => m.title === material.title,
+            );
             if (found) {
               reused.materials++;
               continue;
@@ -362,7 +387,9 @@ export class AdminService {
             created.materials++;
           }
 
-          const existingQuestions = await this.questionService.findByLessonId(lesson.id);
+          const existingQuestions = await this.questionService.findByLessonId(
+            lesson.id,
+          );
           const questionTemplates = this.buildLessonQuestionTemplates(
             lesson.id,
             courseSeed.subjectName,
@@ -372,7 +399,8 @@ export class AdminService {
 
           for (const q of questionTemplates) {
             const found = existingQuestions.find(
-              (existingQuestion) => existingQuestion.contentHtml === q.contentHtml,
+              (existingQuestion) =>
+                existingQuestion.contentHtml === q.contentHtml,
             );
 
             if (found) {
@@ -382,7 +410,8 @@ export class AdminService {
               continue;
             }
 
-            const createdQuestion = await this.questionService.createQuestion(q);
+            const createdQuestion =
+              await this.questionService.createQuestion(q);
             created.quizQuestions++;
             chapterQuestionIds.push(createdQuestion.id);
             allCourseQuestionIds.push(createdQuestion.id);
@@ -527,7 +556,9 @@ export class AdminService {
     type: MaterialType;
     description: string;
   }> {
-    const baseSlug = this.slugify(`${subjectName}-${chapterTitle}-${lessonTitle}`);
+    const baseSlug = this.slugify(
+      `${subjectName}-${chapterTitle}-${lessonTitle}`,
+    );
 
     return [
       {
@@ -598,8 +629,7 @@ export class AdminService {
           'đoán đáp án ngẫu nhiên',
         ],
         correctAnswer: lesson.keyConcept,
-        explanation:
-          `Bài học này xoay quanh khái niệm "${lesson.keyConcept}" và cách vận dụng trong thực tế học tập.`,
+        explanation: `Bài học này xoay quanh khái niệm "${lesson.keyConcept}" và cách vận dụng trong thực tế học tập.`,
         tags: [subjectName, chapterTitle, 'seed', 'core-concept'],
         points: 10,
       },
@@ -610,8 +640,7 @@ export class AdminService {
         difficulty: Difficulty.Medium,
         options: ['True', 'False'],
         correctAnswer: 'True',
-        explanation:
-          `Nhận định đúng vì tình huống này giúp học sinh dùng ${lesson.keyConcept} để giải quyết vấn đề thực tiễn.`,
+        explanation: `Nhận định đúng vì tình huống này giúp học sinh dùng ${lesson.keyConcept} để giải quyết vấn đề thực tiễn.`,
         tags: [subjectName, chapterTitle, 'seed', 'application'],
         points: 10,
       },
@@ -623,8 +652,7 @@ export class AdminService {
         difficulty: Difficulty.Easy,
         options: [],
         correctAnswer: lesson.keyConcept,
-        explanation:
-          `Đáp án là "${lesson.keyConcept}" vì đây là khái niệm cốt lõi xuyên suốt nội dung bài.`,
+        explanation: `Đáp án là "${lesson.keyConcept}" vì đây là khái niệm cốt lõi xuyên suốt nội dung bài.`,
         tags: [subjectName, chapterTitle, 'seed', 'fill-in-blank'],
         points: 10,
       },
