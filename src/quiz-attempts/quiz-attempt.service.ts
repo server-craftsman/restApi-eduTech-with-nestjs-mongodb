@@ -206,6 +206,13 @@ export class QuizAttemptService {
     return this.quizAttemptRepository.findById(id);
   }
 
+  async countTodayAttemptsByUser(userId: string): Promise<number> {
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+    return this.quizAttemptRepository.countTodayByUser(userId.trim());
+  }
+
   /**
    * Get all attempts (non-deleted)
    */

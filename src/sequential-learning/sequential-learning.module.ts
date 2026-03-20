@@ -6,6 +6,7 @@ import { QuizAttemptModule } from '../quiz-attempts/quiz-attempt.module';
 import { LessonModule } from '../lessons/lesson.module';
 import { QuestionModule } from '../questions/question.module';
 import { ChapterModule } from '../chapters/chapter.module';
+import { UserSubscriptionModule } from '../user-subscriptions/user-subscription.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ChapterModule } from '../chapters/chapter.module';
     LessonModule,
     QuestionModule,
     ChapterModule,
+    UserSubscriptionModule,
   ],
   controllers: [SequentialLearningController],
   providers: [SequentialLearningService],

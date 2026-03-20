@@ -14,7 +14,8 @@ export class TaskSchedulerService {
   private readonly homeEndpoint: string;
 
   constructor(private readonly configService: ConfigService) {
-    const appUrl = this.configService.get<string>('app.url') ?? 'http://localhost:3000';
+    const appUrl =
+      this.configService.get<string>('app.url') ?? 'http://localhost:3000';
     this.homeEndpoint = `${appUrl.replace(/\/$/, '')}/`;
   }
 

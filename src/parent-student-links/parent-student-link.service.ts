@@ -17,6 +17,7 @@ import {
   QuizAttemptSummaryDto,
 } from './dto/student-progress-report.dto';
 import { ReportPeriod } from './dto/progress-report-period.dto';
+import { SendLinkCodeDto } from './dto/send-link-code.dto';
 import { SmsService } from './services/messaging.service';
 import { ZaloService } from './services/messaging.service';
 import { NotificationTriggersService } from '../notifications/services';
@@ -188,23 +189,58 @@ export class ParentStudentLinkService {
    */
   async sendLinkCodeToParent(
     studentUserId: string,
-    parentPhoneNumber: string,
-    channel: 'sms' | 'zalo',
+    dto: SendLinkCodeDto,
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     // Get the shareable code with pre-composed message
-    const { shareText } = await this.getShareableCode(studentUserId);
+    const { linkCode, shareText, expiresAt } =
+      await this.getShareableCode(studentUserId);
+
+    const studentProfile =
+      await this.studentProfileService.getProfileByUserId(studentUserId);
+    const studentName = studentProfile?.fullName ?? 'Học sinh EduTech';
 
     this.logger.log(
-      `Sending ${channel.toUpperCase()} to ${parentPhoneNumber} with message: ${shareText}`,
+      `Sending ${dto.channel.toUpperCase()} parent link code for student=${studentUserId}`,
     );
 
-    if (channel === 'sms') {
-      return this.smsService.sendSms(parentPhoneNumber, shareText);
-    } else if (channel === 'zalo') {
-      return this.zaloService.sendMessage(parentPhoneNumber, shareText);
+    if (dto.channel === 'email') {
+      if (!dto.parentEmail) {
+        throw new BadRequestException(
+          'parentEmail is required when channel=email',
+        );
+      }
+
+      const title = `Mã kết nối phụ huynh cho ${studentName}`;
+      const message =
+        `${dto.parentName ? `${dto.parentName}, ` : ''}` +
+        `đây là mã kết nối phụ huynh với học sinh ${studentName}: ${linkCode}. ` +
+        `Mã có hiệu lực đến ${new Intl.DateTimeFormat('vi-VN', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }).format(expiresAt)}. ` +
+        'Vui lòng mở EduTech > Phụ huynh > Nhập mã kết nối để hoàn tất liên kết.';
+
+      await this.mailService.sendNotificationEmail(
+        dto.parentEmail,
+        title,
+        message,
+        '/parent-student-links/connect',
+      );
+
+      return { success: true, messageId: 'EMAIL_SENT' };
     }
 
-    throw new BadRequestException('Invalid channel. Use "sms" or "zalo"');
+    if (dto.channel === 'zalo') {
+      if (!dto.parentPhoneNumber) {
+        throw new BadRequestException(
+          'parentPhoneNumber is required when channel=zalo',
+        );
+      }
+
+      return this.zaloService.sendMessage(dto.parentPhoneNumber, shareText);
+    }
+
+    throw new BadRequestException('Invalid channel. Use "email" or "zalo"');
   }
 
   /**

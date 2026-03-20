@@ -120,6 +120,17 @@ export class QuizAttemptRepository extends QuizAttemptRepositoryAbstract {
     return this.mapper.toDomainArray(docs);
   }
 
+  async countTodayByUser(userId: string): Promise<number> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return this.model.countDocuments({
+      userId: new Types.ObjectId(userId),
+      createdAt: { $gte: startOfToday },
+      ...this.NOT_DELETED,
+    });
+  }
+
   async getAttemptStats(userId: string): Promise<{
     totalAttempts: number;
     correctAttempts: number;

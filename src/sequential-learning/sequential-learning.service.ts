@@ -3,12 +3,15 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { LessonProgressService } from '../lesson-progress/lesson-progress.service';
 import { QuizAttemptService } from '../quiz-attempts/quiz-attempt.service';
 import { LessonService } from '../lessons/lesson.service';
 import { QuestionService } from '../questions/question.service';
 import { ChapterService } from '../chapters/chapter.service';
+import { UserSubscriptionService } from '../user-subscriptions/user-subscription.service';
 import {
   VideoProgressRequestDto,
   QuizSubmitDto,
@@ -56,6 +59,9 @@ const PASS_THRESHOLD = 80;
 /** Consider video "watched" once >= 90 % of it has been seen */
 const VIDEO_WATCH_THRESHOLD = 0.9;
 
+/** Maximum number of lesson quiz submissions a Free-tier user may make per day. */
+const FREE_DAILY_LESSON_QUIZ_LIMIT = 5;
+
 @Injectable()
 export class SequentialLearningService {
   constructor(
@@ -64,6 +70,7 @@ export class SequentialLearningService {
     private readonly lessonService: LessonService,
     private readonly questionService: QuestionService,
     private readonly chapterService: ChapterService,
+    private readonly userSubscriptionService: UserSubscriptionService,
   ) {}
 
   // =========================================================================
@@ -291,6 +298,41 @@ export class SequentialLearningService {
     if (questions.length === 0) {
       throw new BadRequestException('This lesson has no quiz questions');
     }
+
+    // ── Free-tier daily lesson quiz gate ───────────────────────────────────
+    const subStatus =
+      await this.userSubscriptionService.checkSubscriptionStatus(userId);
+    if (!subStatus.isPro) {
+      // Subscription lapsed — renewal UX
+      if (subStatus.hasExpired) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            requiresRenewal: true,
+            message:
+              'Gói Pro của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục làm quiz không giới hạn.',
+            upgradeUrl: '/payments/plans/compare',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+
+      const todayCount =
+        await this.quizAttemptService.countTodayAttemptsByUser(userId);
+      if (todayCount >= FREE_DAILY_LESSON_QUIZ_LIMIT) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            requiresUpgrade: true,
+            message: `Bạn đã hết lượt làm quiz hôm nay (${FREE_DAILY_LESSON_QUIZ_LIMIT} lần/ngày). Nâng cấp Pro để học và luyện tập không giới hạn.`,
+            upgradeUrl: '/payments/plans/compare',
+            remaining: 0,
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const attempt = await this.quizAttemptService.submitAttempt(userId, {
       lessonId,

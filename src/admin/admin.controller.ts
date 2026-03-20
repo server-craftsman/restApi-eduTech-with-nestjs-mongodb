@@ -1,4 +1,12 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -15,11 +23,14 @@ import {
   CourseStatsDto,
   RevenueStatsDto,
   SubscriptionStatsDto,
+  SeedLearningDataResponseDto,
 } from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
 import { UserRole } from '../enums';
+import { CurrentUser } from '../auth/decorators';
+import { User } from '../users/domain/user';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -32,6 +43,7 @@ import { UserRole } from '../enums';
   CourseStatsDto,
   RevenueStatsDto,
   SubscriptionStatsDto,
+  SeedLearningDataResponseDto,
 )
 export class AdminController extends BaseController {
   constructor(private readonly adminService: AdminService) {
@@ -92,6 +104,29 @@ export class AdminController extends BaseController {
       res,
       result,
       'Pending teachers retrieved successfully',
+    );
+  }
+
+  @Post('seed/learning-data')
+  @ApiOperation({
+    summary: 'Seed meaningful Vietnam learning data (Admin only)',
+    description:
+      'Creates at least 5 subjects and 5 courses. Each course has 3 chapters, ' +
+      'each chapter has 3 lessons, each lesson has 3 materials, and chapter/final exams.',
+  })
+  @ApiResponse({ status: 201, type: SeedLearningDataResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden – Admin only' })
+  async seedLearningData(
+    @CurrentUser() user: User,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const data = await this.adminService.seedLearningData(user.id);
+    return this.sendSuccess(
+      res,
+      data,
+      'Learning seed data processed successfully',
+      HttpStatus.CREATED,
     );
   }
 

@@ -19,6 +19,7 @@ export abstract class QuizAttemptRepositoryAbstract {
     userId: string,
     lessonId: string,
   ): Promise<QuizAttempt[]>;
+  abstract countTodayByUser(userId: string): Promise<number>;
   abstract findBestAttemptByUserAndLesson(
     userId: string,
     lessonId: string,

@@ -23,6 +23,7 @@ import { ParentStudentLinkService } from './parent-student-link.service';
 import {
   ConnectByCodeDto,
   GenerateLinkCodeResponseDto,
+  SendLinkCodeDto,
   LinkedStudentDto,
   LinkedParentDto,
   ShareCodeResponseDto,
@@ -119,49 +120,47 @@ export class ParentStudentLinkController extends BaseController {
   // }
 
   /**
-   * Step 1.5 (Student): Send link code to parent via SMS or Zalo.
+   * Step 1 (Student): Generate code and send directly to parent via Email/Zalo.
    */
-  // @Post('generate-code/send')
-  // @HttpCode(HttpStatus.OK)
-  // @UseGuards(JwtAuthGuard)
-  // @ApiBearerAuth()
-  // @ApiOperation({
-  //   summary: 'Step 1.5 — Send code via SMS/Zalo (Student)',
-  //   description:
-  //     'Sends the generated link code to a parent via SMS or Zalo channel. ' +
-  //     'Includes a pre-formatted Vietnamese message with instructions. ' +
-  //     'Requires parent phone number in E.164 format (e.g., +84901234567).',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Code sent successfully',
-  //   schema: {
-  //     example: {
-  //       success: true,
-  //       messageId: 'msg_12345abc',
-  //     },
-  //   },
-  // })
-  // @ApiResponse({
-  //   status: 400,
-  //   description: 'Invalid phone number or channel',
-  // })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // async sendCodeViaSmsZalo(
-  //   @CurrentUser() user: User,
-  //   @Body() body: { phoneNumber: string; channel: 'sms' | 'zalo' },
-  //   @Res() res: Response,
-  // ): Promise<Response> {
-  //   const result = await this.parentStudentLinkService.sendLinkCodeToParent(
-  //     user.id,
-  //     body.phoneNumber,
-  //     body.channel,
-  //   );
-  //   const message = result.success
-  //     ? `Code sent via ${body.channel.toUpperCase()} successfully`
-  //     : `Failed to send code via ${body.channel.toUpperCase()}`;
-  //   return this.sendSuccess(res, result, message);
-  // }
+  @Post('generate-code/send')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Step 1 — Generate code and send to parent (Email/Zalo)',
+    description:
+      'Student provides parent contact information, system generates/reuses a valid code, ' +
+      'then sends it directly via Email or Zalo.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Code sent successfully',
+    schema: {
+      example: {
+        success: true,
+        messageId: 'EMAIL_SENT',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid parent info or channel',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async sendCodeToParent(
+    @CurrentUser() user: User,
+    @Body() dto: SendLinkCodeDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.parentStudentLinkService.sendLinkCodeToParent(
+      user.id,
+      dto,
+    );
+    const message = result.success
+      ? `Code sent via ${dto.channel.toUpperCase()} successfully`
+      : `Failed to send code via ${dto.channel.toUpperCase()}`;
+    return this.sendSuccess(res, result, message);
+  }
 
   /**
    * Step 2 (Parent): Connect to a student by submitting the link code.
