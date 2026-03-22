@@ -64,7 +64,7 @@ export abstract class BaseRepository<
     filter: Record<string, unknown>,
     sort?: Record<string, SortOrder | { $meta: 'textScore' }>,
   ): Promise<TDomain[]> {
-    let query = this.model.find(filter as FindFilter<TDocumentType>);
+    let query = this.model.find(filter as unknown as FindFilter<TDocumentType>);
     if (sort) {
       query = query.sort(sort);
     }
@@ -87,7 +87,7 @@ export abstract class BaseRepository<
     limit: number,
   ): Promise<TDomain[]> {
     const docs = await this.model
-      .find(filter as FindFilter<TDocumentType>)
+      .find(filter as unknown as FindFilter<TDocumentType>)
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -143,7 +143,9 @@ export abstract class BaseRepository<
    * @returns Number of matching documents
    */
   async count(filter: Record<string, unknown> = {}): Promise<number> {
-    return this.model.countDocuments(filter as CountFilter<TDocumentType>).exec();
+    return this.model
+      .countDocuments(filter as unknown as CountFilter<TDocumentType>)
+      .exec();
   }
 
   /**
@@ -153,7 +155,7 @@ export abstract class BaseRepository<
    */
   async exists(id: string): Promise<boolean> {
     const count = await this.model
-      .countDocuments({ _id: id } as CountFilter<TDocumentType>)
+      .countDocuments({ _id: id } as unknown as CountFilter<TDocumentType>)
       .exec();
     return count > 0;
   }
