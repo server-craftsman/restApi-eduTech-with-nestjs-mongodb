@@ -5,6 +5,7 @@ import {
   CallHandler,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { from, Observable, of } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { CacheService } from '../services/cache.service';
@@ -24,6 +25,13 @@ type CacheValue =
   | null
   | Record<string, unknown>
   | CacheValue[];
+
+type MaybeExpressResponse = {
+  setHeader?: (...args: unknown[]) => unknown;
+  status?: (...args: unknown[]) => unknown;
+  json?: (...args: unknown[]) => unknown;
+  send?: (...args: unknown[]) => unknown;
+};
 
 /**
  * Cache Interceptor
@@ -59,12 +67,26 @@ export class CacheInterceptor implements NestInterceptor {
     /\/public/,
   ];
 
-  constructor(private cacheService: CacheService) {}
+  constructor(
+    private readonly cacheService: CacheService,
+    private readonly configService: ConfigService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const response = context.switchToHttp().getResponse<Response>();
     const method = request.method;
+
+    const cacheEnabled = this.configService.get<string>('CACHE_ENABLED', 'true');
+    const httpCacheEnabled = this.configService.get<string>(
+      'HTTP_CACHE_ENABLED',
+      'true',
+    );
+    const isCacheOn = cacheEnabled !== 'false' && httpCacheEnabled !== 'false';
+
+    if (!isCacheOn) {
+      return next.handle();
+    }
 
     // Chỉ cache GET requests
     if (method !== 'GET') {
@@ -84,28 +106,50 @@ export class CacheInterceptor implements NestInterceptor {
       switchMap((cached) => {
         if (cached !== null && cached !== undefined) {
           this.logger.debug(`Cache HIT for ${cacheKey}`);
-          response.set({
-            'X-Cache': 'HIT',
-            'Cache-Control': 'public, max-age=300',
-          });
+          if (this.canSetHeaders(response)) {
+            response.set({
+              'X-Cache': 'HIT',
+              'Cache-Control': 'public, max-age=300',
+            });
+          }
           return of(cached);
         }
 
         this.logger.debug(`Cache MISS for ${cacheKey}`);
         return next.handle().pipe(
           tap((data: unknown) => {
+            if (this.isExpressResponse(data)) {
+              return;
+            }
+
             const ttl = this.extractTtlFromHeaders(response);
             this.cacheService.set(cacheKey, data, ttl).catch((err) => {
               this.logger.warn(`Failed to cache ${cacheKey}:`, err);
             });
 
-            response.set({
-              'X-Cache': 'MISS',
-              'Cache-Control': `public, max-age=${ttl || 300}`,
-            });
+            if (this.canSetHeaders(response)) {
+              response.set({
+                'X-Cache': 'MISS',
+                'Cache-Control': `public, max-age=${ttl || 300}`,
+              });
+            }
           }),
         );
       }),
+    );
+  }
+
+  private canSetHeaders(response: Response): boolean {
+    return !response.headersSent && !response.writableEnded;
+  }
+
+  private isExpressResponse(value: unknown): value is MaybeExpressResponse {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as MaybeExpressResponse;
+    return (
+      typeof candidate.setHeader === 'function' &&
+      typeof candidate.status === 'function' &&
+      (typeof candidate.json === 'function' || typeof candidate.send === 'function')
     );
   }
 

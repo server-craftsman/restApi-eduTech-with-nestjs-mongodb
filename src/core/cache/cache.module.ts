@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { redisConfig } from './config/redis.config';
 import { CacheService } from './services/cache.service';
 import { RateLimiterService } from './services/rate-limiter.service';
@@ -12,6 +13,7 @@ import { CacheInterceptor } from './interceptors/cache.interceptor';
  * Cache Module
  * Provides Redis-based caching and rate limiting services.
  */
+@Global()
 @Module({
   imports: [
     NestCacheModule.registerAsync({
@@ -26,6 +28,10 @@ import { CacheInterceptor } from './interceptors/cache.interceptor';
     RateLimitConfigService,
     RateLimitGuard,
     CacheInterceptor,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
+    },
   ],
   exports: [
     CacheService,

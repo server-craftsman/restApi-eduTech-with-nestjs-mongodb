@@ -10,10 +10,26 @@ import { CreateChapterDto, UpdateChapterDto } from './dto';
 import { FilterChapterDto, SortChapterDto, ChapterStatisticsDto } from './dto';
 import { infinityPagination } from '../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../utils/dto/infinity-pagination-response.dto';
+import { CacheService, CACHE_KEYS } from '../core/cache';
 
 @Injectable()
 export class ChapterService {
-  constructor(private readonly chapterRepository: ChapterRepositoryAbstract) {}
+  constructor(
+    private readonly chapterRepository: ChapterRepositoryAbstract,
+    private readonly cacheService: CacheService,
+  ) {}
+
+  private async invalidateChapterCaches(): Promise<void> {
+    await Promise.all([
+      this.cacheService.invalidatePattern(CACHE_KEYS.CHAPTER),
+      this.cacheService.invalidatePattern(CACHE_KEYS.CHAPTERS_BY_COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_CHAPTERS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_LESSONS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.LESSONS_BY_CHAPTER),
+      this.cacheService.invalidatePattern(CACHE_KEYS.SEARCH),
+    ]);
+  }
 
   /**
    * Create a new chapter — TEACHER/ADMIN only
@@ -46,7 +62,7 @@ export class ChapterService {
       }
     }
 
-    return this.chapterRepository.create({
+    const created = await this.chapterRepository.create({
       courseId: dto.courseId,
       title: dto.title.trim(),
       description: dto.description ? dto.description.trim() : null,
@@ -54,6 +70,8 @@ export class ChapterService {
       isPublished: false, // Draft by default
       isDeleted: false,
     });
+    await this.invalidateChapterCaches();
+    return created;
   }
 
   /**
@@ -136,6 +154,8 @@ export class ChapterService {
       throw new NotFoundException(`Chapter with id ${id} not found`);
     }
 
+    await this.invalidateChapterCaches();
+
     return updated;
   }
 
@@ -161,6 +181,8 @@ export class ChapterService {
       throw new NotFoundException(`Chapter with id ${id} not found`);
     }
 
+    await this.invalidateChapterCaches();
+
     return updated;
   }
 
@@ -173,7 +195,8 @@ export class ChapterService {
       throw new NotFoundException(`Chapter with id ${id} not found`);
     }
 
-    return this.chapterRepository.softDelete(id);
+    await this.chapterRepository.softDelete(id);
+    await this.invalidateChapterCaches();
   }
 
   /**
@@ -202,7 +225,12 @@ export class ChapterService {
       }
     }
 
-    return this.chapterRepository.reorderChapters(courseId, chapters);
+    const reordered = await this.chapterRepository.reorderChapters(
+      courseId,
+      chapters,
+    );
+    await this.invalidateChapterCaches();
+    return reordered;
   }
 
   /**

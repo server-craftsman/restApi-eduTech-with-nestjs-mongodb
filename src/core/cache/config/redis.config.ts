@@ -9,6 +9,18 @@ import * as redisStore from 'cache-manager-redis-store';
 export const redisConfig = (
   configService: ConfigService,
 ): CacheModuleOptions => {
+  const cacheEnabled = configService.get<string>('CACHE_ENABLED', 'true');
+  const cacheStore = configService.get<string>('CACHE_STORE', 'redis');
+  const defaultTtl = configService.get<number>('CACHE_TTL_MEDIUM', 300);
+  const maxItems = configService.get<number>('CACHE_MAX_ITEMS', 100);
+
+  if (cacheEnabled === 'false' || cacheStore === 'memory') {
+    return {
+      isGlobal: true,
+      ttl: defaultTtl,
+    } as CacheModuleOptions;
+  }
+
   const redisUrl = configService.get<string>('REDIS_URL');
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
@@ -18,8 +30,8 @@ export const redisConfig = (
       isGlobal: true,
       store: redisStore as unknown as never,
       url: redisUrl,
-      ttl: 300, // Default 5 minutes
-      max: 100, // Max items in cache
+      ttl: defaultTtl,
+      max: maxItems,
     } as unknown as CacheModuleOptions;
   }
 
@@ -47,8 +59,8 @@ export const redisConfig = (
     isGlobal: true,
     store: redisStore as unknown as never,
     ...redisOptions,
-    ttl: 300, // Default 5 minutes
-    max: 100, // Max items in cache
+    ttl: defaultTtl,
+    max: maxItems,
   } as unknown as CacheModuleOptions;
 };
 

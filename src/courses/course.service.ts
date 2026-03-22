@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 import { NotificationTriggersService } from '../notifications/services';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
 import { GradeLevelService } from '../grade-levels/grade-level.service';
+import { CacheService, CACHE_KEYS } from '../core/cache';
 
 interface PersonalizedCoursesResult {
   courses: Course[];
@@ -38,8 +39,23 @@ export class CourseService extends BaseService {
     private readonly notificationTriggers: NotificationTriggersService,
     private readonly studentProfileService: StudentProfileService,
     private readonly gradeLevelService: GradeLevelService,
+    private readonly cacheService: CacheService,
   ) {
     super();
+  }
+
+  private async invalidateCourseCaches(): Promise<void> {
+    await Promise.all([
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSES_ALL),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_CHAPTERS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_LESSONS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.CHAPTERS_BY_COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.LESSONS_BY_CHAPTER),
+      this.cacheService.invalidatePattern(CACHE_KEYS.DASHBOARD_STATS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_STATS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.SEARCH),
+    ]);
   }
 
   /**
@@ -202,7 +218,9 @@ export class CourseService extends BaseService {
       title: data.title.trim(),
       description: data.description.trim(),
     };
-    return this.courseRepository.create(courseData);
+    const created = await this.courseRepository.create(courseData);
+    await this.invalidateCourseCaches();
+    return created;
   }
 
   async getCourseById(id: string): Promise<Course | null> {
@@ -360,7 +378,11 @@ export class CourseService extends BaseService {
 
     // Remove fields that shouldn't be updated directly
     const { ...updateData } = data;
-    return this.courseRepository.update(id, updateData);
+    const updated = await this.courseRepository.update(id, updateData);
+    if (updated) {
+      await this.invalidateCourseCaches();
+    }
+    return updated;
   }
 
   async updateCourseStatus(
@@ -377,7 +399,11 @@ export class CourseService extends BaseService {
       throw new BadRequestException(`Invalid course status: ${status}`);
     }
 
-    return this.courseRepository.update(id, { status });
+    const updated = await this.courseRepository.update(id, { status });
+    if (updated) {
+      await this.invalidateCourseCaches();
+    }
+    return updated;
   }
 
   async softDeleteCourse(id: string): Promise<void> {
@@ -385,17 +411,23 @@ export class CourseService extends BaseService {
       isDeleted: true,
       deletedAt: new Date(),
     });
+    await this.invalidateCourseCaches();
   }
 
   async restoreCourse(id: string): Promise<Course | null> {
-    return this.courseRepository.update(id, {
+    const restored = await this.courseRepository.update(id, {
       isDeleted: false,
       deletedAt: null,
     });
+    if (restored) {
+      await this.invalidateCourseCaches();
+    }
+    return restored;
   }
 
   async deleteCourse(id: string): Promise<void> {
-    return this.courseRepository.delete(id);
+    await this.courseRepository.delete(id);
+    await this.invalidateCourseCaches();
   }
 
   async findByAuthorId(authorId: string): Promise<Course[]> {
@@ -499,6 +531,7 @@ export class CourseService extends BaseService {
     if (!updated) {
       throw new NotFoundException('Failed to submit course for review');
     }
+    await this.invalidateCourseCaches();
     return updated;
   }
 
@@ -523,6 +556,8 @@ export class CourseService extends BaseService {
     if (!updated) {
       throw new NotFoundException('Failed to approve course');
     }
+
+    await this.invalidateCourseCaches();
 
     void this.tryPushCourseApprovalNotification(
       updated.authorId,
@@ -558,6 +593,8 @@ export class CourseService extends BaseService {
     if (!updated) {
       throw new NotFoundException('Failed to reject course');
     }
+
+    await this.invalidateCourseCaches();
 
     void this.tryPushCourseApprovalNotification(
       updated.authorId,

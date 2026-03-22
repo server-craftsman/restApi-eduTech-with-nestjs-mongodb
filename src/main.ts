@@ -124,8 +124,7 @@ async function bootstrap() {
         'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js',
         'https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js',
       ],
-      customfavIcon:
-        'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
+      customfavIcon: 'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
       customSiteTitle: 'EduTech API Docs',
     });
 

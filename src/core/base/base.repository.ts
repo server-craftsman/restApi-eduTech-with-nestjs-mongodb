@@ -1,9 +1,4 @@
-import {
-  Model,
-  HydratedDocument,
-  UpdateQuery,
-  SortOrder,
-} from 'mongoose';
+import { Model, HydratedDocument, UpdateQuery, SortOrder } from 'mongoose';
 
 /**
  * Base repository abstract class with common repository patterns for MongoDB/Mongoose
@@ -28,7 +23,7 @@ export abstract class BaseRepository<
    * Find entity by ID
    */
   async findById(id: string): Promise<TDomain | null> {
-    const doc = await this.model.findById(id).exec();
+    const doc = await this.model.findById(id).lean().exec();
     return doc ? this.mapper.toDomain(doc) : null;
   }
 
@@ -48,6 +43,7 @@ export abstract class BaseRepository<
         .sort({ createdAt: -1 })
         .skip(offset)
         .limit(limit)
+        .lean()
         .exec(),
       this.model.countDocuments().exec(),
     ]);
@@ -68,7 +64,7 @@ export abstract class BaseRepository<
     if (sort) {
       query = query.sort(sort);
     }
-    const docs = await query.exec();
+    const docs = await query.lean().exec();
     return this.mapper.toDomainArray(docs);
   }
 
@@ -91,6 +87,7 @@ export abstract class BaseRepository<
       .sort(sort)
       .skip(skip)
       .limit(limit)
+      .lean()
       .exec();
     return this.mapper.toDomainArray(docs);
   }

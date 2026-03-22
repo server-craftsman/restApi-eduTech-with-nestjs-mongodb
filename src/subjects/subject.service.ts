@@ -9,6 +9,7 @@ import {
   SubjectDocumentType,
 } from './infrastructure/persistence/document/schemas/subject.schema';
 import { CreateSubjectDto, UpdateSubjectDto, QuerySubjectDto } from './dto';
+import { CacheService, CACHE_KEYS } from '../core/cache';
 
 @Injectable()
 export class SubjectService extends BaseCrudService<
@@ -16,8 +17,20 @@ export class SubjectService extends BaseCrudService<
   SubjectDocument,
   SubjectDocumentType
 > {
-  constructor(protected readonly subjectRepository: SubjectRepositoryAbstract) {
+  constructor(
+    protected readonly subjectRepository: SubjectRepositoryAbstract,
+    private readonly cacheService: CacheService,
+  ) {
     super(subjectRepository);
+  }
+
+  private async invalidateSubjectCaches(): Promise<void> {
+    await Promise.all([
+      this.cacheService.invalidatePattern(CACHE_KEYS.SUBJECTS_ALL),
+      this.cacheService.invalidatePattern(CACHE_KEYS.SUBJECT),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSES_ALL),
+      this.cacheService.invalidatePattern(CACHE_KEYS.SEARCH),
+    ]);
   }
 
   // ── Slug helpers ───────────────────────────────────────────────────────────
@@ -194,11 +207,14 @@ export class SubjectService extends BaseCrudService<
       );
     }
 
-    return this.subjectRepository.create({
+    const created = await this.subjectRepository.create({
       name: dto.name,
       slug,
       iconUrl: dto.iconUrl,
     });
+
+    await this.invalidateSubjectCaches();
+    return created;
   }
 
   /**
@@ -251,6 +267,8 @@ export class SubjectService extends BaseCrudService<
       throw new NotFoundException(`Subject with id ${id} not found`);
     }
 
+    await this.invalidateSubjectCaches();
+
     return updated;
   }
 
@@ -260,6 +278,7 @@ export class SubjectService extends BaseCrudService<
       throw new NotFoundException(`Subject with id ${id} not found`);
     }
     await this.softDelete(id);
+    await this.invalidateSubjectCaches();
   }
 
   async restoreSubject(id: string): Promise<Subject> {
@@ -269,6 +288,7 @@ export class SubjectService extends BaseCrudService<
         `Subject with id ${id} not found or is not deleted`,
       );
     }
+    await this.invalidateSubjectCaches();
     return restored;
   }
 }

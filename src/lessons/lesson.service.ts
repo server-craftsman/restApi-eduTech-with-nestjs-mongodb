@@ -6,6 +6,7 @@ import {
 import { LessonRepositoryAbstract } from './infrastructure/persistence/document/repositories/lesson.repository.abstract';
 import { Lesson } from './domain/lesson';
 import { CreateLessonDto, UpdateLessonDto } from './dto';
+import { CacheService, CACHE_KEYS } from '../core/cache';
 
 /**
  * Service for managing lessons
@@ -13,7 +14,24 @@ import { CreateLessonDto, UpdateLessonDto } from './dto';
  */
 @Injectable()
 export class LessonService {
-  constructor(private readonly lessonRepository: LessonRepositoryAbstract) {}
+  constructor(
+    private readonly lessonRepository: LessonRepositoryAbstract,
+    private readonly cacheService: CacheService,
+  ) {}
+
+  private async invalidateLessonCaches(): Promise<void> {
+    await Promise.all([
+      this.cacheService.invalidatePattern(CACHE_KEYS.LESSON),
+      this.cacheService.invalidatePattern(CACHE_KEYS.LESSONS_ALL),
+      this.cacheService.invalidatePattern(CACHE_KEYS.LESSONS_BY_CHAPTER),
+      this.cacheService.invalidatePattern(CACHE_KEYS.CHAPTER),
+      this.cacheService.invalidatePattern(CACHE_KEYS.CHAPTERS_BY_COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_CHAPTERS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.COURSE_LESSONS),
+      this.cacheService.invalidatePattern(CACHE_KEYS.SEARCH),
+    ]);
+  }
 
   /**
    * Create a new lesson
@@ -57,7 +75,9 @@ export class LessonService {
       deletedAt: null,
     };
 
-    return this.lessonRepository.create(lessonData);
+    const created = await this.lessonRepository.create(lessonData);
+    await this.invalidateLessonCaches();
+    return created;
   }
 
   /**
@@ -129,6 +149,7 @@ export class LessonService {
     if (!updated) {
       throw new NotFoundException(`Failed to update lesson with ID ${id}`);
     }
+    await this.invalidateLessonCaches();
     return updated;
   }
 
@@ -143,6 +164,7 @@ export class LessonService {
       throw new NotFoundException(`Lesson with ID ${id} not found`);
     }
     await this.lessonRepository.softDelete(id);
+    await this.invalidateLessonCaches();
   }
 
   /**
