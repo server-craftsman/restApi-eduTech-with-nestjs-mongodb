@@ -112,6 +112,7 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
 
     SwaggerModule.setup('swagger', app, document, {
+      useGlobalPrefix: true,
       swaggerOptions: {
         persistAuthorization: true,
         displayRequestDuration: true,
