@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "env": {
+    "NODE_ENV": "production",
+    "DATABASE_URL": "@database_url",
+    "REDIS_URL": "@redis_url",
+    "REDIS_HOST": "@redis_host",
+    "REDIS_PORT": "@redis_port",
+    "JWT_SECRET": "@jwt_secret",
+    "JWT_EXPIRATION": "@jwt_expiration",
+    "APP_URL": "@app_url",
+    "CORS_ORIGIN": "@cors_origin"
+  },
+  "builds": [
+    {
+      "src": "dist/main.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/main.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type,Accept,Authorization"
+        }
+      ]
+    }
+  ]
+}

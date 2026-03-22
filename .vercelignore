@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+
+# Development
+.env.local
+.env.*.local
+.env.development
+
+# Build
+.next
+.nuxt
+dist
+build
+*.tsbuildinfo
+
+# Logs
+*.log
+logs
+
+# Test
+coverage
+.nyc_output
+jest.config.js
+
+# Misc
+.DS_Store
+*.pem
+.vscode
+.idea
+
+# Docs
+docs
+README.md
+CHANGELOG.md
+
+# Scripts
+scripts/*.sh
+scripts/*.bat
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Tests
+test
+*.spec.ts
+
+# Other
+views
+.hygen.js
+.npmrc
+render.yaml
