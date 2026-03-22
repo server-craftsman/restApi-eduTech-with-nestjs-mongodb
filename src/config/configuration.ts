@@ -55,12 +55,17 @@ export default () => ({
     ),
   },
   mail: {
-    host: getEnv('SMTP_HOST', ''),
-    port: parseInt(getEnv('SMTP_PORT', '587'), 10),
-    secure: getEnv('SMTP_SECURE', 'false') === 'true',
-    user: getEnv('SMTP_USER', ''),
-    pass: getEnv('SMTP_PASS', ''),
-    fromEmail: getEnv('SMTP_FROM_EMAIL', 'no-reply@edutech.local'),
+    service: getEnv('SMTP_SERVICE', ''),
+    host: getEnv('SMTP_HOST', getEnv('MAIL_HOST', '')),
+    port: parseInt(getEnv('SMTP_PORT', getEnv('MAIL_PORT', '587')), 10),
+    secure: getEnv('SMTP_SECURE', getEnv('MAIL_SECURE', 'false')) === 'true',
+    user: getEnv('SMTP_USER', getEnv('MAIL_USER', '')),
+    pass: getEnv('SMTP_PASS', getEnv('MAIL_PASSWORD', '')),
+    fromEmail: getEnv(
+      'SMTP_FROM_EMAIL',
+      getEnv('MAIL_DEFAULT_EMAIL', 'no-reply@edutech.local'),
+    ),
+    fromName: getEnv('MAIL_DEFAULT_NAME', 'EduTech'),
     verificationTokenExpiresMinutes: parseInt(
       getEnv('EMAIL_VERIFICATION_EXPIRES_MINUTES', String(24 * 60)),
       10,

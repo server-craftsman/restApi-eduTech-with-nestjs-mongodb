@@ -103,27 +103,51 @@ const baseEnvValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN_DAYS: Joi.number().integer().positive().default(7),
 
   // SMTP / Mail
+  SMTP_SERVICE: Joi.string().allow('').optional(),
   SMTP_HOST: Joi.string().when('NODE_ENV', {
     is: 'production',
-    then: Joi.required(),
+    then: Joi.when('MAIL_HOST', {
+      is: Joi.string().min(1),
+      then: Joi.string().allow('').optional(),
+      otherwise: Joi.required(),
+    }),
     otherwise: Joi.string().allow('').optional(),
   }),
   SMTP_PORT: Joi.number().default(587),
   SMTP_SECURE: Joi.string().valid('true', 'false').default('false'),
   SMTP_USER: Joi.string().when('NODE_ENV', {
     is: 'production',
-    then: Joi.required(),
+    then: Joi.when('MAIL_USER', {
+      is: Joi.string().min(1),
+      then: Joi.string().allow('').optional(),
+      otherwise: Joi.required(),
+    }),
     otherwise: Joi.string().allow('').optional(),
   }),
   SMTP_PASS: Joi.string().when('NODE_ENV', {
     is: 'production',
-    then: Joi.required(),
+    then: Joi.when('MAIL_PASSWORD', {
+      is: Joi.string().min(1),
+      then: Joi.string().allow('').optional(),
+      otherwise: Joi.required(),
+    }),
     otherwise: Joi.string().allow('').optional(),
   }),
+  MAIL_HOST: Joi.string().allow('').optional(),
+  MAIL_PORT: Joi.number().optional(),
+  MAIL_SECURE: Joi.string().valid('true', 'false').optional(),
+  MAIL_USER: Joi.string().allow('').optional(),
+  MAIL_PASSWORD: Joi.string().allow('').optional(),
+  MAIL_DEFAULT_EMAIL: Joi.string().allow('').optional(),
+  MAIL_DEFAULT_NAME: Joi.string().allow('').optional(),
   // Accepts both plain email ("a@b.com") and RFC 5322 display-name format ("Name <a@b.com>")
   SMTP_FROM_EMAIL: Joi.string().when('NODE_ENV', {
     is: 'production',
-    then: Joi.required(),
+    then: Joi.when('MAIL_DEFAULT_EMAIL', {
+      is: Joi.string().min(1),
+      then: Joi.string().allow('').optional(),
+      otherwise: Joi.required(),
+    }),
     otherwise: Joi.string().default('no-reply@edutech.local'),
   }),
   EMAIL_VERIFICATION_EXPIRES_MINUTES: Joi.number()
