@@ -63,4 +63,3 @@ export const TransactionSchema =
 // ── Indexes ────────────────────────────────────────────────────────────────
 TransactionSchema.index({ userId: 1 });
 TransactionSchema.index({ status: 1 });
-TransactionSchema.index({ providerRefId: 1 }, { unique: true });

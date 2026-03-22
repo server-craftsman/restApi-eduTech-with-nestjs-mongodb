@@ -123,6 +123,14 @@ async function bootstrap() {
       customSiteTitle: 'EduTech API Docs',
     });
 
+    // Backward-compatible Swagger redirects when global prefix is enabled
+    expressApp.get('/swagger', (_req, res) => {
+      res.redirect(302, `/${globalPrefix}/swagger`);
+    });
+    expressApp.get('/swagger/', (_req, res) => {
+      res.redirect(302, `/${globalPrefix}/swagger`);
+    });
+
     await app.listen(port, '0.0.0.0');
     console.log(`Server is running...`);
   } catch (error) {
