@@ -6,9 +6,12 @@ import * as Joi from 'joi';
  */
 export const cacheValidationSchema = Joi.object({
   // Redis Configuration
-  REDIS_URL: Joi.string().uri().optional().messages({
-    'string.uri': 'REDIS_URL must be a valid URI (redis://...)',
-  }),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .optional()
+    .messages({
+      'string.uri': 'REDIS_URL must be a valid URI (redis:// or rediss://)',
+    }),
 
   REDIS_HOST: Joi.string().default('localhost').messages({
     'string.base': 'REDIS_HOST must be a string',

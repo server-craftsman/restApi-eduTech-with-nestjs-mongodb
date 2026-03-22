@@ -9,12 +9,21 @@ import * as redisStore from 'cache-manager-redis-store';
 export const redisConfig = (
   configService: ConfigService,
 ): CacheModuleOptions => {
-  const cacheEnabled = configService.get<string>('CACHE_ENABLED', 'true');
+  const cacheEnabledRaw = configService.get<string | boolean>(
+    'CACHE_ENABLED',
+    true,
+  );
+  const cacheEnabled =
+    typeof cacheEnabledRaw === 'boolean'
+      ? cacheEnabledRaw
+      : cacheEnabledRaw !== 'false';
+
   const cacheStore = configService.get<string>('CACHE_STORE', 'redis');
   const defaultTtl = configService.get<number>('CACHE_TTL_MEDIUM', 300);
   const maxItems = configService.get<number>('CACHE_MAX_ITEMS', 100);
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
-  if (cacheEnabled === 'false' || cacheStore === 'memory') {
+  if (!cacheEnabled || cacheStore === 'memory') {
     return {
       isGlobal: true,
       ttl: defaultTtl,
@@ -22,6 +31,15 @@ export const redisConfig = (
   }
 
   const redisUrl = configService.get<string>('REDIS_URL');
+
+  // In production, require REDIS_URL explicitly (Upstash/Redis Cloud)
+  if (nodeEnv === 'production' && !redisUrl) {
+    throw new Error(
+      'REDIS_URL is required in production when CACHE_STORE=redis. ' +
+        'Please set your Upstash REDIS_URL (rediss://...).',
+    );
+  }
+
   // Always prefer REDIS_URL when provided (Upstash/Redis Cloud/local URL)
   if (redisUrl) {
     return {
