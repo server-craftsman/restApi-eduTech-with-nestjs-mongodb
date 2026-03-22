@@ -48,3 +48,7 @@ export type LessonDocumentType = HydratedDocument<LessonDocument> & {
 };
 
 export const LessonSchema = SchemaFactory.createForClass(LessonDocument);
+
+// ── Performance indexes for lesson queries ─────────────────────────────────
+LessonSchema.index({ chapterId: 1, isDeleted: 1, orderIndex: 1 });
+LessonSchema.index({ isDeleted: 1, createdAt: -1 });

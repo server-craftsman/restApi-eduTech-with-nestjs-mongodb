@@ -77,7 +77,10 @@ export class CacheInterceptor implements NestInterceptor {
     const response = context.switchToHttp().getResponse<Response>();
     const method = request.method;
 
-    const cacheEnabled = this.configService.get<string>('CACHE_ENABLED', 'true');
+    const cacheEnabled = this.configService.get<string>(
+      'CACHE_ENABLED',
+      'true',
+    );
     const httpCacheEnabled = this.configService.get<string>(
       'HTTP_CACHE_ENABLED',
       'true',
@@ -149,7 +152,8 @@ export class CacheInterceptor implements NestInterceptor {
     return (
       typeof candidate.setHeader === 'function' &&
       typeof candidate.status === 'function' &&
-      (typeof candidate.json === 'function' || typeof candidate.send === 'function')
+      (typeof candidate.json === 'function' ||
+        typeof candidate.send === 'function')
     );
   }
 

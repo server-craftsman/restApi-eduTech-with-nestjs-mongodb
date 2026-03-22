@@ -122,19 +122,21 @@ export class ChapterRepository extends ChapterRepositoryAbstract {
     courseId: string,
     chapters: Array<{ id: string; orderIndex: number }>,
   ): Promise<Chapter[]> {
-    for (const chapter of chapters) {
-      await this.model
-        .findOneAndUpdate(
-          {
-            _id: chapter.id,
-            courseId: new Types.ObjectId(courseId),
-            ...NOT_DELETED,
+    if (chapters.length > 0) {
+      await this.model.bulkWrite(
+        chapters.map((chapter) => ({
+          updateOne: {
+            filter: {
+              _id: chapter.id,
+              courseId: new Types.ObjectId(courseId),
+              ...NOT_DELETED,
+            },
+            update: { $set: { orderIndex: chapter.orderIndex } },
           },
-          { $set: { orderIndex: chapter.orderIndex } },
-          { new: true },
-        )
-        .exec();
+        })),
+      );
     }
+
     return this.findByCourseId(courseId);
   }
 

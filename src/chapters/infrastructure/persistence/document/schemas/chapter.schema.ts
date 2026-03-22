@@ -29,3 +29,7 @@ export type ChapterDocumentType = HydratedDocument<ChapterDocument> & {
 };
 
 export const ChapterSchema = SchemaFactory.createForClass(ChapterDocument);
+
+// ── Performance indexes for chapter queries ────────────────────────────────
+ChapterSchema.index({ courseId: 1, isDeleted: 1, orderIndex: 1 });
+ChapterSchema.index({ isDeleted: 1, isPublished: 1, createdAt: -1 });

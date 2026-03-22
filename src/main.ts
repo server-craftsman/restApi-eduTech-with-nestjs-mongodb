@@ -39,6 +39,14 @@ async function bootstrap() {
     expressApp.use(express.json({ limit: '10mb' }));
     expressApp.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+    // Ignore Chrome DevTools probe endpoint to avoid noisy 404 logs
+    expressApp.get(
+      '/.well-known/appspecific/com.chrome.devtools.json',
+      (_req, res) => {
+        res.status(204).end();
+      },
+    );
+
     // Increase timeout for long-running requests (120 seconds = 2 minutes)
     expressApp.use((req, res, next) => {
       req.setTimeout(120000);

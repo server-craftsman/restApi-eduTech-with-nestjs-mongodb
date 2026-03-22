@@ -10,7 +10,7 @@ import { CreateChapterDto, UpdateChapterDto } from './dto';
 import { FilterChapterDto, SortChapterDto, ChapterStatisticsDto } from './dto';
 import { infinityPagination } from '../utils/infinity-pagination';
 import { InfinityPaginationResponseDto } from '../utils/dto/infinity-pagination-response.dto';
-import { CacheService, CACHE_KEYS } from '../core/cache';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 
 @Injectable()
 export class ChapterService {
@@ -78,7 +78,11 @@ export class ChapterService {
    * Get chapter by ID — all roles can read if published, TEACHER/ADMIN can read drafts
    */
   async findById(id: string): Promise<Chapter | null> {
-    return this.chapterRepository.findById(id);
+    return this.cacheService.getOrFetch(
+      `${CACHE_KEYS.CHAPTER}${id}`,
+      () => this.chapterRepository.findById(id),
+      CACHE_TTL.CHAPTERS,
+    );
   }
 
   /**
@@ -90,11 +94,23 @@ export class ChapterService {
     filters?: FilterChapterDto | null,
     sort?: SortChapterDto[] | null,
   ): Promise<InfinityPaginationResponseDto<Chapter>> {
-    const [items] = await this.chapterRepository.findAllWithFilters(
+    const cacheKey = `${CACHE_KEYS.CHAPTERS_BY_COURSE}list:${JSON.stringify({
+      page,
       limit,
-      (page - 1) * limit,
-      filters ?? undefined,
-      sort ?? undefined,
+      filters: filters ?? null,
+      sort: sort ?? null,
+    })}`;
+
+    const [items] = await this.cacheService.getOrFetch(
+      cacheKey,
+      () =>
+        this.chapterRepository.findAllWithFilters(
+          limit,
+          (page - 1) * limit,
+          filters ?? undefined,
+          sort ?? undefined,
+        ),
+      CACHE_TTL.CHAPTERS,
     );
 
     return infinityPagination(items, { page, limit });
@@ -203,7 +219,11 @@ export class ChapterService {
    * Get chapters by course ID — ordered by orderIndex
    */
   async findByCourseId(courseId: string): Promise<Chapter[]> {
-    return this.chapterRepository.findByCourseId(courseId);
+    return this.cacheService.getOrFetch(
+      `${CACHE_KEYS.CHAPTERS_BY_COURSE}${courseId}`,
+      () => this.chapterRepository.findByCourseId(courseId),
+      CACHE_TTL.CHAPTERS,
+    );
   }
 
   /**

@@ -9,7 +9,7 @@ import {
   SubjectDocumentType,
 } from './infrastructure/persistence/document/schemas/subject.schema';
 import { CreateSubjectDto, UpdateSubjectDto, QuerySubjectDto } from './dto';
-import { CacheService, CACHE_KEYS } from '../core/cache';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 
 @Injectable()
 export class SubjectService extends BaseCrudService<
@@ -128,12 +128,24 @@ export class SubjectService extends BaseCrudService<
   // ── Public API ──────────────────────────────────────────────────────────────
 
   async getAllSubjects(): Promise<Subject[]> {
-    return this.subjectRepository.findAllSubjects();
+    return this.cacheService.getOrFetch(
+      CACHE_KEYS.SUBJECTS_ALL,
+      () => this.subjectRepository.findAllSubjects(),
+      CACHE_TTL.SUBJECTS,
+    );
   }
 
   async getAllSubjectsWithFilter(
     query: QuerySubjectDto,
   ): Promise<{ subjects: Subject[]; total: number }> {
+    const cacheKey = `${CACHE_KEYS.SUBJECTS_ALL}list:${JSON.stringify(query)}`;
+
+    const cached = await this.cacheService.get<{
+      subjects: Subject[];
+      total: number;
+    }>(cacheKey);
+    if (cached) return cached;
+
     const { filters, sort, page = 1, limit = 10 } = query;
 
     // ── Build filter with mandatory soft-delete gate ───────────────────────
@@ -167,11 +179,17 @@ export class SubjectService extends BaseCrudService<
       limit,
     );
 
-    return { subjects, total };
+    const payload = { subjects, total };
+    await this.cacheService.set(cacheKey, payload, CACHE_TTL.SUBJECTS);
+    return payload;
   }
 
   async getSubjectById(id: string): Promise<Subject> {
-    const subject = await this.findById(id);
+    const subject = await this.cacheService.getOrFetch(
+      `${CACHE_KEYS.SUBJECT}${id}`,
+      () => this.findById(id),
+      CACHE_TTL.SUBJECTS,
+    );
     if (!subject) {
       throw new NotFoundException(`Subject with id ${id} not found`);
     }

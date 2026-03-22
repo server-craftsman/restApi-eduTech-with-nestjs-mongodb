@@ -1,5 +1,9 @@
 import { Model, HydratedDocument, UpdateQuery, SortOrder } from 'mongoose';
 
+type FindFilter<TDoc> = Parameters<Model<TDoc>['find']>[0];
+type CountFilter<TDoc> = Parameters<Model<TDoc>['countDocuments']>[0];
+type CreateInput<TDoc> = Parameters<Model<TDoc>['create']>[0];
+
 /**
  * Base repository abstract class with common repository patterns for MongoDB/Mongoose
  *
@@ -60,7 +64,7 @@ export abstract class BaseRepository<
     filter: Record<string, unknown>,
     sort?: Record<string, SortOrder | { $meta: 'textScore' }>,
   ): Promise<TDomain[]> {
-    let query = this.model.find(filter as any);
+    let query = this.model.find(filter as FindFilter<TDocumentType>);
     if (sort) {
       query = query.sort(sort);
     }
@@ -83,7 +87,7 @@ export abstract class BaseRepository<
     limit: number,
   ): Promise<TDomain[]> {
     const docs = await this.model
-      .find(filter as any)
+      .find(filter as FindFilter<TDocumentType>)
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -101,7 +105,9 @@ export abstract class BaseRepository<
     const documentData = this.mapper.toDocument
       ? this.mapper.toDocument(entity)
       : entity;
-    const created = await this.model.create(documentData as any);
+    const created = await this.model.create(
+      documentData as CreateInput<TDocumentType>,
+    );
     return this.mapper.toDomain(created);
   }
 
@@ -137,7 +143,7 @@ export abstract class BaseRepository<
    * @returns Number of matching documents
    */
   async count(filter: Record<string, unknown> = {}): Promise<number> {
-    return this.model.countDocuments(filter as any).exec();
+    return this.model.countDocuments(filter as CountFilter<TDocumentType>).exec();
   }
 
   /**
@@ -146,7 +152,9 @@ export abstract class BaseRepository<
    * @returns true if exists, false otherwise
    */
   async exists(id: string): Promise<boolean> {
-    const count = await this.model.countDocuments({ _id: id } as any).exec();
+    const count = await this.model
+      .countDocuments({ _id: id } as CountFilter<TDocumentType>)
+      .exec();
     return count > 0;
   }
 

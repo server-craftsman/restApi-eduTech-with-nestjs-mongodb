@@ -54,3 +54,14 @@ export type CourseDocumentType = HydratedDocument<CourseDocument> & {
 };
 
 export const CourseSchema = SchemaFactory.createForClass(CourseDocument);
+
+// ── Performance indexes for listing/filtering/sorting ─────────────────────
+CourseSchema.index({
+  isDeleted: 1,
+  status: 1,
+  gradeLevelId: 1,
+  subjectId: 1,
+  createdAt: -1,
+});
+CourseSchema.index({ isDeleted: 1, authorId: 1, createdAt: -1 });
+CourseSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });

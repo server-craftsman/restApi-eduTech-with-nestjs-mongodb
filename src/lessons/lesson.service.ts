@@ -6,7 +6,7 @@ import {
 import { LessonRepositoryAbstract } from './infrastructure/persistence/document/repositories/lesson.repository.abstract';
 import { Lesson } from './domain/lesson';
 import { CreateLessonDto, UpdateLessonDto } from './dto';
-import { CacheService, CACHE_KEYS } from '../core/cache';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 
 /**
  * Service for managing lessons
@@ -86,7 +86,11 @@ export class LessonService {
    * @returns Lesson or null if not found
    */
   async getLessonById(id: string): Promise<Lesson | null> {
-    return this.lessonRepository.findById(id);
+    return this.cacheService.getOrFetch(
+      `${CACHE_KEYS.LESSON}${id}`,
+      () => this.lessonRepository.findById(id),
+      CACHE_TTL.LESSONS,
+    );
   }
 
   /**
@@ -101,7 +105,11 @@ export class LessonService {
    * @returns Array of lessons
    */
   async getAllLessons(): Promise<Lesson[]> {
-    return this.lessonRepository.findAll();
+    return this.cacheService.getOrFetch(
+      CACHE_KEYS.LESSONS_ALL,
+      () => this.lessonRepository.findAll(),
+      CACHE_TTL.LESSONS,
+    );
   }
 
   /**
@@ -173,7 +181,11 @@ export class LessonService {
    * @returns Array of lessons ordered by orderIndex
    */
   async findByChapterId(chapterId: string): Promise<Lesson[]> {
-    return this.lessonRepository.findByChapterId(chapterId);
+    return this.cacheService.getOrFetch(
+      `${CACHE_KEYS.LESSONS_BY_CHAPTER}${chapterId}`,
+      () => this.lessonRepository.findByChapterId(chapterId),
+      CACHE_TTL.LESSONS,
+    );
   }
 
   /**

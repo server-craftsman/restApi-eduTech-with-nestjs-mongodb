@@ -17,7 +17,7 @@ import { UsersService } from '../users/users.service';
 import { NotificationTriggersService } from '../notifications/services';
 import { StudentProfileService } from '../student-profiles/student-profile.service';
 import { GradeLevelService } from '../grade-levels/grade-level.service';
-import { CacheService, CACHE_KEYS } from '../core/cache';
+import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 
 interface PersonalizedCoursesResult {
   courses: Course[];
@@ -255,13 +255,27 @@ export class CourseService extends BaseService {
       ...overrides,
     };
 
-    const [courses, total] = await this.courseRepository.findAllWithFilters(
+    const cachePayload = {
+      page,
       limit,
-      offset,
       filters,
-      (query.sort as SortCourseDto[]) ?? [],
+      sort: (query.sort as SortCourseDto[]) ?? [],
+    };
+    const cacheKey = `${CACHE_KEYS.COURSES_ALL}${JSON.stringify(cachePayload)}`;
+
+    return this.cacheService.getOrFetch(
+      cacheKey,
+      async () => {
+        const [courses, total] = await this.courseRepository.findAllWithFilters(
+          limit,
+          offset,
+          filters,
+          (query.sort as SortCourseDto[]) ?? [],
+        );
+        return { courses, total };
+      },
+      CACHE_TTL.COURSES,
     );
-    return { courses, total };
   }
 
   private async resolveGradeLevelId(
@@ -496,31 +510,47 @@ export class CourseService extends BaseService {
     }
 
     // 2. Each active Chapter must have at least 1 active Lesson
-    //    3. Each active Lesson must have at least 1 Question or Material
-    for (const chapter of activeChapters) {
-      const allLessons = await this.lessonRepository.findByChapterId(
-        chapter.id,
-      );
-      const activeLessons = allLessons.filter((l) => !l.isDeleted);
-
-      if (activeLessons.length === 0) {
-        throw new BadRequestException(
-          `Chapter "${chapter.title}" must have at least 1 lesson before submitting for review.`,
+    // 3. Each active Lesson must have at least 1 Question or Material
+    const chapterLessonPairs = await Promise.all(
+      activeChapters.map(async (chapter) => {
+        const allLessons = await this.lessonRepository.findByChapterId(
+          chapter.id,
         );
-      }
+        const activeLessons = allLessons.filter((l) => !l.isDeleted);
+        return { chapter, activeLessons };
+      }),
+    );
 
-      for (const lesson of activeLessons) {
-        const [questions, materials] = await Promise.all([
-          this.questionRepository.findByLessonId(lesson.id),
-          this.materialRepository.findByLessonId(lesson.id),
-        ]);
+    const chapterWithoutLessons = chapterLessonPairs.find(
+      (entry) => entry.activeLessons.length === 0,
+    );
+    if (chapterWithoutLessons) {
+      throw new BadRequestException(
+        `Chapter "${chapterWithoutLessons.chapter.title}" must have at least 1 lesson before submitting for review.`,
+      );
+    }
 
-        if (questions.length === 0 && materials.length === 0) {
-          throw new BadRequestException(
-            `Lesson "${lesson.title}" in chapter "${chapter.title}" must have at least 1 question or material before submitting for review.`,
-          );
-        }
-      }
+    const lessonValidationResults = await Promise.all(
+      chapterLessonPairs.flatMap(({ chapter, activeLessons }) =>
+        activeLessons.map(async (lesson) => {
+          const [questions, materials] = await Promise.all([
+            this.questionRepository.findByLessonId(lesson.id),
+            this.materialRepository.findByLessonId(lesson.id),
+          ]);
+
+          if (questions.length === 0 && materials.length === 0) {
+            return `Lesson "${lesson.title}" in chapter "${chapter.title}" must have at least 1 question or material before submitting for review.`;
+          }
+          return null;
+        }),
+      ),
+    );
+
+    const firstLessonValidationError = lessonValidationResults.find(
+      (message): message is string => Boolean(message),
+    );
+    if (firstLessonValidationError) {
+      throw new BadRequestException(firstLessonValidationError);
     }
 
     // ── All checks passed — transition to Under_Review ────────────────────

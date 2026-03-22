@@ -22,10 +22,8 @@ export const redisConfig = (
   }
 
   const redisUrl = configService.get<string>('REDIS_URL');
-  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
-
-  // Production: Sử dụng Upstash Redis
-  if (nodeEnv === 'production' && redisUrl) {
+  // Always prefer REDIS_URL when provided (Upstash/Redis Cloud/local URL)
+  if (redisUrl) {
     return {
       isGlobal: true,
       store: redisStore as unknown as never,
@@ -35,7 +33,7 @@ export const redisConfig = (
     } as unknown as CacheModuleOptions;
   }
 
-  // Development: Local Redis hoặc in-memory cache
+  // Fallback: host/port Redis config
   const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
   const redisPort = configService.get<number>('REDIS_PORT', 6379);
   const redisPassword = configService.get<string>('REDIS_PASSWORD');
