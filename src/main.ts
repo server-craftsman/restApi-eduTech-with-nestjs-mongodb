@@ -112,7 +112,6 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
 
     SwaggerModule.setup('swagger', app, document, {
-      useGlobalPrefix: true,
       swaggerOptions: {
         persistAuthorization: true,
         displayRequestDuration: true,
@@ -120,15 +119,22 @@ async function bootstrap() {
         showRequestHeaders: true,
         defaultModelsExpandDepth: 2,
       },
+      customCssUrl: 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css',
+      customJs: [
+        'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js',
+        'https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js',
+      ],
+      customfavIcon:
+        'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
       customSiteTitle: 'EduTech API Docs',
     });
 
-    // Backward-compatible Swagger redirects when global prefix is enabled
-    expressApp.get('/swagger', (_req, res) => {
-      res.redirect(302, `/${globalPrefix}/swagger`);
+    // Backward-compatible redirect for old prefixed Swagger URL
+    expressApp.get(`/${globalPrefix}/swagger`, (_req, res) => {
+      res.redirect(302, '/swagger');
     });
-    expressApp.get('/swagger/', (_req, res) => {
-      res.redirect(302, `/${globalPrefix}/swagger`);
+    expressApp.get(`/${globalPrefix}/swagger/`, (_req, res) => {
+      res.redirect(302, '/swagger');
     });
 
     await app.listen(port, '0.0.0.0');
