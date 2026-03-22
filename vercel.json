@@ -1,16 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "NODE_ENV": "production",
-    "DATABASE_URL": "@database_url",
-    "REDIS_URL": "@redis_url",
-    "REDIS_HOST": "@redis_host",
-    "REDIS_PORT": "@redis_port",
-    "JWT_SECRET": "@jwt_secret",
-    "JWT_EXPIRATION": "@jwt_expiration",
-    "APP_URL": "@app_url",
-    "CORS_ORIGIN": "@cors_origin"
-  },
   "builds": [
     {
       "src": "dist/main.js",
@@ -21,6 +10,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/swagger(.*)",
+      "dest": "dist/main.js"
+    },
     {
       "src": "/(.*)",
       "dest": "dist/main.js"
