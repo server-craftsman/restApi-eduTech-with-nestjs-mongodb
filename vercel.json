@@ -1,24 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "dist/main.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/swagger(.*)",
-      "dest": "dist/main.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "dist/main.js"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
