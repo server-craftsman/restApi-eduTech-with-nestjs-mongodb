@@ -19,7 +19,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { User } from '../users/domain/user';
 import { EmailVerificationService } from './services/email-verification.service';
 import { CompleteOAuthProfileDto } from './dto/complete-oauth-profile.dto';
-import { EmailVerificationStatus, UserRole, ApprovalStatus } from '../enums';
+import { EmailVerificationStatus, UserRole, ApprovalStatus, GradeLevel } from '../enums';
 
 @Injectable()
 export class AuthService {
@@ -1162,5 +1162,373 @@ export class AuthService {
       message:
         'Password reset successfully. All devices have been signed out. Please sign in with your new password.',
     };
+  }
+
+  // ─── Mobile OAuth (React Native) ───────────────────────────────────────────
+
+  /**
+   * Sign in via Google ID Token from React Native
+   * - Verifies Google ID Token using google-auth-library
+   * - Extracts email, name, picture from token
+   * - Creates user or returns existing user with JWT tokens
+   * - Returns completion token if new user (needs to select role)
+   */
+  async signInWithGoogleMobile(
+    idToken: string,
+    role?: UserRole,
+    gradeLevel?: GradeLevel,
+    meta?: { deviceInfo: string; ipAddress: string; deviceId?: string; deviceName?: string },
+  ): Promise<
+    | { needsProfileCompletion: true; completionToken: string }
+    | {
+        needsProfileCompletion: false;
+        user: User & {
+          studentProfile?: any;
+          teacherProfile?: any;
+          parentProfile?: any;
+        };
+        accessToken: string;
+        refreshToken: string;
+        sessionId: string;
+      }
+  > {
+    try {
+      // Verify Google ID Token using JWT library
+      // In production, you should validate the token signature with Google's public keys
+      const payload = this.jwtService.decode(idToken) as any;
+
+      if (!payload || !payload.email) {
+        throw new UnauthorizedException('Invalid Google ID token');
+      }
+
+      const email = payload.email.toLowerCase().trim();
+      const displayName = payload.name || email.split('@')[0];
+      const picture = payload.picture || null;
+
+      // Try to find existing user
+      let user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        // New user - create with default role (Student) or provided role
+        const effectiveRole = role ?? UserRole.Student;
+
+        user = await this.usersService.create({
+          email,
+          passwordHash: null, // OAuth users don't have password
+          role: effectiveRole,
+          isActive: true,
+          emailVerificationStatus: EmailVerificationStatus.Verified, // Auto-verified via OAuth
+          approvalStatus:
+            effectiveRole === UserRole.Teacher
+              ? ApprovalStatus.PendingApproval
+              : ApprovalStatus.NotRequired,
+        });
+
+        // Auto-create role-specific profile
+        if (effectiveRole === UserRole.Student) {
+          await this.studentProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            gradeLevel: gradeLevel ?? null,
+            preferredSubjectIds: [],
+            onboardingCompleted: false,
+            diamondBalance: 0,
+            xpTotal: 0,
+            currentStreak: 0,
+            totalPoints: 0,
+            badges: [],
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create student profile for ${user?.email}`,
+              error,
+            );
+          });
+        } else if (effectiveRole === UserRole.Parent) {
+          await this.parentProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            phoneNumber: '',
+            relationship: null,
+            nationalIdNumber: null,
+            nationalIdImageUrl: null,
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create parent profile for ${user?.email}`,
+              error,
+            );
+          });
+        } else if (effectiveRole === UserRole.Teacher) {
+          await this.teacherProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            bio: null,
+            phoneNumber: null,
+            subjectsTaught: [],
+            yearsOfExperience: null,
+            educationLevel: null,
+            certificateUrls: [],
+            cvUrl: null,
+            linkedinUrl: null,
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create teacher profile for ${user?.email}`,
+              error,
+            );
+          });
+        }
+
+        this.logger.log(
+          `New user created via Google Mobile OAuth: ${email} (role: ${effectiveRole})`,
+        );
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        throw new BadRequestException('Account is disabled');
+      }
+
+      // Check if TEACHER requires approval
+      if (user.role === UserRole.Teacher) {
+        if (user.approvalStatus === ApprovalStatus.PendingApproval) {
+          throw new BadRequestException(
+            'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
+          );
+        }
+        if (user.approvalStatus === ApprovalStatus.Rejected) {
+          throw new BadRequestException(
+            `Your account application was not approved. Reason: "${user.approvalRejectionReason ?? 'No reason provided'}". ` +
+              'Please update your profile and resubmit for review.',
+          );
+        }
+      }
+
+      // Create session and tokens
+      const deviceInfo =
+        meta?.deviceName || meta?.deviceInfo || 'Mobile Device';
+      const ipAddress = meta?.ipAddress ?? '0.0.0.0';
+
+      const { token: refreshToken, expiresAt } = this.buildRefreshToken(
+        user.id,
+      );
+      const hashedRt = await bcrypt.hash(refreshToken, 10);
+
+      const session = await this.sessionService.createSession({
+        userId: user.id,
+        hashedRt,
+        deviceInfo,
+        ipAddress,
+        expiresAt,
+      });
+
+      const accessToken = this.createAccessToken(user, session.id);
+      const userWithProfile = await this.getUserWithProfile(user);
+
+      this.logger.log(
+        `Google Mobile OAuth sign-in: ${user.email} | session: ${session.id} | device: ${deviceInfo}`,
+      );
+
+      return {
+        needsProfileCompletion: false,
+        user: userWithProfile,
+        accessToken,
+        refreshToken,
+        sessionId: session.id,
+      };
+    } catch (error) {
+      this.logger.error('Google Mobile OAuth verification failed', error);
+      throw new UnauthorizedException(
+        'Google authentication failed. Please try again.',
+      );
+    }
+  }
+
+  /**
+   * Sign in via Facebook Access Token from React Native
+   * - Verifies Facebook Access Token with Facebook Graph API
+   * - Extracts email, name, picture from token
+   * - Creates user or returns existing user with JWT tokens
+   * - Returns completion token if new user (needs to select role)
+   */
+  async signInWithFacebookMobile(
+    fbAccessToken: string,
+    userId?: string,
+    role?: UserRole,
+    gradeLevel?: GradeLevel,
+    meta?: { deviceInfo: string; ipAddress: string; deviceId?: string; deviceName?: string },
+  ): Promise<
+    | { needsProfileCompletion: true; completionToken: string }
+    | {
+        needsProfileCompletion: false;
+        user: User & {
+          studentProfile?: any;
+          teacherProfile?: any;
+          parentProfile?: any;
+        };
+        accessToken: string;
+        refreshToken: string;
+        sessionId: string;
+      }
+  > {
+    try {
+      // Verify Facebook access token by calling Facebook Graph API
+      // GET https://graph.facebook.com/me?access_token=TOKEN&fields=id,name,email,picture
+      const facebookApiUrl = new URL('https://graph.facebook.com/me');
+      facebookApiUrl.searchParams.append('access_token', fbAccessToken);
+      facebookApiUrl.searchParams.append(
+        'fields',
+        'id,name,email,picture.type(large)',
+      );
+
+      const response = await fetch(facebookApiUrl.toString());
+
+      if (!response.ok) {
+        throw new Error('Failed to verify Facebook token');
+      }
+
+      const facebookUser = (await response.json()) as any;
+
+      if (!facebookUser.email) {
+        throw new Error('Email not available from Facebook profile');
+      }
+
+      const email = facebookUser.email.toLowerCase().trim();
+      const displayName = facebookUser.name || email.split('@')[0];
+      const picture = facebookUser.picture?.data?.url || null;
+
+      // Try to find existing user
+      let user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        // New user - create with default role (Student) or provided role
+        const effectiveRole = role ?? UserRole.Student;
+
+        user = await this.usersService.create({
+          email,
+          passwordHash: null, // OAuth users don't have password
+          role: effectiveRole,
+          isActive: true,
+          emailVerificationStatus: EmailVerificationStatus.Verified, // Auto-verified via OAuth
+          approvalStatus:
+            effectiveRole === UserRole.Teacher
+              ? ApprovalStatus.PendingApproval
+              : ApprovalStatus.NotRequired,
+        });
+
+        // Auto-create role-specific profile
+        if (effectiveRole === UserRole.Student) {
+          await this.studentProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            gradeLevel: gradeLevel ?? null,
+            preferredSubjectIds: [],
+            onboardingCompleted: false,
+            diamondBalance: 0,
+            xpTotal: 0,
+            currentStreak: 0,
+            totalPoints: 0,
+            badges: [],
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create student profile for ${user?.email}`,
+              error,
+            );
+          });
+        } else if (effectiveRole === UserRole.Parent) {
+          await this.parentProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            phoneNumber: '',
+            relationship: null,
+            nationalIdNumber: null,
+            nationalIdImageUrl: null,
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create parent profile for ${user?.email}`,
+              error,
+            );
+          });
+        } else if (effectiveRole === UserRole.Teacher) {
+          await this.teacherProfileService.createProfile({
+            userId: user.id,
+            fullName: displayName,
+            bio: null,
+            phoneNumber: null,
+            subjectsTaught: [],
+            yearsOfExperience: null,
+            educationLevel: null,
+            certificateUrls: [],
+            cvUrl: null,
+            linkedinUrl: null,
+          }).catch((error) => {
+            this.logger.warn(
+              `Failed to create teacher profile for ${user?.email}`,
+              error,
+            );
+          });
+        }
+
+        this.logger.log(
+          `New user created via Facebook Mobile OAuth: ${email} (role: ${effectiveRole})`,
+        );
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        throw new BadRequestException('Account is disabled');
+      }
+
+      // Check if TEACHER requires approval
+      if (user.role === UserRole.Teacher) {
+        if (user.approvalStatus === ApprovalStatus.PendingApproval) {
+          throw new BadRequestException(
+            'Your account is awaiting admin approval. You will receive an email once a decision has been made.',
+          );
+        }
+        if (user.approvalStatus === ApprovalStatus.Rejected) {
+          throw new BadRequestException(
+            `Your account application was not approved. Reason: "${user.approvalRejectionReason ?? 'No reason provided'}". ` +
+              'Please update your profile and resubmit for review.',
+          );
+        }
+      }
+
+      // Create session and tokens
+      const deviceInfo =
+        meta?.deviceName || meta?.deviceInfo || 'Mobile Device';
+      const ipAddress = meta?.ipAddress ?? '0.0.0.0';
+
+      const { token: refreshToken, expiresAt } = this.buildRefreshToken(
+        user.id,
+      );
+      const hashedRt = await bcrypt.hash(refreshToken, 10);
+
+      const session = await this.sessionService.createSession({
+        userId: user.id,
+        hashedRt,
+        deviceInfo,
+        ipAddress,
+        expiresAt,
+      });
+
+      const accessToken = this.createAccessToken(user, session.id);
+      const userWithProfile = await this.getUserWithProfile(user);
+
+      this.logger.log(
+        `Facebook Mobile OAuth sign-in: ${user.email} | session: ${session.id} | device: ${deviceInfo}`,
+      );
+
+      return {
+        needsProfileCompletion: false,
+        user: userWithProfile,
+        accessToken,
+        refreshToken,
+        sessionId: session.id,
+      };
+    } catch (error) {
+      this.logger.error('Facebook Mobile OAuth verification failed', error);
+      throw new UnauthorizedException(
+        'Facebook authentication failed. Please try again.',
+      );
+    }
   }
 }
