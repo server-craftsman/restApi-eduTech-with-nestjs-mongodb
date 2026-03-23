@@ -18,7 +18,8 @@ export class MobileFacebookSignInDto {
   accessToken!: string;
 
   @ApiPropertyOptional({
-    description: 'Facebook User ID (optional - can be extracted from access token)',
+    description:
+      'Facebook User ID (optional - can be extracted from access token)',
     example: '123456789',
   })
   @IsOptional()

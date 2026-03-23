@@ -19,7 +19,12 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { User } from '../users/domain/user';
 import { EmailVerificationService } from './services/email-verification.service';
 import { CompleteOAuthProfileDto } from './dto/complete-oauth-profile.dto';
-import { EmailVerificationStatus, UserRole, ApprovalStatus, GradeLevel } from '../enums';
+import {
+  EmailVerificationStatus,
+  UserRole,
+  ApprovalStatus,
+  GradeLevel,
+} from '../enums';
 
 @Injectable()
 export class AuthService {
@@ -1177,7 +1182,12 @@ export class AuthService {
     idToken: string,
     role?: UserRole,
     gradeLevel?: GradeLevel,
-    meta?: { deviceInfo: string; ipAddress: string; deviceId?: string; deviceName?: string },
+    meta?: {
+      deviceInfo: string;
+      ipAddress: string;
+      deviceId?: string;
+      deviceName?: string;
+    },
   ): Promise<
     | { needsProfileCompletion: true; completionToken: string }
     | {
@@ -1195,15 +1205,20 @@ export class AuthService {
     try {
       // Verify Google ID Token using JWT library
       // In production, you should validate the token signature with Google's public keys
-      const payload = this.jwtService.decode(idToken) as any;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const payloadAny = this.jwtService.decode(idToken);
+      const payload = payloadAny as Record<string, unknown> | null;
 
-      if (!payload || !payload.email) {
+      if (!payload || typeof payload.email !== 'string') {
         throw new UnauthorizedException('Invalid Google ID token');
       }
 
       const email = payload.email.toLowerCase().trim();
-      const displayName = payload.name || email.split('@')[0];
-      const picture = payload.picture || null;
+      const defaultName = email.split('@')[0];
+      const displayName =
+        (typeof payload.name === 'string' ? payload.name : defaultName) ||
+        defaultName;
+      // Use displayName from token if available, else extract from email
 
       // Try to find existing user
       let user = await this.usersService.findByEmail(email);
@@ -1226,55 +1241,61 @@ export class AuthService {
 
         // Auto-create role-specific profile
         if (effectiveRole === UserRole.Student) {
-          await this.studentProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            gradeLevel: gradeLevel ?? null,
-            preferredSubjectIds: [],
-            onboardingCompleted: false,
-            diamondBalance: 0,
-            xpTotal: 0,
-            currentStreak: 0,
-            totalPoints: 0,
-            badges: [],
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create student profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.studentProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              gradeLevel: gradeLevel ?? null,
+              preferredSubjectIds: [],
+              onboardingCompleted: false,
+              diamondBalance: 0,
+              xpTotal: 0,
+              currentStreak: 0,
+              totalPoints: 0,
+              badges: [],
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create student profile for ${user?.email}`,
+                error,
+              );
+            });
         } else if (effectiveRole === UserRole.Parent) {
-          await this.parentProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            phoneNumber: '',
-            relationship: null,
-            nationalIdNumber: null,
-            nationalIdImageUrl: null,
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create parent profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.parentProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              phoneNumber: '',
+              relationship: null,
+              nationalIdNumber: null,
+              nationalIdImageUrl: null,
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create parent profile for ${user?.email}`,
+                error,
+              );
+            });
         } else if (effectiveRole === UserRole.Teacher) {
-          await this.teacherProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            bio: null,
-            phoneNumber: null,
-            subjectsTaught: [],
-            yearsOfExperience: null,
-            educationLevel: null,
-            certificateUrls: [],
-            cvUrl: null,
-            linkedinUrl: null,
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create teacher profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.teacherProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              bio: null,
+              phoneNumber: null,
+              subjectsTaught: [],
+              yearsOfExperience: null,
+              educationLevel: null,
+              certificateUrls: [],
+              cvUrl: null,
+              linkedinUrl: null,
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create teacher profile for ${user?.email}`,
+                error,
+              );
+            });
         }
 
         this.logger.log(
@@ -1354,7 +1375,12 @@ export class AuthService {
     userId?: string,
     role?: UserRole,
     gradeLevel?: GradeLevel,
-    meta?: { deviceInfo: string; ipAddress: string; deviceId?: string; deviceName?: string },
+    meta?: {
+      deviceInfo: string;
+      ipAddress: string;
+      deviceId?: string;
+      deviceName?: string;
+    },
   ): Promise<
     | { needsProfileCompletion: true; completionToken: string }
     | {
@@ -1385,15 +1411,18 @@ export class AuthService {
         throw new Error('Failed to verify Facebook token');
       }
 
-      const facebookUser = (await response.json()) as any;
+      const facebookUser = (await response.json()) as Record<string, unknown>;
 
-      if (!facebookUser.email) {
+      if (typeof facebookUser.email !== 'string') {
         throw new Error('Email not available from Facebook profile');
       }
 
       const email = facebookUser.email.toLowerCase().trim();
-      const displayName = facebookUser.name || email.split('@')[0];
-      const picture = facebookUser.picture?.data?.url || null;
+      const displayName =
+        (typeof facebookUser.name === 'string'
+          ? facebookUser.name
+          : email.split('@')[0]) || email.split('@')[0];
+      // Use displayName from token if available, else extract from email
 
       // Try to find existing user
       let user = await this.usersService.findByEmail(email);
@@ -1416,55 +1445,61 @@ export class AuthService {
 
         // Auto-create role-specific profile
         if (effectiveRole === UserRole.Student) {
-          await this.studentProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            gradeLevel: gradeLevel ?? null,
-            preferredSubjectIds: [],
-            onboardingCompleted: false,
-            diamondBalance: 0,
-            xpTotal: 0,
-            currentStreak: 0,
-            totalPoints: 0,
-            badges: [],
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create student profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.studentProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              gradeLevel: gradeLevel ?? null,
+              preferredSubjectIds: [],
+              onboardingCompleted: false,
+              diamondBalance: 0,
+              xpTotal: 0,
+              currentStreak: 0,
+              totalPoints: 0,
+              badges: [],
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create student profile for ${user?.email}`,
+                error,
+              );
+            });
         } else if (effectiveRole === UserRole.Parent) {
-          await this.parentProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            phoneNumber: '',
-            relationship: null,
-            nationalIdNumber: null,
-            nationalIdImageUrl: null,
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create parent profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.parentProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              phoneNumber: '',
+              relationship: null,
+              nationalIdNumber: null,
+              nationalIdImageUrl: null,
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create parent profile for ${user?.email}`,
+                error,
+              );
+            });
         } else if (effectiveRole === UserRole.Teacher) {
-          await this.teacherProfileService.createProfile({
-            userId: user.id,
-            fullName: displayName,
-            bio: null,
-            phoneNumber: null,
-            subjectsTaught: [],
-            yearsOfExperience: null,
-            educationLevel: null,
-            certificateUrls: [],
-            cvUrl: null,
-            linkedinUrl: null,
-          }).catch((error) => {
-            this.logger.warn(
-              `Failed to create teacher profile for ${user?.email}`,
-              error,
-            );
-          });
+          await this.teacherProfileService
+            .createProfile({
+              userId: user.id,
+              fullName: displayName,
+              bio: null,
+              phoneNumber: null,
+              subjectsTaught: [],
+              yearsOfExperience: null,
+              educationLevel: null,
+              certificateUrls: [],
+              cvUrl: null,
+              linkedinUrl: null,
+            })
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to create teacher profile for ${user?.email}`,
+                error,
+              );
+            });
         }
 
         this.logger.log(
