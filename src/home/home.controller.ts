@@ -26,7 +26,7 @@ export class HomeController {
       const html = fs.readFileSync(filePath, 'utf8');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.send(html);
-    } catch (error) {
+    } catch {
       return res.json(this.service.appInfo());
     }
   }
