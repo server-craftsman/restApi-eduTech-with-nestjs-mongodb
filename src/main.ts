@@ -39,6 +39,9 @@ async function bootstrap() {
     expressApp.use(express.json({ limit: '10mb' }));
     expressApp.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+    // Serve static files from public folder
+    expressApp.use(express.static(join(process.cwd(), 'public')));
+
     // Ignore Chrome DevTools probe endpoint to avoid noisy 404 logs
     expressApp.get(
       '/.well-known/appspecific/com.chrome.devtools.json',
