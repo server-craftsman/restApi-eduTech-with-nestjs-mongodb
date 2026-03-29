@@ -12,7 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { FacebookAuthGuard } from './guards/facebook-auth.guard';
-import { MobileFacebookSignInDto } from '../auth/dto/mobile-facebook-signin.dto';
+import { MobileFacebookSignInDto, AuthResponseDto } from '../auth/dto';
 import { User } from '../users/domain/user';
 import { BaseController } from '../core/base/base.controller';
 
@@ -49,15 +49,7 @@ export class AuthFacebookController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Returns JWT access token, refresh token and session info',
-    schema: {
-      type: 'object',
-      properties: {
-        user: { type: 'object' },
-        accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
-        sessionId: { type: 'string' },
-      },
-    },
+    type: AuthResponseDto,
   })
   async facebookCallback(@Req() req: Request, @Res() res: Response) {
     const { user, isNew } = req.user as { user: User; isNew: boolean };

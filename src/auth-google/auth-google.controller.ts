@@ -12,7 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { MobileGoogleSignInDto } from '../auth/dto/mobile-google-signin.dto';
+import { MobileGoogleSignInDto, AuthResponseDto } from '../auth/dto';
 import { User } from '../users/domain/user';
 import { BaseController } from '../core/base/base.controller';
 
@@ -49,15 +49,7 @@ export class AuthGoogleController extends BaseController {
   @ApiResponse({
     status: 200,
     description: 'Returns JWT access token, refresh token and session info',
-    schema: {
-      type: 'object',
-      properties: {
-        user: { type: 'object' },
-        accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
-        sessionId: { type: 'string' },
-      },
-    },
+    type: AuthResponseDto,
   })
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const { user, isNew } = req.user as { user: User; isNew: boolean };
