@@ -85,7 +85,7 @@ export class ParentProfileDto {
   updatedAt!: Date;
 }
 
-export class UserDto {
+export class AuthUserDto {
   @ApiProperty()
   id!: string;
 
@@ -131,8 +131,8 @@ export class AuthResponseDto {
   @ApiProperty()
   refreshToken!: string;
 
-  @ApiProperty({ type: UserDto })
-  user!: UserDto;
+  @ApiProperty({ type: AuthUserDto })
+  user!: AuthUserDto;
 
   @ApiPropertyOptional()
   sessionId?: string;
