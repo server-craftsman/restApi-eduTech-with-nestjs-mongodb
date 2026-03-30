@@ -8,7 +8,7 @@ import {
   UseGuards,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
@@ -33,6 +33,19 @@ export class AuthGoogleController extends BaseController {
   @ApiResponse({
     status: 302,
     description: 'Redirects to Google OAuth consent screen',
+  })
+  @ApiQuery({
+    name: 'prompt',
+    required: false,
+    description:
+      "Google OAuth prompt (optional). Example: 'select_account' to force account chooser",
+    example: 'select_account',
+  })
+  @ApiQuery({
+    name: 'login_hint',
+    required: false,
+    description: 'Optional email hint to prefill Google account',
+    example: 'user@example.com',
   })
   @ApiResponse({
     status: 400,
