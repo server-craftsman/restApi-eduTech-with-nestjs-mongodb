@@ -3,6 +3,21 @@ import { AuthGuard } from '@nestjs/passport';
 import { ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
+const getQueryString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (Array.isArray(value)) {
+    const firstString = value.find(
+      (item): item is string => typeof item === 'string',
+    );
+    return firstString?.trim() ?? '';
+  }
+
+  return '';
+};
+
 @Injectable()
 export class GoogleAuthGuard extends AuthGuard('google') {
   getAuthenticateOptions(context: ExecutionContext) {
@@ -15,8 +30,8 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       return undefined;
     }
 
-    const promptQuery = String(request.query.prompt ?? '').trim();
-    const loginHintQuery = String(request.query.login_hint ?? '').trim();
+    const promptQuery = getQueryString(request.query.prompt);
+    const loginHintQuery = getQueryString(request.query.login_hint);
 
     const options: Record<string, unknown> = {
       accessType: 'offline',
