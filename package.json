@@ -31,7 +31,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@google/genai": "^1.46.0",
+    "@google/genai": "^1.47.0",
     "@nestjs/cache-manager": "^3.1.0",
     "@nestjs/common": "^11.1.17",
     "@nestjs/config": "^4.0.3",
@@ -45,7 +45,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@novu/node": "^2.6.6",
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "bcrypt": "^6.0.0",
     "cache-manager": "^7.2.8",
     "cache-manager-redis-store": "^3.0.1",
@@ -60,10 +60,10 @@
     "husky": "^9.1.7",
     "hygen": "^6.2.11",
     "ioredis": "^5.10.1",
-    "joi": "^18.0.2",
+    "joi": "^18.1.1",
     "lint-staged": "^16.4.0",
-    "mongoose": "^9.3.1",
-    "nodemailer": "^8.0.3",
+    "mongoose": "^9.3.3",
+    "nodemailer": "^8.0.4",
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
@@ -105,7 +105,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1"
+    "typescript-eslint": "^8.57.2"
   },
   "jest": {
     "moduleFileExtensions": [
