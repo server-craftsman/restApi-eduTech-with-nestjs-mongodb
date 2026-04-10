@@ -1363,6 +1363,119 @@ export class AuthService {
     }
   }
 
+  async createFacebookTestUserToken(options?: {
+    permissions?: string[];
+    name?: string;
+  }): Promise<{
+    accessToken: string;
+    userId: string;
+    email?: string;
+    name?: string;
+    loginUrl?: string;
+    password?: string;
+    permissions: string[];
+  }> {
+    const appId = this.configService.get<string>('oauth.facebook.clientId');
+    const appSecret = this.configService.get<string>(
+      'oauth.facebook.clientSecret',
+    );
+
+    if (!appId || !appSecret) {
+      throw new BadRequestException(
+        'Missing Facebook app credentials. Please set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.',
+      );
+    }
+
+    if (
+      appId === 'dev-facebook-app-id' ||
+      appSecret === 'dev-facebook-app-secret'
+    ) {
+      throw new BadRequestException(
+        'Facebook app credentials are placeholders. Please configure real Facebook app credentials to use this dev endpoint.',
+      );
+    }
+
+    const permissions =
+      options?.permissions?.length &&
+      options.permissions.every((p) => typeof p === 'string' && p.trim())
+        ? options.permissions.map((p) => p.trim())
+        : ['email', 'public_profile'];
+
+    const appTokenUrl = new URL('https://graph.facebook.com/oauth/access_token');
+    appTokenUrl.searchParams.append('client_id', appId);
+    appTokenUrl.searchParams.append('client_secret', appSecret);
+    appTokenUrl.searchParams.append('grant_type', 'client_credentials');
+
+    const appTokenResponse = await fetch(appTokenUrl.toString());
+    const appTokenPayload = (await appTokenResponse.json()) as {
+      access_token?: string;
+      error?: { message?: string };
+    };
+
+    if (!appTokenResponse.ok || !appTokenPayload.access_token) {
+      throw new BadRequestException(
+        `Cannot obtain Facebook app access token: ${appTokenPayload.error?.message ?? 'Unknown error'}`,
+      );
+    }
+
+    const testUserUrl = new URL(`https://graph.facebook.com/${appId}/accounts/test-users`);
+    const createParams = new URLSearchParams({
+      installed: 'true',
+      permissions: permissions.join(','),
+      access_token: appTokenPayload.access_token,
+    });
+
+    if (options?.name?.trim()) {
+      createParams.set('name', options.name.trim());
+    }
+
+    const testUserResponse = await fetch(testUserUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: createParams,
+    });
+
+    const testUserPayload = (await testUserResponse.json()) as {
+      id?: string;
+      access_token?: string;
+      login_url?: string;
+      email?: string;
+      password?: string;
+      error?: { message?: string };
+    };
+
+    if (
+      !testUserResponse.ok ||
+      !testUserPayload.id ||
+      !testUserPayload.access_token
+    ) {
+      throw new BadRequestException(
+        `Cannot create Facebook test user token: ${testUserPayload.error?.message ?? 'Unknown error'}`,
+      );
+    }
+
+    const meUrl = new URL('https://graph.facebook.com/me');
+    meUrl.searchParams.append('fields', 'id,name,email');
+    meUrl.searchParams.append('access_token', testUserPayload.access_token);
+
+    const meResponse = await fetch(meUrl.toString());
+    const mePayload = (await meResponse.json()) as {
+      id?: string;
+      name?: string;
+      email?: string;
+    };
+
+    return {
+      accessToken: testUserPayload.access_token,
+      userId: testUserPayload.id,
+      email: mePayload.email ?? testUserPayload.email,
+      name: mePayload.name,
+      loginUrl: testUserPayload.login_url,
+      password: testUserPayload.password,
+      permissions,
+    };
+  }
+
   /**
    * Sign in via Facebook Access Token from React Native
    * - Verifies Facebook Access Token with Facebook Graph API
@@ -1406,18 +1519,58 @@ export class AuthService {
       );
 
       const response = await fetch(facebookApiUrl.toString());
+      const facebookPayload = (await response.json()) as {
+        id?: string;
+        email?: string;
+        name?: string;
+        error?: {
+          message?: string;
+          type?: string;
+          code?: number;
+          error_subcode?: number;
+        };
+      };
 
       if (!response.ok) {
-        throw new Error('Failed to verify Facebook token');
+        const fbError = facebookPayload.error;
+        const fbMessage = fbError?.message ?? 'Failed to verify Facebook token';
+        throw new UnauthorizedException(`Facebook token invalid: ${fbMessage}`);
       }
 
-      const facebookUser = (await response.json()) as Record<string, unknown>;
+      const facebookUser = facebookPayload as Record<string, unknown>;
 
-      if (typeof facebookUser.email !== 'string') {
-        throw new Error('Email not available from Facebook profile');
+      if (
+        userId &&
+        typeof facebookPayload.id === 'string' &&
+        facebookPayload.id !== userId
+      ) {
+        throw new UnauthorizedException(
+          'Facebook userId does not match the provided access token.',
+        );
       }
 
-      const email = facebookUser.email.toLowerCase().trim();
+      if (typeof facebookPayload.id !== 'string' || !facebookPayload.id.trim()) {
+        throw new BadRequestException(
+          'Facebook profile payload is missing user id.',
+        );
+      }
+
+      const rawEmail =
+        typeof facebookUser.email === 'string'
+          ? facebookUser.email.toLowerCase().trim()
+          : '';
+
+      const email =
+        rawEmail.length > 0
+          ? rawEmail
+          : `fb_${facebookPayload.id.trim()}@facebook.local`;
+
+      if (rawEmail.length === 0) {
+        this.logger.warn(
+          `Facebook profile has no email, using fallback email for user id ${facebookPayload.id}`,
+        );
+      }
+
       const displayName =
         (typeof facebookUser.name === 'string'
           ? facebookUser.name
@@ -1561,6 +1714,12 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error('Facebook Mobile OAuth verification failed', error);
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException(
         'Facebook authentication failed. Please try again.',
       );

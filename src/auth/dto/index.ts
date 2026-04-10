@@ -10,3 +10,4 @@ export { ResetPasswordDto } from './reset-password.dto';
 export { ChangePasswordDto } from './change-password.dto';
 export { MobileGoogleSignInDto } from './mobile-google-signin.dto';
 export { MobileFacebookSignInDto } from './mobile-facebook-signin.dto';
+export { CreateFacebookTestTokenDto } from './create-facebook-test-token.dto';
