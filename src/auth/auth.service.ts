@@ -1401,7 +1401,9 @@ export class AuthService {
         ? options.permissions.map((p) => p.trim())
         : ['email', 'public_profile'];
 
-    const appTokenUrl = new URL('https://graph.facebook.com/oauth/access_token');
+    const appTokenUrl = new URL(
+      'https://graph.facebook.com/oauth/access_token',
+    );
     appTokenUrl.searchParams.append('client_id', appId);
     appTokenUrl.searchParams.append('client_secret', appSecret);
     appTokenUrl.searchParams.append('grant_type', 'client_credentials');
@@ -1418,7 +1420,9 @@ export class AuthService {
       );
     }
 
-    const testUserUrl = new URL(`https://graph.facebook.com/${appId}/accounts/test-users`);
+    const testUserUrl = new URL(
+      `https://graph.facebook.com/${appId}/accounts/test-users`,
+    );
     const createParams = new URLSearchParams({
       installed: 'true',
       permissions: permissions.join(','),
@@ -1549,7 +1553,10 @@ export class AuthService {
         );
       }
 
-      if (typeof facebookPayload.id !== 'string' || !facebookPayload.id.trim()) {
+      if (
+        typeof facebookPayload.id !== 'string' ||
+        !facebookPayload.id.trim()
+      ) {
         throw new BadRequestException(
           'Facebook profile payload is missing user id.',
         );
