@@ -107,26 +107,136 @@ export class AuthController extends BaseController {
   async verifyEmail(
     @Query() dto: VerifyEmailDto,
     @Res() res: Response,
-  ): Promise<void> {
+  ): Promise<Response> {
+    const appUrl =
+      this.configService.get<string>('app.url') || 'http://localhost:3000';
+
     try {
       const result = await this.authService.verifyEmail(dto.token);
-      const appUrl =
-        this.configService.get<string>('app.url') || 'http://localhost:3000';
-      return res.render('email-verified', {
-        message: result.message,
-        email: result.user.email,
-        appUrl,
-      });
+      return res
+        .status(HttpStatus.OK)
+        .type('html')
+        .send(
+          this.buildVerificationHtml({
+            title: 'Email xác nhận thành công',
+            icon: '✓',
+            lead: 'Chúc mừng! Email của bạn đã được xác nhận.',
+            detail: `${result.message} (${result.user.email})`,
+            appUrl,
+          }),
+        );
     } catch (error) {
-      const appUrl =
-        this.configService.get<string>('app.url') || 'http://localhost:3000';
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      return res.render('verification-error', {
-        message: errorMessage,
-        appUrl,
-      });
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .type('html')
+        .send(
+          this.buildVerificationHtml({
+            title: 'Lỗi xác nhận email',
+            icon: '✗',
+            lead: 'Không thể xác nhận email của bạn.',
+            detail: errorMessage,
+            appUrl,
+          }),
+        );
     }
+  }
+
+  private buildVerificationHtml(params: {
+    title: string;
+    icon: string;
+    lead: string;
+    detail: string;
+    appUrl: string;
+  }): string {
+    const title = this.escapeHtml(params.title);
+    const icon = this.escapeHtml(params.icon);
+    const lead = this.escapeHtml(params.lead);
+    const detail = this.escapeHtml(params.detail);
+    const appUrl = this.escapeHtml(params.appUrl);
+
+    return `<!DOCTYPE html>
+<html dir="ltr" lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title} - EduTech</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 40px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon { font-size: 48px; margin: 12px 0 20px; }
+    h1 { font-size: 24px; color: #333; margin-bottom: 14px; }
+    p { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+    .detail {
+      background: #f0f0f0;
+      border-left: 2px solid #999;
+      padding: 12px;
+      margin: 18px 0;
+      color: #555;
+      font-size: 13px;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .button {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      background: #333;
+      color: #fff;
+      padding: 12px;
+      text-decoration: none;
+      margin-top: 12px;
+      border: 1px solid #333;
+      font-size: 14px;
+    }
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">${icon}</div>
+    <h1>${title}</h1>
+    <p>${lead}</p>
+    <div class="detail">${detail}</div>
+    <a href="${appUrl}" class="button">Quay về trang chủ</a>
+    <div class="footer">&copy; 2026 EduTech</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   @Post('email/resend-verification')
