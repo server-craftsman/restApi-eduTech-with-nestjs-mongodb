@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { join } from 'path';
 import { Express } from 'express';
 import * as express from 'express';
+import 'hbs';
 import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';

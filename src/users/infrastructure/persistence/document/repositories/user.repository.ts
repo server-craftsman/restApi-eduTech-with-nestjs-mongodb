@@ -137,7 +137,7 @@ export class UserRepository extends UserRepositoryAbstract {
       .findOneAndUpdate(
         { _id: id, ...NOT_DELETED },
         { $set: this.mapper.toDocument(user) },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     return doc ? this.mapper.toDomain(doc) : null;
