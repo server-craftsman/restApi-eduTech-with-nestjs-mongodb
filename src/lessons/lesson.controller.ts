@@ -3,8 +3,10 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   Res,
   HttpStatus,
@@ -15,14 +17,24 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { LessonService } from './lesson.service';
-import { CreateLessonDto, UpdateLessonDto, LessonDto } from './dto';
+import {
+  CreateLessonDto,
+  UpdateLessonDto,
+  LessonDto,
+  QueryLessonDto,
+  FilterLessonDto,
+  SortLessonDto,
+} from './dto';
 import { BaseController } from '../core/base/base.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../roles';
 import { UserRole } from '../enums';
+import { CurrentUser } from '../auth/decorators';
+import { User } from '../users/domain/user';
 
 @ApiTags('Lessons')
 @Controller('lessons')
@@ -34,6 +46,7 @@ import { UserRole } from '../enums';
   status: 403,
   description: 'Forbidden - Insufficient permissions',
 })
+@ApiExtraModels(FilterLessonDto, SortLessonDto)
 export class LessonController extends BaseController {
   constructor(private readonly lessonService: LessonService) {
     super();
@@ -100,6 +113,40 @@ export class LessonController extends BaseController {
   ): Promise<Response> {
     const lessons = await this.lessonService.findByChapterIdOrdered(chapterId);
     return this.sendSuccess(res, lessons, 'Lessons retrieved successfully');
+  }
+
+  /**
+   * Get lessons owned by the authenticated teacher/admin
+   */
+  @Get('my-lessons')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Teacher, UserRole.Admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Get my lessons — paginated, filterable, sortable (TEACHER/ADMIN only)',
+    description:
+      'Returns lessons that belong to courses authored by the authenticated user. ' +
+      'Supports JSON `filters` and JSON `sort` query parameters.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'My lessons retrieved successfully',
+    type: [LessonDto],
+  })
+  async getMyLessons(
+    @CurrentUser() user: User,
+    @Query() query: QueryLessonDto,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const result = await this.lessonService.getMyLessons(user.id, query);
+    return this.sendPaginated(
+      res,
+      result.lessons,
+      result.total,
+      result.page,
+      result.limit,
+    );
   }
 
   /**
@@ -237,32 +284,32 @@ export class LessonController extends BaseController {
 
   /**
    * Delete a lesson
-   * Only ADMIN can delete lessons
+   * TEACHER and ADMIN can delete lessons
    */
-  // @Delete(':id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(UserRole.Admin)
-  // @ApiBearerAuth()
-  // @ApiOperation({
-  //   summary: 'Delete a lesson (ADMIN only)',
-  //   description:
-  //     'Soft-delete a lesson. Only administrators can delete lessons.',
-  // })
-  // @ApiParam({
-  //   name: 'id',
-  //   description: 'Lesson ID',
-  //   example: '507f1f77bcf86cd799439011',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Lesson deleted successfully',
-  // })
-  // @ApiResponse({ status: 404, description: 'Lesson not found' })
-  // async deleteLesson(
-  //   @Param('id') id: string,
-  //   @Res() res: Response,
-  // ): Promise<Response> {
-  //   await this.lessonService.deleteLesson(id);
-  //   return this.sendSuccess(res, null, 'Lesson deleted successfully');
-  // }
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Teacher, UserRole.Admin)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete a lesson (TEACHER/ADMIN only)',
+    description:
+      'Soft-delete a lesson. Teachers and administrators can delete lessons.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Lesson ID',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lesson deleted successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Lesson not found' })
+  async deleteLesson(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<Response> {
+    await this.lessonService.deleteLesson(id);
+    return this.sendSuccess(res, null, 'Lesson deleted successfully');
+  }
 }

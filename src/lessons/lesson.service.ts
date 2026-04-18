@@ -2,10 +2,18 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { LessonRepositoryAbstract } from './infrastructure/persistence/document/repositories/lesson.repository.abstract';
 import { Lesson } from './domain/lesson';
-import { CreateLessonDto, UpdateLessonDto } from './dto';
+import {
+  CreateLessonDto,
+  UpdateLessonDto,
+  QueryLessonDto,
+  SortLessonDto,
+} from './dto';
+import { ChapterRepositoryAbstract } from '../chapters/infrastructure/persistence/document/repositories/chapter.repository.abstract';
+import { CourseRepositoryAbstract } from '../courses/infrastructure/persistence/document/repositories/course.repository.abstract';
 import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 
 /**
@@ -16,6 +24,8 @@ import { CacheService, CACHE_KEYS, CACHE_TTL } from '../core/cache';
 export class LessonService {
   constructor(
     private readonly lessonRepository: LessonRepositoryAbstract,
+    private readonly chapterRepository: ChapterRepositoryAbstract,
+    private readonly courseRepository: CourseRepositoryAbstract,
     private readonly cacheService: CacheService,
   ) {}
 
@@ -255,5 +265,63 @@ export class LessonService {
   async countInChapter(chapterId: string): Promise<number> {
     const lessons = await this.findByChapterId(chapterId);
     return lessons.length;
+  }
+
+  async getMyLessons(
+    userId: string,
+    query: QueryLessonDto,
+  ): Promise<{
+    lessons: Lesson[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const offset = (page - 1) * limit;
+
+    const requestedCourseId = query.filters?.courseId ?? undefined;
+    const ownedCourseIds: string[] = requestedCourseId
+      ? await (async () => {
+      const requestedCourse =
+        await this.courseRepository.findByIdNotDeleted(requestedCourseId);
+      if (!requestedCourse) {
+        throw new NotFoundException('Course not found');
+      }
+      if (requestedCourse.authorId !== userId) {
+        throw new ForbiddenException(
+          'You do not have permission to access lessons in this course',
+        );
+      }
+      return [requestedCourseId];
+    })()
+      : (
+          await this.courseRepository.findByAuthorIdNotDeleted(userId)
+        ).map((course) => course.id);
+
+    if (ownedCourseIds.length === 0) {
+      return { lessons: [], total: 0, page, limit };
+    }
+
+    const chapterResults = await Promise.all(
+      ownedCourseIds.map((courseId) =>
+        this.chapterRepository.findByCourseId(courseId),
+      ),
+    );
+    const chapterIds = chapterResults.flat().map((chapter) => chapter.id);
+
+    if (chapterIds.length === 0) {
+      return { lessons: [], total: 0, page, limit };
+    }
+
+    const [lessons, total] = await this.lessonRepository.findAllWithFilters(
+      limit,
+      offset,
+      query.filters ?? undefined,
+      (query.sort as SortLessonDto[]) ?? [],
+      chapterIds,
+    );
+
+    return { lessons, total, page, limit };
   }
 }

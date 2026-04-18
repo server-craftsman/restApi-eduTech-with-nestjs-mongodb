@@ -1,8 +1,19 @@
 import { Lesson } from '../../../../domain/lesson';
+import {
+  FilterLessonDto,
+  SortLessonDto,
+} from '../../../../dto/query-lesson.dto';
 
 export abstract class LessonRepositoryAbstract {
   abstract findById(id: string): Promise<Lesson | null>;
   abstract findAll(): Promise<Lesson[]>;
+  abstract findAllWithFilters(
+    limit: number,
+    offset: number,
+    filters?: FilterLessonDto,
+    sort?: SortLessonDto[],
+    chapterIds?: string[],
+  ): Promise<[Lesson[], number]>;
   abstract create(
     data: Omit<Lesson, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Lesson>;

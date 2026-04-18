@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ChapterModule } from '../chapters/chapter.module';
+import { DocumentPersistenceModule as CourseDocumentPersistenceModule } from '../courses/infrastructure/persistence/document/document-persistence.module';
 import {
   LessonDocument,
   LessonSchema,
@@ -12,6 +14,8 @@ import { LessonController } from './lesson.controller';
 
 @Module({
   imports: [
+    ChapterModule,
+    CourseDocumentPersistenceModule,
     MongooseModule.forFeature([
       { name: LessonDocument.name, schema: LessonSchema },
     ]),

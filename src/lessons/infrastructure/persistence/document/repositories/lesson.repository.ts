@@ -5,6 +5,7 @@ import { LessonDocument, LessonDocumentType } from '../schemas/lesson.schema';
 import { LessonRepositoryAbstract } from './lesson.repository.abstract';
 import { LessonMapper } from '../mappers/lesson.mapper';
 import { Lesson } from '../../../../domain/lesson';
+import { FilterLessonDto, SortLessonDto } from '../../../../dto';
 import {
   NOT_DELETED,
   buildVietnameseRegexQuery,
@@ -36,6 +37,68 @@ export class LessonRepository extends LessonRepositoryAbstract {
       .sort({ orderIndex: 1 })
       .exec();
     return this.mapper.toDomainArray(docs);
+  }
+
+  async findAllWithFilters(
+    limit = 10,
+    offset = 0,
+    filters?: FilterLessonDto,
+    sort?: SortLessonDto[],
+    chapterIds?: string[],
+  ): Promise<[Lesson[], number]> {
+    const query: Record<string, any> = {};
+    let chapterIdScope: Types.ObjectId[] | undefined;
+
+    query.isDeleted = filters?.isDeleted === true ? true : { $ne: true };
+
+    if (chapterIds) {
+      if (chapterIds.length === 0) {
+        return [[], 0];
+      }
+      chapterIdScope = chapterIds.map((id) => new Types.ObjectId(id));
+      query.chapterId = { $in: chapterIdScope };
+    }
+
+    if (filters?.chapterId) {
+      const filterChapterId = new Types.ObjectId(filters.chapterId);
+      if (chapterIdScope) {
+        const inList = chapterIdScope.some(
+          (oid) => oid.toString() === filterChapterId.toString(),
+        );
+        if (!inList) return [[], 0];
+      }
+      query.chapterId = filterChapterId;
+    }
+
+    if (filters?.isPreview != null) {
+      query.isPreview = filters.isPreview;
+    }
+
+    if (filters?.search) {
+      const regex = buildVietnameseRegexQuery(filters.search);
+      query.$or = [
+        { title: regex },
+        { description: regex },
+        { contentMd: regex },
+      ];
+    }
+
+    const sortObj: Record<string, 1 | -1> = {};
+    if (sort?.length) {
+      for (const s of sort) {
+        sortObj[s.orderBy as string] = s.order === 'asc' ? 1 : -1;
+      }
+    } else {
+      sortObj.orderIndex = 1;
+      sortObj.createdAt = -1;
+    }
+
+    const [docs, total] = await Promise.all([
+      this.model.find(query).sort(sortObj).skip(offset).limit(limit).exec(),
+      this.model.countDocuments(query).exec(),
+    ]);
+
+    return [this.mapper.toDomainArray(docs), total];
   }
 
   async create(
@@ -82,7 +145,7 @@ export class LessonRepository extends LessonRepositoryAbstract {
       .findOneAndUpdate(
         { _id: id, ...NOT_DELETED },
         { $set: updateData },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     return doc ? this.mapper.toDomain(doc) : null;
